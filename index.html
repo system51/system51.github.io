@@ -230,6 +230,161 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/22/Kubernetes-Deployment介绍/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/08/22/Kubernetes-Deployment介绍/" itemprop="url">Kubernetes Deployment介绍</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-22T17:13:38+08:00">
+                2019-08-22
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>Deployment是Kubernetes v1.2引入的概念，引入的目的是为了更好地解决Pod的编排问题。为此，Deployment在内部使用了Replica Set来实现目的，无论从Deployment的作用与目的，它的YAML定义，还是从它的具体命令行操作来看，我们都可以把它看作RC的一次升级，两者相似度超过90%。</p>
+<p>Deployment相对于RC的一个最大升级是我们随时知道当前Pod“部署”的进度。实际上由于一个Pod的创建、调度、绑定节点及在目标Node上启动对应的容器这一完整过程需要一定的时间，所以我们期待系统启动N个Pod副本的目标状态，实际上是一个连续变化的“部署过程”导致的最终状态。</p>
+<h3 id="Deployment的典型使用场景有以下几个。"><a href="#Deployment的典型使用场景有以下几个。" class="headerlink" title="Deployment的典型使用场景有以下几个。"></a>Deployment的典型使用场景有以下几个。</h3><ul>
+<li>创建一个Deployment对象来生成对应的Replica Set并完成Pod副本的创建过程。</li>
+<li>检查Deployment的状态来看部署动作是否完成（Pod副本的数量是否达到预期的值）。</li>
+<li>更新Deployment以创建新的Pod（比如镜像升级）。</li>
+<li>如果当前Deployment不稳定，则回滚到一个早先的Deployment版本。</li>
+<li>暂停Deployment以便于一次性修改多个PodTemplateSpec的配置项，之后再恢复Deployment，进行新的发布。</li>
+<li>扩展Deployment以应对高负载。</li>
+<li>查看Deployment的状态，以此作为发布是否成功的指标。</li>
+<li>清理不再需要的旧版本ReplicaSets。</li>
+</ul>
+<p>Deployment的定义与Replica Set的定义很类似，除了API声明与Kind类型等有所区别：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: extensions/v1beta1      apiVersion: v1</span><br><span class="line">kind: Deployment                    kind: ReplicaSet</span><br><span class="line">metadata:                           metadata:</span><br><span class="line">  name: nginx-deployment              name: nginx-repset</span><br></pre></td></tr></table></figure>
+
+<p>下面我们通过运行一些例子来一起直观地感受这个新概念。首先创建一个名为tomcat-deployment.yaml的Deployment描述文件，内容如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  name: frontend</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      tier: frontend</span><br><span class="line">    matchExpressions:</span><br><span class="line">      - &#123;key: tier, operator: In, values: [frontend]&#125;</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: app-demo</span><br><span class="line">        tier: frontend</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - name: tomcat-demo</span><br><span class="line">        image: tomcat</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 8080</span><br></pre></td></tr></table></figure>
+
+<h3 id="运行下述命令创建Deploymeny"><a href="#运行下述命令创建Deploymeny" class="headerlink" title="运行下述命令创建Deploymeny:"></a>运行下述命令创建Deploymeny:</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># kubectl create -f tomcat-deployment.yaml</span><br><span class="line">deployment &quot;tomcat-deploy&quot; created</span><br></pre></td></tr></table></figure>
+
+<h3 id="运行下述命令查看Deployment的信息："><a href="#运行下述命令查看Deployment的信息：" class="headerlink" title="运行下述命令查看Deployment的信息："></a>运行下述命令查看Deployment的信息：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># kubectl get deployments</span><br><span class="line">NAME            DESIRED     CURRENT     UP-TO-DATE      AVAILABLE   AGE</span><br><span class="line">tomcat-deploy   1           1           1               1           4m</span><br></pre></td></tr></table></figure>
+
+<h3 id="对上述输出中涉及的数量解释如下："><a href="#对上述输出中涉及的数量解释如下：" class="headerlink" title="对上述输出中涉及的数量解释如下："></a>对上述输出中涉及的数量解释如下：</h3><ul>
+<li>DESIRED：Pod副本数量的期望值，即Deployment里定义的Replica。</li>
+<li>CURRENT：当前Replica的值，实际上是Deployment所创建的Replica Set里的Replica值，这个值不断增加，直到达到DESIRED为止，表明整个部署过程完成。</li>
+<li>UP-TO-DATE：最新版本的Pod副本数量，用于指示在滚动升级的过程中，有多少个Pod副本已经成功升级。</li>
+<li>AVAILABLE：当前集群中可用的Pod副本数量，即集群中当前存活的Pod数量。</li>
+</ul>
+<p>运行下述命令查看对应的Replica Set，我们看到它的命名与Deployment的名字有关系：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># kubectl get rs</span><br><span class="line">NAME                        DESIRED     CURRENT     AGE</span><br><span class="line">tomcat-deploy-1640611518    1           1           1m</span><br></pre></td></tr></table></figure>
+
+<p>运行下述命令查看创建的Pod，我们发现Pod的命名以Deployment对应的Replica Set的名字为前缀，这种命名很清晰地表明了一个Replica Set创建了哪些Pod，对于滚动升级这种复杂的过程来说，很容易排查错误：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># kubectl get pods</span><br><span class="line">NAME                            READY       STATUS      RESTARTS    AGE</span><br><span class="line">tomcat-deploy-1640611518-zhrsc  1/1         Running     0           3m</span><br></pre></td></tr></table></figure>
+
+<p>运行kubectl describe deployments，可以清楚地看到Deployment控制的Pod的水平扩展过程。</p>
+<p>Pod的管理对象，除了RC和Deployment，还包括ReplicaSet、DaemonSet、StatefulSet、Job等，分别用于不同的应用场景中，下面的会陆续介绍。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/22/kubernetes-Pod控制器/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -628,7 +783,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
