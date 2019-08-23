@@ -230,6 +230,696 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes-定义Deployment控制器/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/08/23/Kubernetes-定义Deployment控制器/" itemprop="url">Kubernetes 定义Deployment控制器</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T11:40:35+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h3 id="编写-Deployment："><a href="#编写-Deployment：" class="headerlink" title="编写 Deployment："></a>编写 Deployment：</h3><blockquote>
+<p>在所有的 Kubernetes 配置中，Deployment 也需要apiVersion，kind和metadata、 spec 这些配置项。</p>
+</blockquote>
+<h4 id="Pod-Template："><a href="#Pod-Template：" class="headerlink" title="Pod Template："></a>Pod Template：</h4><blockquote>
+<p>deployment.spec.template 是 .spec中唯一必须的字段。</p>
+</blockquote>
+<blockquote>
+<p>deployment.spec.template 是 pod template. 它跟 Pod有一模一样的结构有metadata、spec字段，除了它是嵌套的并且不需要apiVersion 和 kind字段。</p>
+</blockquote>
+<blockquote>
+<p>另外为了划分Pod的范围，Deployment中的pod template必须指定适当的label（不要跟其他controller重复了，例如：在Deployments中定义了一个 labels是app = nginx，在Replica Set、Replication Controller 中都不来在定义app=nginx这个labels）和适当的重启策略。.spec.template.spec.restartPolicy 可以设置为 Always , 如果不指定的话这就是默认配置。</p>
+</blockquote>
+<h4 id="Replicas："><a href="#Replicas：" class="headerlink" title="Replicas："></a>Replicas：</h4><blockquote>
+<p>.spec.replicas 是可以选字段，指定期望的pod数量，默认是1。</p>
+</blockquote>
+<h4 id="Selector："><a href="#Selector：" class="headerlink" title="Selector："></a>Selector：</h4><blockquote>
+<p>.spec.selector是可选字段，用来指定 label selector ，圈定Deployment管理的pod范围。</p>
+</blockquote>
+<blockquote>
+<p>如果被指定， .spec.selector 必须匹配 .spec.template.metadata.labels，否则它将被API拒绝。如果 .spec.selector 没有被指定， .spec.selector.matchLabels 默认是 .spec.template.metadata.labels。</p>
+</blockquote>
+<blockquote>
+<p>在Pod的template跟.spec.template不同或者数量超过了.spec.replicas规定的数量的情况下，Deployment会杀掉label跟selector不同的Pod。</p>
+</blockquote>
+<blockquote>
+<p>注意： 您不应该再创建其他label跟这个selector匹配的pod，或者通过其他Deployment，或者通过其他Controller，例如ReplicaSet和ReplicationController。否则该Deployment会被把它们当成都是自己创建的。Kubernetes不会阻止您这么做。</p>
+</blockquote>
+<blockquote>
+<p>如果您有多个controller使用了重复的selector，controller们就会互相打架并导致不正确的行为。</p>
+</blockquote>
+<h3 id="策略"><a href="#策略" class="headerlink" title="策略:"></a>策略:</h3><blockquote>
+<p>.spec.strategy 指定新的Pod替换旧的Pod的策略。 .spec.strategy.type 可以是”Recreate”或者是 “RollingUpdate”。”RollingUpdate”是默认值。</p>
+</blockquote>
+<h3 id="Recreate-Deployment"><a href="#Recreate-Deployment" class="headerlink" title="Recreate Deployment:"></a>Recreate Deployment:</h3><blockquote>
+<p>.spec.strategy.type==Recreate时，在创建出新的Pod之前会先杀掉所有已存在的Pod。</p>
+</blockquote>
+<h3 id="Rolling-Update-Deployment"><a href="#Rolling-Update-Deployment" class="headerlink" title="Rolling Update Deployment:"></a>Rolling Update Deployment:</h3><blockquote>
+<p>.spec.strategy.type==RollingUpdate时，Deployment使用rolling update 的方式更新Pod 。您可以指定maxUnavailable 和 maxSurge 来控制 rolling update 进程。</p>
+</blockquote>
+<h3 id="MAX-UNAVAILABLE："><a href="#MAX-UNAVAILABLE：" class="headerlink" title="MAX UNAVAILABLE："></a>MAX UNAVAILABLE：</h3><blockquote>
+<p>.spec.strategy.rollingUpdate.maxUnavailable 是可选配置项，用来指定在升级过程中不可用Pod的最大数量。该值可以是一个绝对值（例如5），也可以是期望Pod数量的百分比（例如10%）。通过计算百分比的绝对值向下取整。如果.spec.strategy.rollingUpdate.maxSurge 为0时，这个值不可以为0。默认值是1。</p>
+</blockquote>
+<blockquote>
+<p>例如，该值设置成30%，启动rolling update后旧的ReplicatSet将会立即缩容到期望的Pod数量的70%。新的Pod ready后，随着新的ReplicaSet的扩容，旧的ReplicaSet会进一步缩容，确保在升级的所有时刻可以用的Pod数量至少是期望Pod数量的70%。</p>
+</blockquote>
+<h3 id="MAX-SURGE"><a href="#MAX-SURGE" class="headerlink" title="MAX SURGE:"></a>MAX SURGE:</h3><blockquote>
+<p>.spec.strategy.rollingUpdate.maxSurge 是可选配置项，用来指定可以超过期望的Pod数量的最大个数。该值可以是一个绝对值（例如5）或者是期望的Pod数量的百分比（例如10%）。当MaxUnavailable为0时该值不可以为0。通过百分比计算的绝对值向上取整。默认值是1。</p>
+</blockquote>
+<blockquote>
+<p>例如，该值设置成30%，启动rolling update后新的ReplicatSet将会立即扩容，新老Pod的总数不能超过期望的Pod数量的130%。旧的Pod被杀掉后，新的ReplicaSet将继续扩容，旧的ReplicaSet会进一步缩容，确保在升级的所有时刻所有的Pod数量和不会超过期望Pod数量的130%。</p>
+</blockquote>
+<h3 id="Revision-History-Limit"><a href="#Revision-History-Limit" class="headerlink" title="Revision History Limit:"></a>Revision History Limit:</h3><blockquote>
+<p>Deployment revision history存储在它控制的ReplicaSets中。</p>
+</blockquote>
+<blockquote>
+<p>.spec.revisionHistoryLimit 是一个可选配置项，用来指定可以保留的旧的ReplicaSet数量。该理想值取决于心Deployment的频率和稳定性。如果该值没有设置的话，默认所有旧的Replicaset或会被保留，将资源存储在etcd中，是用kubectl get rs查看输出。每个Deployment的该配置都保存在ReplicaSet中，然而，一旦您删除的旧的RepelicaSet，您的Deployment就无法再回退到那个revison了。</p>
+</blockquote>
+<blockquote>
+<p>如果您将该值设置为0，所有具有0个replica的ReplicaSet都会被删除。在这种情况下，新的Deployment rollout无法撤销，因为revision history都被清理掉了。</p>
+</blockquote>
+<h3 id="Paused"><a href="#Paused" class="headerlink" title="Paused:"></a>Paused:</h3><blockquote>
+<p>.spec.paused是可以可选配置项，boolean值。用来指定暂停和恢复Deployment。Paused和没有paused的Deployment之间的唯一区别就是，所有对paused deployment中的PodTemplateSpec的修改都不会触发新的rollout。Deployment被创建之后默认是非paused。</p>
+</blockquote>
+<h3 id="revision清理策略："><a href="#revision清理策略：" class="headerlink" title="revision清理策略："></a>revision清理策略：</h3><blockquote>
+<p>您可以通过设置.spec.revisonHistoryLimit项来指定 deployment 最多保留多少 revision 历史记录。默认的会保留所有的 revision；如果将该项设置为0，Deployment就不允许回退了。</p>
+</blockquote>
+<h3 id="实例："><a href="#实例：" class="headerlink" title="实例："></a>实例：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: ReplicaSet</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-ye          #deployments资源名称</span><br><span class="line">  namespace: kube-system  #定义所在的名称空间</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp        #deployments的标签</span><br><span class="line">spec:</span><br><span class="line">  replicas: 5         #Pod副本数</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:      #标签选择器</span><br><span class="line">      app: nginx      #匹配的标签</span><br><span class="line">  template:          </span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: nginx      #Pod的标签，这里的标签要和上面的matchLabels保持一致deployments将根据这个标签来匹配那些Pod是属于同一个deployments资源。</span><br><span class="line">    spec:                  #Pod容器资源定义</span><br><span class="line">      containers:</span><br><span class="line">       - name: myapp-container</span><br><span class="line">         image: nginx:1.7.9</span><br><span class="line">         imagePullPolicy: IfNotPresent</span><br><span class="line">         ports:</span><br><span class="line">           - name: http</span><br><span class="line">             containerPort: 80</span><br><span class="line">           - name: https</span><br><span class="line">             containerPort: 443</span><br><span class="line">         livenessProbe:          #存活检查</span><br><span class="line">           httpGet:</span><br><span class="line">             path: /index.html</span><br><span class="line">             port: http</span><br><span class="line">           initialDelaySeconds: 1</span><br><span class="line">           periodSeconds: 3</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看定义的deployments资源："><a href="#查看定义的deployments资源：" class="headerlink" title="查看定义的deployments资源："></a>查看定义的deployments资源：</h3><blockquote>
+<p>注释：查看当前有哪些deployment<br><img src="/images/deployments.png" alt="deployment"></p>
+</blockquote>
+<h3 id="deployments管理的rs："><a href="#deployments管理的rs：" class="headerlink" title="deployments管理的rs："></a>deployments管理的rs：</h3><blockquote>
+<p>注释：一个deployment可以管理多个rs，但是处于运行状态的只有一个。例如：nginx-ye-5ddd85887。说明当前已经更新了三个版本了其中RS （nginx-ye-5b5d8d5794 、nginx-ye-5d6cc588fd）已经没用了，但是回滚的时候会用到。您可能会注意到 ReplicaSet 的名字总是&lt;Deployment的名字&gt;-&lt;pod 模板的hash值&gt;，只要模板不同后面的HASH值就不同，就表示不同的RS。</p>
+</blockquote>
+<p><img src="/images/rs.png" alt="rs"></p>
+<h3 id="deployments资源详细信息："><a href="#deployments资源详细信息：" class="headerlink" title="deployments资源详细信息："></a>deployments资源详细信息：</h3><p><img src="/images/deployments-info.png" alt="deployments-info"></p>
+<blockquote>
+<p>Deployment为Pod和Replica Set（升级版的 Replication Controller）提供声明式更新。</p>
+</blockquote>
+<blockquote>
+<p>你只需要在 Deployment 中描述您想要的目标状态是什么，Deployment controller 就会帮您将 Pod 和ReplicaSet 的实际状态改变到您的目标状态。您可以定义一个全新的 Deployment 来创建 ReplicaSet 或者删除已有的 Deployment 并创建一个新的来替换。</p>
+</blockquote>
+<blockquote>
+<p>注意：您不该手动管理由 Deployment 创建的 Replica Set，否则您就篡越了 Deployment controller 的职责！下文罗列了 Deployment 对象中已经覆盖了所有的用例。如果未有覆盖您所有需要的用例，请直接在 Kubernetes 的代码库中提 issue。</p>
+</blockquote>
+<h3 id="典型的用例如下："><a href="#典型的用例如下：" class="headerlink" title="典型的用例如下："></a>典型的用例如下：</h3><ul>
+<li>使用Deployment来创建ReplicaSet。ReplicaSet在后台创建pod。检查启动状态，看它是成功还是失败。</li>
+<li>然后，通过更新Deployment的PodTemplateSpec字段来声明Pod的新状态。这会创建一个新的ReplicaSet，Deployment会按照控制的速率将pod从旧的ReplicaSet移动到新的ReplicaSet中。</li>
+<li>如果当前状态不稳定，回滚到之前的Deployment revision。每次回滚都会更新Deployment的revision。</li>
+<li>扩容Deployment以满足更高的负载。</li>
+<li>暂停Deployment来应用PodTemplateSpec的多个修复，然后恢复上线。</li>
+<li>根据Deployment 的状态判断上线是否hang住了。</li>
+<li>清除旧的不必要的 ReplicaSet。</li>
+</ul>
+<h3 id="Deployments滚动升级过程："><a href="#Deployments滚动升级过程：" class="headerlink" title="Deployments滚动升级过程："></a>Deployments滚动升级过程：</h3><blockquote>
+<p>Deployment直接使用kubectl edit deployment/deploymentName 或者kubectl set方法就可以直接升级（原理是Pod的template发生变化，例如更新label、更新镜像版本等操作会触发Deployment的滚动升级）：</p>
+</blockquote>
+<p>将nginx的版本进行升级，从1.7.9升级到1.8。第一种方法，直接set镜像：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl set image deployment/nginx-deployment2 nginx=nginx:1.8</span><br><span class="line">deployment &quot;nginx-deployment2&quot; image updated</span><br></pre></td></tr></table></figure>
+
+<p>第二种方法，直接edit：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl edit deployment/nginx-deployment -n kube-system</span><br><span class="line">deployment &quot;nginx-deployment2&quot; edited</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/deployments%E6%9B%B4%E6%96%B0.png" alt="deployments更新"></p>
+<blockquote>
+<p>deployments可以同时控制多个RS控制器。在滚动升级的时候先创建一个RS，然后deploymen在删除V1版本的Pod后在创建一个另个RS里创建一个V2版本。但是只有一个是处于活动状态的。Deployment可以控制更新粒度，例如5个Pod的时候，可以设置最大允许6个Pod，最少允许4个。那么在滚动更新的时候会先更新一个新版本然后在删掉一个老版本，直到更新完成。如果你允许最大是7个Pod那么就是两个Pod一起更新。 如果设置只允许少不允许多，最少允许4个。那么就先删除一个然后在更新一个， 直到更新完成。</p>
+</blockquote>
+<h4 id="最后介绍下Deployment的一些基础命令。"><a href="#最后介绍下Deployment的一些基础命令。" class="headerlink" title="最后介绍下Deployment的一些基础命令。"></a>最后介绍下Deployment的一些基础命令。</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl describe deployments  #查询详细信息，获取升级进度</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl rollout pause deployment/nginx-deployment2  #暂停升级</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl rollout resume deployment/nginx-deployment2  #继续升级</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl rollout undo deployment/nginx-deployment2  #升级回滚</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl scale deployment nginx-deployment --replicas 10  #弹性伸缩Pod数量</span><br></pre></td></tr></table></figure>
+
+<h3 id="Deploymentsce层级关系："><a href="#Deploymentsce层级关系：" class="headerlink" title="Deploymentsce层级关系："></a>Deploymentsce层级关系：</h3><p><img src="/images/deployments%E5%B1%82%E7%BA%A7%E5%85%B3%E7%B3%BB.png" alt="deployments层级关系"></p>
+<p><img src="/images/deloyments-annotations.png" alt="deloyments-annotations"></p>
+<blockquote>
+<p>在上述输出中，可以看到自动添加到注解中的“deployment.kubernetes.io/revision=2”字段，新建Deployment的revision是1，2表示这是更新过的第二版，前缀“deployment.kubernetes.io”表示这是系统保留的供deployment使用的关键字，用户不可以使用引种类型的注解。(注释：revision在回滚到某一个指定版本的时候需要用到)</p>
+</blockquote>
+<h3 id="关于更新失败："><a href="#关于更新失败：" class="headerlink" title="关于更新失败："></a>关于更新失败：</h3><blockquote>
+<p>如果在新版本中指定了错误的image名称，那么更新注定会失败。在本例中如果发生这种情况，首先Deployment会创建新的ReplicaSet，新ReplicaSet在创建每个pod实例就会因为取不到image而失败，整个更新过程会被卡住不再进行下去。即使失败也会产生一个新的修订版本号，并且新创建的ReplicaSet、因无法取到image而失败的pod仍存在于系统中。当然目前对外提供服务的仍然是旧版本的pod。如果发生这种情况就要乃至回滚功能，回到上一个正确的版本。</p>
+</blockquote>
+<h3 id="Rolling-Back-a-Deployment："><a href="#Rolling-Back-a-Deployment：" class="headerlink" title="Rolling Back a Deployment："></a>Rolling Back a Deployment：</h3><blockquote>
+<p>Deployment会记录修订历史，当然对能记录的修订历史个数有限制（可以通过.spec.revisionHistoryLimit参数设置），因此Deployment能回滚到记录在案的以前的历史版本中。注意只有rollout操作才会触发修订历史记录，也就是只有.spec.template发生变更才被认为产生了新的版本。其它的变更，比如修改标签选择器、通过kubectl scalling命令扩缩容、被HPA自动扩缩容等不会被认为是新的版本。只回滚.spec.template部分，比如当前的副本数量是5，回滚的版本副本数量是3，回滚后副本数量不变仍然是5，但副本的内容变回以前。</p>
+</blockquote>
+<blockquote>
+<p>查看修定历史记录，注意后边的CHANGE-CAUSE，需要在kubectl creae创建Deployment时指定–record=true才会有：(–record=false在资源注释中记录当前的kubectl命令。如果设置为false，则不要记录)</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl rollout history deployment/nginx-deployment</span><br><span class="line">deployments &quot;nginx-deployment&quot;</span><br><span class="line">REVISION    CHANGE-CAUSE</span><br><span class="line">1           kubectl create -f https://k8s.io/examples/controllers/nginx-deployment.yaml --record</span><br><span class="line">2           kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1</span><br><span class="line">3           kubectl set image deployment/nginx-deployment nginx=nginx:1.91</span><br></pre></td></tr></table></figure>
+
+<p>通过指定REVISION号码查看特定修订记录：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[root@master app]# kubectl rollout history deployment/nginx-ye -n kube-system --revision=4</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/rollout.png" alt="rollout"></p>
+<p>回滚到前一个版本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl rollout undo deployment/nginx-deployment</span><br><span class="line">deployment &quot;nginx-deployment&quot; rolled back</span><br></pre></td></tr></table></figure>
+
+<p>通过revision号回滚到任意版本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl rollout undo deployment/nginx-ye --to-revision=4 -n kube-system</span><br><span class="line">deployment &quot;nginx-deployment&quot; rolled back</span><br></pre></td></tr></table></figure>
+
+<p>升级或创建（如果该资源还不存在，将创建它）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl apply -f xxx.yaml --record</span><br></pre></td></tr></table></figure>
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes-Pod-初始化容器/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/08/23/Kubernetes-Pod-初始化容器/" itemprop="url">Kubernetes Pod 初始化容器</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T11:20:59+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p>Init Container就是用来做初始化工作的容器，可以是一个或者多个，如果有多个的话，这些容器会按定义的顺序依次执行，只有所有的Init Container执行完后，主容器才会被启动。我们知道一个Pod里面的所有容器是共享数据卷和网络命名空间的，所以Init Container里面产生的数据可以被主容器使用到的。</p>
+<p>是不是感觉Init Container和之前的钩子函数有点类似啊，只是是在容器执行前来做一些工作，是吧？从直观的角度看上去的话，初始化容器的确有点像PreStart，但是钩子函数和我们的Init Container是处在不同的阶段的，我们可以通过下面的图来了解下：</p>
+<p><img src="/images/pod%E5%88%9D%E5%A7%8B%E5%8C%96.png" alt="pod初始化"></p>
+<p>从上面这张图我们可以直观的看到PostStart和PreStop包括liveness和readiness是属于主容器的生命周期范围内的，而Init Container是独立于主容器之外的，当然他们都属于Pod的生命周期范畴之内的，现在我们应该明白Init Container和钩子函数之类的区别了吧。</p>
+<p>另外我们可以看到上面我们的Pod右边还有一个infra的容器，这是一个什么容器呢？我们可以在集群环境中去查看下人任意一个Pod对应的运行的Docker容器，我们可以发现每一个Pod下面都包含了一个pause-amd64的镜像，这个就是我们的infra镜像，我们知道Pod下面的所有容器是共享同一个网络命名空间的，这个镜像就是来做这个事情的，所以每一个Pod当中都会包含一个这个镜像。</p>
+<p>很多同学最开始 Pod 启动不起来就是因为这个 infra 镜像没有被拉下来，因为默认该镜像是需要到谷歌服务器上拉取的，所以需要提前拉取到节点上面。</p>
+<h3 id="应用场景"><a href="#应用场景" class="headerlink" title="应用场景"></a>应用场景</h3><p>我们说Init Container主要是来做初始化容器工作的，那么他有哪些应用场景呢？</p>
+<p>等待其他模块Ready：这个可以用来解决服务之间的依赖问题，比如我们有一个 Web 服务，该服务又依赖于另外一个数据库服务，但是在我们启动这个 Web 服务的时候我们并不能保证依赖的这个数据库服务就已经启动起来了，所以可能会出现一段时间内 Web 服务连接数据库异常。要解决这个问题的话我们就可以在 Web 服务的 Pod 中使用一个InitContainer，在这个初始化容器中去检查数据库是否已经准备好了，准备好了过后初始化容器就结束退出，然后我们的主容器 Web 服务被启动起来，这个时候去连接数据库就不会有问题了。</p>
+<p>做初始化配置：比如集群里检测所有已经存在的成员节点，为主容器准备好集群的配置信息，这样主容器起来后就能用这个配置信息加入集群。</p>
+<p>其它场景：如将Pod注册到一个中央数据库、配置中心等。</p>
+<h3 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h3><p>我们先来给大家演示下服务依赖的场景下初始化容器的使用方法，如下Pod的定义方法</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: init-pod1</span><br><span class="line">  labels:</span><br><span class="line">    app: init</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: main-container</span><br><span class="line">    image: busybox</span><br><span class="line">    command: [&apos;sh&apos;, &apos;-c&apos;, &apos;echo The app is running! &amp;&amp; sleep 3600&apos;]</span><br><span class="line">  initContainers:</span><br><span class="line">  - name: init-myservice</span><br><span class="line">    image: busybox</span><br><span class="line">    command: [&apos;sh&apos;, &apos;-c&apos;, &apos;until nslookup myservice; do echo waiting for myservice; sleep 2; done;&apos;]</span><br><span class="line">  - name: init-mydb</span><br><span class="line">    image: busybox</span><br><span class="line">    command: [&apos;sh&apos;, &apos;-c&apos;, &apos;until nslookup mydb; do echo waiting for mydb; sleep 2; done;&apos;]</span><br></pre></td></tr></table></figure>
+
+<p>然后我们先来创建上面的Pod:(保存为init-pod.yaml)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create -f init-pod.yaml</span><br><span class="line">pod &quot;init-pod&quot; created</span><br><span class="line">$ kubectl get pod</span><br><span class="line">NAME                 READY     STATUS             RESTARTS   AGE</span><br><span class="line">init-pod             0/1       Init:0/2           0          26s</span><br></pre></td></tr></table></figure>
+
+<p>然后我们可以看到STATUS一栏是Init:0/2，我们可以 describe 下看看详细信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl describe pod init-pod</span><br><span class="line">Name:         init-pod</span><br><span class="line">Namespace:    default</span><br><span class="line">Node:         node01/10.151.30.62</span><br><span class="line">Start Time:   Wed, 30 May 2018 06:39:51 +0800</span><br><span class="line">Labels:       app=init</span><br><span class="line">Annotations:  &lt;none&gt;</span><br><span class="line">Status:       Pending</span><br><span class="line">IP:           10.244.1.23</span><br><span class="line">Init Containers:</span><br><span class="line">  init-myservice:</span><br><span class="line">    Container ID:  docker://99cf46f0fab3841fe7725b386567d03dbd2f427cff5098116a7e3dafb9830b44</span><br><span class="line">    Image:         busybox</span><br><span class="line">    Image ID:      docker-pullable://busybox@sha256:141c253bc4c3fd0a201d32dc1f493bcf3fff003b6df416dea4f41046e0f37d47</span><br><span class="line">    Port:          &lt;none&gt;</span><br><span class="line">    Host Port:     &lt;none&gt;</span><br><span class="line">    Command:</span><br><span class="line">      sh</span><br><span class="line">      -c</span><br><span class="line">      until nslookup myservice; do echo waiting for myservice; sleep 2; done;</span><br><span class="line">    State:          Running</span><br><span class="line">      Started:      Wed, 30 May 2018 06:40:03 +0800</span><br><span class="line">    Ready:          False</span><br><span class="line">    Restart Count:  0</span><br><span class="line">    Environment:    &lt;none&gt;</span><br><span class="line">    Mounts:</span><br><span class="line">      /var/run/secrets/kubernetes.io/serviceaccount from default-token-n9w2d (ro)</span><br><span class="line">  init-mydb:</span><br><span class="line">    Container ID:</span><br><span class="line">    Image:         busybox</span><br><span class="line">    Image ID:</span><br><span class="line">    Port:          &lt;none&gt;</span><br><span class="line">    Host Port:     &lt;none&gt;</span><br><span class="line">    Command:</span><br><span class="line">      sh</span><br><span class="line">      -c</span><br><span class="line">      until nslookup mydb; do echo waiting for mydb; sleep 2; done;</span><br><span class="line">    State:          Waiting</span><br><span class="line">      Reason:       PodInitializing</span><br><span class="line">    Ready:          False</span><br><span class="line">    Restart Count:  0</span><br><span class="line">    Environment:    &lt;none&gt;</span><br><span class="line">    Mounts:</span><br><span class="line">      /var/run/secrets/kubernetes.io/serviceaccount from default-token-n9w2d (ro)</span><br><span class="line">Containers:</span><br><span class="line">  main-container:</span><br><span class="line">    Container ID:</span><br><span class="line">    Image:         busybox</span><br><span class="line">    Image ID:</span><br><span class="line">    Port:          &lt;none&gt;</span><br><span class="line">    Host Port:     &lt;none&gt;</span><br><span class="line">    Command:</span><br><span class="line">      sh</span><br><span class="line">      -c</span><br><span class="line">      echo The app is running! &amp;&amp; sleep 3600</span><br><span class="line">    State:          Waiting</span><br><span class="line">      Reason:       PodInitializing</span><br><span class="line">    Ready:          False</span><br><span class="line">    Restart Count:  0</span><br><span class="line">    Environment:    &lt;none&gt;</span><br><span class="line">    Mounts:</span><br><span class="line">      /var/run/secrets/kubernetes.io/serviceaccount from default-token-n9w2d (ro)</span><br><span class="line">Conditions:</span><br><span class="line">  Type           Status</span><br><span class="line">  Initialized    False</span><br><span class="line">  Ready          False</span><br><span class="line">  PodScheduled   True</span><br><span class="line">Volumes:</span><br><span class="line">  default-token-n9w2d:</span><br><span class="line">    Type:        Secret (a volume populated by a Secret)</span><br><span class="line">    SecretName:  default-token-n9w2d</span><br><span class="line">    Optional:    false</span><br><span class="line">QoS Class:       BestEffort</span><br><span class="line">Node-Selectors:  &lt;none&gt;</span><br><span class="line">Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s</span><br><span class="line">                 node.kubernetes.io/unreachable:NoExecute for 300s</span><br><span class="line">Events:</span><br><span class="line">  Type    Reason                 Age   From               Message</span><br><span class="line">  ----    ------                 ----  ----               -------</span><br><span class="line">  Normal  Scheduled              1m    default-scheduler  Successfully assigned init-pod to node01</span><br><span class="line">  Normal  SuccessfulMountVolume  1m    kubelet, node01    MountVolume.SetUp succeeded for volume &quot;default-token-n9w2d&quot;</span><br><span class="line">  Normal  Pulling                1m    kubelet, node01    pulling image &quot;busybox&quot;</span><br><span class="line">  Normal  Pulled                 1m    kubelet, node01    Successfully pulled image &quot;busybox&quot;</span><br><span class="line">  Normal  Created                1m    kubelet, node01    Created container</span><br><span class="line">  Normal  Started                1m    kubelet, node01    Started container</span><br></pre></td></tr></table></figure>
+
+<p>因为现在myservice还没有创建，所以init-mydb和main-container都还处于PodInitializing状态，我们可以先创建下面的myservice服务，然后观察下init-mydb和main-container的状态变化，然后在创建init-mydb服务，观察main-container容器的状态变化</p>
+<p>Service的对应YAML内容：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">kind: Service</span><br><span class="line">apiVersion: v1</span><br><span class="line">metadata:</span><br><span class="line">  name: myservice</span><br><span class="line">spec:</span><br><span class="line">  ports:</span><br><span class="line">  - protocol: TCP</span><br><span class="line">    port: 80</span><br><span class="line">    targetPort: 6376</span><br><span class="line">---</span><br><span class="line">kind: Service</span><br><span class="line">apiVersion: v1</span><br><span class="line">metadata:</span><br><span class="line">  name: mydb</span><br><span class="line">spec:</span><br><span class="line">  ports:</span><br><span class="line">  - protocol: TCP</span><br><span class="line">    port: 80</span><br><span class="line">    targetPort: 6377</span><br></pre></td></tr></table></figure>
+
+<p>我们在Pod启动过程中，初始化容器会按顺序在网络和数据卷初始化之后启动。每个容器必须在下一个容器启动之前成功退出。如果由于运行时或失败退出，导致容器启动失败，它会根据Pod的restartPolicy指定的策略进行重试。 然而，如果 Pod 的 restartPolicy 设置为 Always，Init 容器失败时会使用 RestartPolicy 策略。</p>
+<p>在所有的初始化容器没有成功之前，Pod将不会变成 Ready状态。正在初始化中的Pod处于Pending状态，但应该会将条件Initializing设置为 true。</p>
+<p>接下来我们再来尝试创建一个做初始化配置工作的Pod：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: init-demo</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: nginx</span><br><span class="line">    image: nginx</span><br><span class="line">    ports:</span><br><span class="line">    - containerPort: 80</span><br><span class="line">    volumeMounts:</span><br><span class="line">    - name: workdir</span><br><span class="line">      mountPath: /usr/share/nginx/html</span><br><span class="line">  initContainers:</span><br><span class="line">  - name: install</span><br><span class="line">    image: busybox</span><br><span class="line">    command:</span><br><span class="line">    - wget</span><br><span class="line">    - &quot;-O&quot;</span><br><span class="line">    - &quot;/work-dir/index.html&quot;</span><br><span class="line">    - http://www.baidu.com</span><br><span class="line">    volumeMounts:</span><br><span class="line">    - name: workdir</span><br><span class="line">      mountPath: &quot;/work-dir&quot;</span><br><span class="line">  volumes:</span><br><span class="line">  - name: workdir</span><br><span class="line">    emptyDir: &#123;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到这里又出现了volumes，spec.volumes指的是Pod中的卷，spec.containers.volumeMounts，是将指定的卷 mount 到容器指定的位置，相当于Docker里面的-v 宿主机目录：容器目录，我们前面用到过hostPath，我们这里使用的是emptyDir{}，这个就相当于一个共享卷，是一个临时的目录，生命周期等同于Pod的生命周期。</p>
+<p>初始化容器执行完，会下载一个 html 文件映射到emptyDir{}，而主容器也是和 spec.volumes 里的 emptyDir{} 进行映射，所以nginx容器的/usr/share/nginx/html目录下会映射 index.html 文件。</p>
+<p>我们来创建下该Pod，然后验证nginx容器是否运行:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl crate -f init-demo.yaml</span><br><span class="line">pod &quot;init-demo&quot; created</span><br></pre></td></tr></table></figure>
+
+<p>输出显示了nginx容器正在运行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get pod init-demo</span><br><span class="line">NAME      READY     STATUS    RESTARTS   AGE</span><br><span class="line">nginx     1/1       Running   0          43m</span><br></pre></td></tr></table></figure>
+
+<p>在 init-demo 容器里的 nginx 容器打开一个 shell：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl exec -it init-demo -- /bin/bash</span><br></pre></td></tr></table></figure>
+
+<p>在Shell里，直接查看下 index.html 的内容：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">root@nginx:~# cat /usr/share/nginx/html/index.html</span><br></pre></td></tr></table></figure>
+
+<p>如果我们看到有百度相关的信息那么证明我们上面的初始化的工作就完成了。</p>
+<p>这就是我们初始化容器的使用方法，到这里我们就把Pod的整个生命周期当中的几个主要阶段讲完了，第一个是容器的两个钩子函数：PostStart和PreStop，还有就是容器健康检查的两个探针：liveness probe和readiness probe，以及这节课的Init Container。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes-Pod-生命周期和重启策略/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/08/23/Kubernetes-Pod-生命周期和重启策略/" itemprop="url">Kubernetes Pod 生命周期和重启策略</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T10:24:44+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>我们在调度、管理 Pod 时，需要熟悉 Pod 在整个生命周期的各个状态，而设置 Pod 的重启策略也是基于对 Pod 的各种状态的了解。</p>
+<h3 id="Pod-生命周期："><a href="#Pod-生命周期：" class="headerlink" title="Pod 生命周期："></a>Pod 生命周期：</h3><p><img src="/images/pod%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F.png" alt="pod生命周期"></p>
+<ul>
+<li><p>说明：</p>
+<ul>
+<li>初始化容器阶段初始化pod中每一个容器,他们是串行执行的，执行完成后就退出了</li>
+<li>启动主容器main container</li>
+<li>在main container刚刚启动之后可以执行post start命令</li>
+<li>在整个main container执行的过程中可以做两类探测：liveness probe(存活探测)和readiness probe(就绪探测)</li>
+<li>在main container结束前可以执行pre stop命令</li>
+</ul>
+</li>
+<li><p>配置启动后钩子(post start)和终止前钩子(pre stop)</p>
+<ul>
+<li>post start：容器创建之后立即执行，如果失败了就会按照重启策略重启容器</li>
+<li>pre stop：容器终止前立即执行，执行完成之后容器将成功终止</li>
+</ul>
+</li>
+<li><p>可以使用以下命令查看post start和pre stop的设置格式：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@master manifests]# kubectl explain pod.spec.containers.lifecycle.preStop</span><br><span class="line">[root@master manifests]# kubectl explain pod.spec.containers.lifecycle.postStart</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h3 id="Pod-的状态（phase）："><a href="#Pod-的状态（phase）：" class="headerlink" title="Pod 的状态（phase）："></a>Pod 的状态（phase）：</h3><ul>
+<li>Pod 的所有状态总共有 5 种，分别如下：<ul>
+<li>挂起（Pending）：Pod 已被 Kubernetes 系统接受，但有一个或者多个容器镜像尚未创建。等待时间包括调度 Pod 的时间和通过网络下载镜像的时间，这可能需要花点时间。</li>
+<li>运行中（Running）：该 Pod 已经绑定到了一个节点上，Pod 中所有的容器都已被创建。至少有一个容器正在运行，或者正处于启动或重启状态。</li>
+<li>成功（Succeeded）：Pod 中的所有容器都被成功终止，并且不会再重启。</li>
+<li>失败（Failed）：Pod 中的所有容器都已终止了，并且至少有一个容器是因为失败终止。也就是说，容器以非0状态退出或者被系统终止。</li>
+<li>未知（Unknown）：因为某些原因无法取得 Pod 的状态，通常是因为与 Pod 所在主机通信失败。</li>
+</ul>
+</li>
+</ul>
+<h3 id="使用命令查看："><a href="#使用命令查看：" class="headerlink" title="使用命令查看："></a>使用命令查看：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[root@master app]# kubectl describe pods test1 -n kube-system</span><br></pre></td></tr></table></figure>
+
+<h4 id="pod状态（phase）："><a href="#pod状态（phase）：" class="headerlink" title="pod状态（phase）："></a>pod状态（phase）：</h4><p><img src="/images/pod%E7%8A%B6%E6%80%81.png" alt="pod状态"></p>
+<h4 id="容器状态："><a href="#容器状态：" class="headerlink" title="容器状态："></a>容器状态：</h4><p><img src="/images/%E5%AE%B9%E5%99%A8%E7%8A%B6%E6%80%81.png" alt="容器状态"></p>
+<h4 id="条件状态："><a href="#条件状态：" class="headerlink" title="条件状态："></a>条件状态：</h4><p><img src="/images/%E6%9D%A1%E4%BB%B6%E7%8A%B6%E6%80%81.png" alt="条件状态"></p>
+<h3 id="容器探针："><a href="#容器探针：" class="headerlink" title="容器探针："></a>容器探针：</h3><p>探针 是由 kubelet 对容器执行的定期诊断。要执行诊断，kubelet 调用由容器实现的 Handler。有三种类型的处理程序：</p>
+<ul>
+<li>ExecAction：在容器内执行指定命令。如果命令退出时返回码为 0 则认为诊断成功。</li>
+<li>TCPSocketAction：对指定端口上的容器的 IP 地址进行 TCP 检查。如果端口打开，则诊断被认为是成功的。</li>
+<li>HTTPGetAction：对指定的端口和路径上的容器的 IP 地址执行 HTTP Get 请求。如果响应的状态码大于等于200 且小于 400，则诊断被认为是成功的。</li>
+</ul>
+<h3 id="每次探测都将获得以下三种结果之一："><a href="#每次探测都将获得以下三种结果之一：" class="headerlink" title="每次探测都将获得以下三种结果之一："></a>每次探测都将获得以下三种结果之一：</h3><ul>
+<li>成功：容器通过了诊断。</li>
+<li>失败：容器未通过诊断。</li>
+<li>未知：诊断失败，因此不会采取任何行动。</li>
+</ul>
+<h3 id="Kubelet-可以选择是否执行在容器上运行的两种探针执行和做出反应："><a href="#Kubelet-可以选择是否执行在容器上运行的两种探针执行和做出反应：" class="headerlink" title="Kubelet 可以选择是否执行在容器上运行的两种探针执行和做出反应："></a>Kubelet 可以选择是否执行在容器上运行的两种探针执行和做出反应：</h3><ul>
+<li>livenessProbe：指示容器是否正在运行。如果存活探测失败，则 kubelet 会杀死容器，并且容器将受到其 重启策略 的影响。如果容器不提供存活探针，则默认状态为 Success。</li>
+<li>readinessProbe：就绪探测是用于容器是否准备好服务请求。如果就绪探测失败，端点控制器将从与 Pod 匹配的所有 Service 的端点中删除该 Pod 的 IP 地址。初始延迟之前的就绪状态默认为 Failure。如果容器不提供就绪探针，则默认状态为 Success。</li>
+</ul>
+<h3 id="Pod的重启策略："><a href="#Pod的重启策略：" class="headerlink" title="Pod的重启策略："></a>Pod的重启策略：</h3><p>Pod 的重启策略有 3 种，默认值为 Always。</p>
+<ul>
+<li>Always ： 容器失效时，kubelet 自动重启该容器；</li>
+<li>OnFailure ： 容器终止运行且退出码不为0时重启；</li>
+<li>Never ： 不论状态为何， kubelet 都不重启该容器。<br>失败的容器由 kubelet 以五分钟为上限的指数退避延迟（10秒，20秒，40秒…）重新启动，并在成功执行十分钟后重置。</li>
+</ul>
+<h3 id="Pod-的生命："><a href="#Pod-的生命：" class="headerlink" title="Pod 的生命："></a>Pod 的生命：</h3><p>一般来说，Pod 不会消失，直到人为销毁他们。这可能是一个人或控制器。这个规则的唯一例外是成功或失败的 phase 超过一段时间（由 master 确定）的Pod将过期并被自动销毁。</p>
+<p>有三种可用的控制器：</p>
+<ul>
+<li>使用 Job 运行预期会终止的 Pod，例如批量计算。Job 仅适用于重启策略为 OnFailure 或 Never 的 Pod。</li>
+<li>对预期不会终止的 Pod 使用 ReplicationController、ReplicaSet 和 Deployment ，例如 Web 服务器。ReplicationController 仅适用于具有 restartPolicy 为 Always 的 Pod。</li>
+<li>提供特定于机器的系统服务，使用 DaemonSet 为每台机器运行一个 Pod 。</li>
+</ul>
+<p>所有这三种类型的控制器都包含一个 PodTemplate。建议创建适当的控制器，让它们来创建 Pod，而不是直接自己创建 Pod。这是因为单独的 Pod 在机器故障的情况下没有办法自动复原，而控制器却可以。</p>
+<p>如果节点死亡或与集群的其余部分断开连接，则 Kubernetes 将应用一个策略将丢失节点上的所有 Pod 的 phase 设置为 Failed。</p>
+<h3 id="LivenessProbe-存活检查-："><a href="#LivenessProbe-存活检查-：" class="headerlink" title="LivenessProbe (存活检查)："></a>LivenessProbe (存活检查)：</h3><h4 id="livenessProbe参数解析："><a href="#livenessProbe参数解析：" class="headerlink" title="livenessProbe参数解析："></a>livenessProbe参数解析：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master ~]# kubectl explain pod.spec.containers.livenessProbe</span><br><span class="line"></span><br><span class="line">KIND:     Pod</span><br><span class="line">VERSION:  v1</span><br><span class="line"></span><br><span class="line">RESOURCE: livenessProbe &lt;Object&gt;</span><br><span class="line"></span><br><span class="line">exec  command的方式探测,例如 ps 一个进程</span><br><span class="line"></span><br><span class="line">failureThreshold 探测几次失败 才算失败 默认是连续三次</span><br><span class="line"></span><br><span class="line">periodSeconds 每次的多长时间探测一次  默认10s</span><br><span class="line"></span><br><span class="line">timeoutSeconds 探测超市的秒数 默认1s</span><br><span class="line"></span><br><span class="line">initialDelaySeconds  初始化延迟探测，第一次探测的时候，因为主程序未必启动完成</span><br><span class="line"></span><br><span class="line">tcpSocket 检测端口的探测</span><br><span class="line"></span><br><span class="line">httpGet http请求探测</span><br></pre></td></tr></table></figure>
+
+<h4 id="ExecAction探测方式："><a href="#ExecAction探测方式：" class="headerlink" title="ExecAction探测方式："></a>ExecAction探测方式：</h4><p>举个例子：定义一个liveness的pod资源类型，基础镜像为busybox，在busybox这个容器启动后会执行创建/tmp/test的文件啊，并删除，然后等待3600秒。随后定义了存活性探测，方式是以exec的方式执行命令判断/tmp/test是否存在，存在即表示存活，不存在则表示容器已经挂了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: liveness-exec-pod</span><br><span class="line">  namespace: default</span><br><span class="line">  labels:</span><br><span class="line">    name: myapp</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: livess-exec</span><br><span class="line">    image: busybox:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">    command: [&quot;/bin/sh&quot;,&quot;-c&quot;,&quot;touch /tmp/test; sleep 30; rm -f /tmp/test; sleep 3600&quot;]</span><br><span class="line">    livenessProbe:</span><br><span class="line">      exec:</span><br><span class="line">        command: [&quot;test&quot;,&quot;-e&quot;,&quot;/tmp/test&quot;]</span><br><span class="line">      initialDelaySeconds: 1</span><br><span class="line">      periodSeconds: 3</span><br></pre></td></tr></table></figure>
+
+<h4 id="HTTPGetAction探测方式："><a href="#HTTPGetAction探测方式：" class="headerlink" title="HTTPGetAction探测方式："></a>HTTPGetAction探测方式：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-test1</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: nginxtest</span><br><span class="line">    image: nginx:1.7.9</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">    ports:</span><br><span class="line">     - name: http</span><br><span class="line">       containerPort: 80</span><br><span class="line">     - name: https</span><br><span class="line">       containerPort: 443</span><br><span class="line">    livenessProbe:</span><br><span class="line">      httpGet:</span><br><span class="line">        path: /index.html</span><br><span class="line">        port: 80</span><br><span class="line">      initialDelaySeconds: 1</span><br><span class="line">      periodSeconds: 3</span><br></pre></td></tr></table></figure>
+
+<h3 id="Pod状态（phase）示例："><a href="#Pod状态（phase）示例：" class="headerlink" title="Pod状态（phase）示例："></a>Pod状态（phase）示例：</h3><ul>
+<li><p>Pod 中只有一个容器并且正在运行。容器成功退出。</p>
+<ul>
+<li>记录完成事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：Pod phase 变成 Succeeded。</li>
+<li>Never：Pod phase 变成 Succeeded。</li>
+</ul>
+</li>
+<li><p>Pod 中只有一个容器并且正在运行。容器退出失败。</p>
+<ul>
+<li>记录失败事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：重启容器；Pod phase 仍为 Running。</li>
+<li>Never：Pod phase 变成 Failed。</li>
+</ul>
+</li>
+<li><p>Pod 中有两个容器并且正在运行。有一个容器退出失败。</p>
+<ul>
+<li>记录失败事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：重启容器；Pod phase 仍为 Running。</li>
+<li>Never：不重启容器；Pod phase 仍为 Running。<ul>
+<li>如果有一个容器没有处于运行状态，并且两个容器退出：</li>
+<li>记录失败事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：重启容器；Pod phase 仍为 Running。</li>
+<li>Never：Pod phase 变成 Failed。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Pod 中只有一个容器并处于运行状态。容器运行时内存超出限制：</p>
+<ul>
+<li>容器以失败状态终止。</li>
+<li>记录 OOM 事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：重启容器；Pod phase 仍为 Running。</li>
+<li>Never: 记录失败事件；Pod phase 仍为 Failed。</li>
+</ul>
+</li>
+<li><p>Pod 正在运行，磁盘故障：</p>
+<ul>
+<li>杀掉所有容器。</li>
+<li>记录适当事件。</li>
+<li>Pod phase 变成 Failed。</li>
+<li>如果使用控制器来运行，Pod 将在别处重建。</li>
+</ul>
+</li>
+<li><p>Pod 正在运行，其节点被分段。</p>
+<ul>
+<li>节点控制器等待直到超时。</li>
+<li>节点控制器将 Pod phase 设置为 Failed。</li>
+<li>如果是用控制器来运行，Pod 将在别处重建。</li>
+</ul>
+</li>
+</ul>
+<h3 id="ReadinessProbe-就绪检查-："><a href="#ReadinessProbe-就绪检查-：" class="headerlink" title="ReadinessProbe (就绪检查)："></a>ReadinessProbe (就绪检查)：</h3><p>就绪探测是用于容器是否准备好服务请求。如果就绪探测失败，端点控制器将从与 Pod 匹配的所有 Service 的端点中删除该 Pod 的 IP 地址。初始延迟之前的就绪状态默认为 Failure。如果容器不提供就绪探针，则默认状态为 Success。（注：默认为read状态）</p>
+<p><img src="/images/ReadinessProbe.png" alt="ReadinessProbe"></p>
+<p>有时，应用程序暂时无法对外部流量提供服务。 例如，应用程序可能需要在启动期间加载大量数据或配置文件。 在这种情况下，你不想杀死应用程序，但你也不想发送请求。 Kubernetes提供了readiness probe来检测和减轻这些情况。 Pod中的容器可以报告自己还没有准备，不能处理Kubernetes服务发送过来的流量。（如果在Pod没有ready的情况下是不会被加入到service中，如果已经加入到service中但设置了readiness probe检测发现Pod服务未处于ready状态也会被service移除）</p>
+<p>Readiness probe的配置跟liveness probe很像。唯一的不同是使用 readinessProbe而不是livenessProbe。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">readinessProbe:</span><br><span class="line">  exec:</span><br><span class="line">    command:</span><br><span class="line">    - cat</span><br><span class="line">    - /tmp/healthy</span><br><span class="line">  initialDelaySeconds: 5</span><br><span class="line">  periodSeconds: 5</span><br></pre></td></tr></table></figure>
+
+<p>Readiness probe的HTTP和TCP的探测器配置跟liveness probe一样。</p>
+<p>Readiness和livenss probe可以并行用于同一容器。 使用两者可以确保流量无法到达未准备好的容器，并且容器在失败时重新启动。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes-定义Pod资源清单/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -331,7 +1021,7 @@
 <li>如果提供了command和args，则Docker镜像中定义的Entrypoint和Cmd将被忽略。直接运行你提供的command和args</li>
 </ul>
 <p><img src="/images/args.png" alt="args"></p>
-<h3 id="Label（标签）："><a href="#Label（标签）：" class="headerlink" title="Label（标签）："></a>Label（标签）：</h3><blockquote>
+<h3 id="Label（标签）"><a href="#Label（标签）" class="headerlink" title="Label（标签）"></a>Label（标签）</h3><blockquote>
 <p>在kubernetes第一篇文章中已经对labels做了详细的描述，现在来看如何通过labels过滤指定查看某一种类型的pod</p>
 </blockquote>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">#首先我们先查看所有的pod并显示出他们所定义的有哪些labels</span><br><span class="line">[root@master app]# kubectl get pods -n kube-system --show-labels</span><br></pre></td></tr></table></figure>
@@ -1279,372 +1969,13 @@
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/22/kubernetes-Pod控制器/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Mr.Ye">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/touxiang.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Mr.Ye Blogs">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2019/08/22/kubernetes-Pod控制器/" itemprop="url">kubernetes Pod控制器</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-22T12:04:15+08:00">
-                2019-08-22
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <h3 id="Controller-Manager"><a href="#Controller-Manager" class="headerlink" title="Controller Manager"></a>Controller Manager</h3><p>Kubernetes 通常不会直接创建 Pod，而是通过 Controller 来管理 Pod 的。Controller 中定义了 Pod 的部署特性，比如有几个副本，在什么样的 Node 上运行等。为了满足不同的业务场景，Kubernetes 提供了多种 Controller，包括 Deployment、ReplicaSet、DaemonSet、StatefuleSet、Job 等，我们逐一讨论。</p>
-<h3 id="Replication-controllers"><a href="#Replication-controllers" class="headerlink" title="Replication controllers"></a>Replication controllers</h3><p>Replication Controller（简称RC），本节对RC的概念进行深入描述。</p>
-<p>RC是Kubernetes系统中的核心概念之一，简单来说，它其实是定义了一个期望的场景，即声明某种Pod的副本数量在任意时刻都符合某个预期值，所以RC的定义包括如下几个部分。</p>
-<ul>
-<li>Pod期待的副本数（replicas）。</li>
-<li>用于筛选目标Pod的Label Selector。</li>
-<li>当Pod的副本数量小于预期数量时，用于创建新Pod的Pod模版（template）。</li>
-</ul>
-<p>下面是一个完整的RC定义的例子，即确保拥有tier=frontend标签的这个Pod（运行Tomcat容器）在整个Kubernetes集群中始终只有一个副本：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: ReplicationController</span><br><span class="line">metadata:</span><br><span class="line">  name: frontend</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  selector:</span><br><span class="line">    tier: frontend</span><br><span class="line">template:</span><br><span class="line">  metadata:</span><br><span class="line">    labels:</span><br><span class="line">      app: app-demo</span><br><span class="line">      tier: frontend</span><br><span class="line">  spec:</span><br><span class="line">    containers:</span><br><span class="line">     - name: tomcat-demo</span><br><span class="line">       image: tomcat</span><br><span class="line">       ports:</span><br><span class="line">       imagePullPolicy: IfNotPresent</span><br><span class="line">       env:</span><br><span class="line">       - name: GET_HOSTS_FROM</span><br><span class="line">         value: dns</span><br><span class="line">       ports:</span><br><span class="line">       - containerPort: 80</span><br></pre></td></tr></table></figure>
-
-<p>当我们定义了一个RC并提交到Kubernetes集群中以后，Master节点上的Controller Manager组件就得到通知，定期巡检系统中当前存活的目标Pod，并确保目标Pod实例的数量刚好等于此RC的期望值，如果有过多的Pod副本在运行，系统就会停掉一些Pod，否则系统就会再自动创建一些Pod。可以说，通过RC，Kubernetes实现了用户应用集群的高可用性，并且大大减少了系统管理员在传统IT环境中需要完成的许多手工运维工作（如主机监控脚本、应用监控脚本、故障恢复脚本等）。</p>
-<p>下面我们以3个Node节点的集群为例，说明Kubernetes如何通过RC来实现Pod副本数量自动控制的机制。假如我们的RC里定义redis-slave这个Pod需要保持2个副本，系统将可能在其中的两个Node上创建Pod。如下图描述了在两个Node上创建redis-slave Pod的情形。</p>
-<p><img src="/images/master.png" alt="master"></p>
-<p>假设Node2上的Pod2意外终止，根据RC定义的replicas数量2，Kubernetes将会自动创建并启动一个新的Pod，以保住整个集群中始终有两个redis-slave Pod在运行。</p>
-<h5 id="如下图所示，系统可能选择Node3或者Node1来创建一个新的Pod。"><a href="#如下图所示，系统可能选择Node3或者Node1来创建一个新的Pod。" class="headerlink" title="如下图所示，系统可能选择Node3或者Node1来创建一个新的Pod。"></a>如下图所示，系统可能选择Node3或者Node1来创建一个新的Pod。</h5><p><img src="/images/node1.png" alt="node1"></p>
-<p>此外，在运行时，我们可以通过修改RC的副本数量，来实现Pod的动态缩放（Scaling）功能，还可以通过执行kubectl scale命令来一键完成：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$kubectl scale rc redis-slave --replicas=3</span><br><span class="line">scaled</span><br></pre></td></tr></table></figure>
-
-<h5 id="Scaling的执行结果如下图所示"><a href="#Scaling的执行结果如下图所示" class="headerlink" title="Scaling的执行结果如下图所示"></a>Scaling的执行结果如下图所示</h5><p><img src="/images/node2.png" alt="Scaling"></p>
-<p>需要注意的是，删除RC并不会影响通过该RC已创建好的Pod。为了删除所有Pod，可以设置replicas的值为0，然后更新该RC。另外，kubectl提供了stop和delete命令来一次性删除RC和RC控制的全部Pod。</p>
-<p>当我们的应用升级时，通常会通过Build一个新的Docker镜像，并用新的镜像版本来替代旧的版本的方式达到目的，在系统升级的过程中，我们希望是平滑的方式，比如当前系统中10个对应的旧版本的Pod，最佳的方式是旧版本的Pod每次停止一个，同时创建一个新版本的Pod，在整个升级过程中，此消彼长，而运行中的Pod数量始终是10个，几分钟以后，当所有的Pod都已经是最新版本时，升级过程完成。通过RC的机制，Kubernetes很容易就实现了这种高级实用的特性，被称为“滚动升级”（Rolling Update）。</p>
-<h3 id="Replica-Set"><a href="#Replica-Set" class="headerlink" title="Replica Set"></a>Replica Set</h3><p>在新版本的 Kubernetes 中建议使用 ReplicaSet（简称为RS ）来取代 ReplicationController。官方解释为“下一代的RC”，它与RC当前存在的唯一区别是：Replica Sets支持基于集合的Label selector（Set-based selector），而RC只支持基于等式的Label Selector（equality-based selector），这使得Replica Set的功能更强，下面是等价于之前RC例子的Replica Set的定义（省去了Pod模版部分的内容）</p>
-<h3 id="ReplicaSet的创建"><a href="#ReplicaSet的创建" class="headerlink" title="ReplicaSet的创建"></a>ReplicaSet的创建</h3><p>Kubernetes官方强烈建议避免直接使用ReplicaSet，而应该通过Deployment来创建RS和Pod。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: ReplicaSet</span><br><span class="line">metadata：</span><br><span class="line">  name: frontend</span><br><span class="line">spec:</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      tier: frontend</span><br><span class="line">    matchExpression:</span><br><span class="line">      - &#123;key: tier, operator: In, values: [frontend]&#125;</span><br><span class="line">  template:</span><br><span class="line">  .......</span><br></pre></td></tr></table></figure>
-
-<p>kubectl命令工具适用于RC的绝大部分命令都同样适用于Replica Set。此外，当前我们很少单独使用Replica Set，它主要被Deployment这个更高层的资源对象所使用，从而形成一整套Pod创建、删除、更新的编排机制。当我们使用Deployment时，无须关心它是如何创建和维护Replica Set的，这一切都是自动发生的。</p>
-<p>Replica Set与Deployment这两个重要资源对象逐步替换了之前的RC的作用，是Kubernetes v1.3里Pod自动扩容（伸缩）这个告警功能实现的基础，也将继续在Kubernetes未来的版本中发挥重要的作用。</p>
-<p>最后我们总结一下关于RC（Replica Set）的一些特性与作用。</p>
-<ul>
-<li>在大多数情况下，我们通过定义一个RC实现Pod的创建过程及副本数量的自动控制。</li>
-<li>RC里包括完整的Pod定义模版。</li>
-<li>RC通过Label Selector机制实现对Pod副本的自动控制。</li>
-<li>通过改变RC里的Pod副本数量，可以实现Pod的扩容或缩容功能。</li>
-<li>通过改变RC里的Pod模版中的镜像版本，可以实现Pod的滚动升级功能。</li>
-</ul>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/21/kubernetes-重要概念/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Mr.Ye">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/touxiang.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Mr.Ye Blogs">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2019/08/21/kubernetes-重要概念/" itemprop="url">kubernetes 重要概念</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-21T17:55:04+08:00">
-                2019-08-21
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <p>在实践之前，必须先学习 Kubernetes 的几个重要概念，它们是组成 Kubernetes 集群的基石。</p>
-<h3 id="Master"><a href="#Master" class="headerlink" title="Master"></a>Master</h3><p>Master 是 Cluster 的大脑，它的主要职责是调度，即决定将应用放在哪里运行。Master 运行 Linux 操作系统，可以是物理机或者虚拟机。为了实现高可用，可以运行多个 Master。</p>
-<p>Master节点上运行着以下一组关键进程。</p>
-<ul>
-<li>Kubernetes API Server(kube-apiserver), 提供 HTTP Rest 接口的关键服务程序，kubernets里所有资源增、删、改、查等操作的唯一入口，也是集群控制的入口进程</li>
-<li>Kubernetes Controller Manager(kube-controller-manager)，所有资源对象的自动化控制中心（资源对象的大总管）</li>
-<li>Kubernetes Scheduler(kube-scheduler)，资源调度(pod)的进程（调度室）</li>
-<li>etcd Server，Kubernetes 里所有资源对象的数据全部是保持在etcd中</li>
-</ul>
-<h3 id="Node"><a href="#Node" class="headerlink" title="Node"></a>Node</h3><p>Node 的职责是运行容器应用。Node 由 Master 管理，Node 负责监控并汇报容器的状态，并根据 Master 的要求管理容器的生命周期。Node 运行在 Linux 操作系统，可以是物理机或者是虚拟机。</p>
-<p>Node运行着一些关键进程：</p>
-<ul>
-<li>kubelet：负责Pod对应的容器的创建、启停等任务，同时与Master节点密切协作，实现集群管理的基本功能。</li>
-<li>kube-proxy：实现Kubernetes Service的通信与负载均衡机制的重要组件。</li>
-<li>Docker Engine （docker）：Docker引擎，负责本机的容器创建和管理工作。</li>
-</ul>
-<h3 id="Pod"><a href="#Pod" class="headerlink" title="Pod"></a>Pod</h3><p>Pod 是 Kubernetes 的最小工作单元。每个 Pod 包含一个或多个容器。Pod 中的容器会作为一个整体被 Master 调度到一个 Node 上运行。(注意：可以把pod想象成豌豆荚，豌豆就是容器，可以有一个或多个。)<br>说到Pod，简单介绍其概念。首先，Pod运行在一个我们称之为节点（Node）的环境中，这个节点可能是物理机或虚拟机，通常一个节点上上面运行几百个Pod；其次每个Pod运行着一个特殊的被称之为根容器（Pause），和一组用户容器组成，这些业务容器共享根容器（Pause）的网络栈和Volume挂载卷，因此它们之间的通信和数据交换效率更为高效。在设计时我们可以充分利用这一特性将一组密切相关的服务进程放到同一个Pod中。最后需要注意的是并不是每一个Pod和它里面运行的容器都能映射到一个Service上，只有那些提供服务的一组Pod才会被映射成一个服务。</p>
-<h3 id="静态Pod-amp-普通Pod"><a href="#静态Pod-amp-普通Pod" class="headerlink" title="静态Pod &amp; 普通Pod"></a>静态Pod &amp; 普通Pod</h3><ul>
-<li>普通的Pod:<br>普通Pod一旦被创建，就会被放入到etcd中存储，随后会被Kubernetes Master调度到某个具体的Node上并进行绑定(Binding),随后该Pod 被对应的Node上的kubelet进程实例化成一组相关的docker容器运行起来。<br>当Pod里的某个容器停止时，Kubernetes会自动检测到这个问题并且重新启动这个Pod (重启Pod里的所有容器)，如果Pod所在的Node宕机，则会将这个Node上所有的Pod从新调度到其他节点上。</li>
-</ul>
-<ul>
-<li>静态Pod (STatic Pod):<br>静态Pod不存放在Kubernetes的etcd存储里，而是存放在某个具体的Node上的文件中，并且只在此Node上启动运行。<br>静态Pod是由kubelet进行管理的仅存在于特定Node上的Pod。他们不能通过API Server进行管理，无法与ReplicationController(RC)、Deployment、或者DaemonSet进行关联，并且kubelet也无法对它们进行健康检查。静态Pod总是由kubelet进行创建的，并且总是在kubelet所在的Node上运行的</li>
-</ul>
-<h3 id="副本控制器类型（Pod叫副本）"><a href="#副本控制器类型（Pod叫副本）" class="headerlink" title="副本控制器类型（Pod叫副本）"></a>副本控制器类型（Pod叫副本）</h3><ul>
-<li>ReplicationController （简称为RC）</li>
-<li>ReplicaSet (简称为RS) </li>
-<li>Deployment</li>
-<li>StatefulSet</li>
-<li>DaemonSet</li>
-<li>Job,Cronjob</li>
-</ul>
-<h3 id="Kubernetes-引入-Pod-主要基于下面两个目的："><a href="#Kubernetes-引入-Pod-主要基于下面两个目的：" class="headerlink" title="Kubernetes 引入 Pod 主要基于下面两个目的："></a>Kubernetes 引入 Pod 主要基于下面两个目的：</h3><ul>
-<li><p>可管理性:<br>有些容器天生就是需要紧密联系，一起工作。Pod 提供了比容器更高层次的抽象，将它们封装到一个部署单元中。Kubernetes 以 Pod 为最小单位进行调度、扩展、共享资源、管理生命周期。</p>
-</li>
-<li><p>通信和资源共享:<br>Pod 中的所有容器使用同一个网络 namespace，即相同的 IP 地址和 Port 空间。它们可以直接用 localhost 通信。同样的，这些容器可以共享存储，当 Kubernetes 挂载 volume 到 Pod，本质上是将 volume 挂载到 Pod 中的每一个容器。</p>
-</li>
-</ul>
-<h3 id="Pods-有两种使用方式："><a href="#Pods-有两种使用方式：" class="headerlink" title="Pods 有两种使用方式："></a>Pods 有两种使用方式：</h3><ul>
-<li><p>运行单一容器:<br>one-container-per-Pod 是 Kubernetes 最常见的模型，这种情况下，只是将单个容器简单封装成 Pod。即便是只有一个容器，Kubernetes 管理的也是 Pod 而不是直接管理容器。</p>
-</li>
-<li><p>运行多个容器:<br>但问题在于：哪些容器应该放到一个 Pod 中？<br>答案是：这些容器联系必须 非常紧密，而且需要 直接共享资源。</p>
-</li>
-</ul>
-<blockquote>
-<h5 id="举个例子"><a href="#举个例子" class="headerlink" title="举个例子:"></a>举个例子:</h5></blockquote>
-<p>下面这个 Pod 包含两个容器：一个 File Puller，一个是 Web Server。他们两个container的net namespace、uts namespace、ipc namespace是属于共享的。 mnt namespace、user namespace、pid namespace是互相隔离的。</p>
-<p><img src="/images/volume.png" alt="volumes"></p>
-<h3 id="Label"><a href="#Label" class="headerlink" title="Label:"></a>Label:</h3><p>Label是Kubernetes系统中另外一个核心概念。一个Label是一个key=value的键值对，其中key与vaue由用户自己指定。Label可以附加到各种资源对象上，例如Node、Pod、Service、RC等，一个资源对象可以定义任意数量的Label，同一个Label也可以被添加到任意数量的资源对象上去，Label通常在资源对象定义时确定，也可以在对象创建后动态添加或者删除。</p>
-<p>我们可以通过指定的资源对象捆绑一个或多个不同的Label来实现多维度的资源分组管理功能，以便于灵活、方便地进行资源分配、调度、配置、部署等管理工作。例如：部署不同版本的应用到不同的环境中；或者监控和分析应用（日志记录、监控、告警）等。一些常用等label示例如下。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">版本标签：&quot;release&quot; : &quot;stable&quot; , &quot;release&quot; : &quot;canary&quot;...</span><br><span class="line">环境标签：&quot;environment&quot; : &quot;dev&quot; , &quot;environment&quot; : &quot;production&quot;</span><br><span class="line">架构标签：&quot;tier&quot; : &quot;frontend&quot; , &quot;tier&quot; : &quot;backend&quot; , &quot;tier&quot; : &quot;middleware&quot;</span><br><span class="line">分区标签：&quot;partition&quot; : &quot;customerA&quot; , &quot;partition&quot; : &quot;customerB&quot;...</span><br><span class="line">质量管控标签：&quot;track&quot; : &quot;daily&quot; , &quot;track&quot; : &quot;weekly&quot;</span><br></pre></td></tr></table></figure>
-
-<p>Label相当于我们熟悉的“标签”，給某个资源对象定义一个Label，就相当于給它打了一个标签，随后可以通过Label Selector（标签选择器）查询和筛选拥有某些Label的资源对象，Kubernetes通过这种方式实现了类似SQL的简单又通用的对象查询机制。</p>
-<p>Label Selector可以被类比为SQL语句中的where查询条件，例如，name=redis-slave这个label Selector作用于Pod时，可以被类比为select * from pod where pod’s name = ‘redis-slave’这样的语句。当前有两种Label Selector的表达式：基于等式的（Equality-based）和基于集合的（Set-based），前者采用“等式类”的表达式匹配标签，下面是一些具体的例子。</p>
-<ul>
-<li><p>基于等式的表达式匹配标签实例：<br>name=redis-slave：匹配所有具有标签name=redis-slave的资源对象。<br>env != production：匹配所有不具有标签env=production的资源对象。</p>
-</li>
-<li><p>基于集合方式的表达式匹配标签实例：<br>name in (redis-master,redis-slave)：匹配所有具有标签name=redis-master或者name=redis-slave的资源对象。<br>name notin (php-frontend)：匹配所有不具有标签name=php-frontend的资源对象。</p>
-</li>
-</ul>
-<p>可以通过多个Label Selector表达式的组合实现复杂的条件，多个表达式之间用“,”进行分隔即可，几个条件之间是“AND”的关系，即同时满足多个条件，比如下面的例子：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">name=redis-slave,env!=production</span><br><span class="line">name notin (php-fronted),env!=production</span><br></pre></td></tr></table></figure>
-
-<h3 id="Label-Selector在Kubernetes中多重要使用场景有以下几处"><a href="#Label-Selector在Kubernetes中多重要使用场景有以下几处" class="headerlink" title="Label Selector在Kubernetes中多重要使用场景有以下几处:"></a>Label Selector在Kubernetes中多重要使用场景有以下几处:</h3><ul>
-<li>kube-controller进程通过资源对象RC上定义都Label Selector来筛选要监控的Pod副本的数量，从而实现Pod副本的数量始终符合预期设定的全自动控制流程。</li>
-<li>kube-proxy进程通过Service的Label Selector来选择对应的Pod，自动建立起每个Service到对应Pod的请求转发路由表，从而实现Service的智能负载均衡机制。</li>
-<li>通过对某些Node定义特定的Label，并且在Pod定义文件中使用NodeSelector这种标签调度策略，kube-scheduler进程可以实现Pod“定向调度”的特性。</li>
-</ul>
-<p>前面我们只是介绍了一个name=XXX的Label Selector。让我们看一个更复杂的例子。假设为Pod定义了Label: release、env和role，不同的Pod定义了不同的Label值，如图1.7所示，如果我们设置了“role=frontend”的Label Selector，则会选取到Node 1和Node 2上到Pod。</p>
-<p><img src="/images/label1.png" alt="label1"></p>
-<p>而设置“release=beta”的Label Selector，则会选取到Node 2和Node 3上的Pod，如下图所示。</p>
-<p><img src="/images/label2.png" alt="label2"></p>
-<p>总结：使用Label可以給对象创建多组标签，Label和Label Selector共同构成了Kubernetes系统中最核心的应用模型，使得被管理对象能够被精细地分组管理，同时实现了整个集群的高可用性。</p>
-<h3 id="Service和ReplicationController"><a href="#Service和ReplicationController" class="headerlink" title="Service和ReplicationController"></a>Service和ReplicationController</h3><p>对于这两种对象的Label选择器是用map定义在json或者yaml文件中的，并且只支持基于等式(Equality-based)的条件：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">&quot;selector&quot;: &#123;</span><br><span class="line">    &quot;component&quot; : &quot;redis&quot;,</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>要么：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">selector:</span><br><span class="line">    component: redis</span><br></pre></td></tr></table></figure>
-
-<p>此选择器（分别为json或yaml格式）等同于component=redis或component in (redis)。</p>
-<h3 id="支持set-based的资源"><a href="#支持set-based的资源" class="headerlink" title="支持set-based的资源"></a>支持set-based的资源</h3><p>Job，Deployment，Replica Set，和Daemon Set，支持基于集合方式(set-based)的两种表达式。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">selector:</span><br><span class="line">  matchLabels:</span><br><span class="line">    component: redis</span><br></pre></td></tr></table></figure>
-
-<p>matchLabels 是一个{key,value}的映射。一个单独的 {key,value} 。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">selector:</span><br><span class="line">  matchExpressions:</span><br><span class="line">    - &#123;key: tier, operator: In, values: [cache,backup]&#125;       </span><br><span class="line">    - &#123;key: environment, operator: NotIn, values: [dev]&#125;</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>注释：以上实例表示<br><code>key</code> 键 <code>tier</code><br><code>operator</code> 操作符 <code>in</code><br><code>values</code> 值 <code>[cache,backup]</code><br>表示<code>key</code>键<code>tier</code>要包含<code>cache</code>和<code>backup</code></p>
-</blockquote>
-<p>matchExpressions 是一个pod的选择器条件的list 。有效运算符包含In, NotIn, Exists, 和DoesNotExist。在In和NotIn的情况下，value必须不能为空列表。Exists和DoesNotExist的情况下，value必须为空列表。当包含 matchLabels 和 matchExpressions都纯在时，会用AND符号连接，他们必须都被满足才能完成匹配。</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
+  <nav class="pagination">
+    <span class="page-number current">1</span><a class="page-number" href="/page/2/">2</a><a class="extend next" rel="next" href="/page/2/"><i class="fa fa-angle-right"></i></a>
+  </nav>
+
 
 
           </div>
@@ -1690,7 +2021,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-count">12</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>

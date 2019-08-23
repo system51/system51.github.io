@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="我们在调度、管理 Pod 时，需要熟悉 Pod 在整个生命周期的各个状态，而设置 Pod 的重启策略也是基于对 Pod 的各种状态的了解。 Pod 生命周期：  说明：  初始化容器阶段初始化pod中每一个容器,他们是串行执行的，执行完成后就退出了 启动主容器main container 在main container刚刚启动之后可以执行post start命令 在整个main container">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes Pod 生命周期和重启策略">
+<meta property="og:url" content="http://yoursite.com/2019/08/23/Kubernetes-Pod-生命周期和重启策略/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="我们在调度、管理 Pod 时，需要熟悉 Pod 在整个生命周期的各个状态，而设置 Pod 的重启策略也是基于对 Pod 的各种状态的了解。 Pod 生命周期：  说明：  初始化容器阶段初始化pod中每一个容器,他们是串行执行的，执行完成后就退出了 启动主容器main container 在main container刚刚启动之后可以执行post start命令 在整个main container">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://yoursite.com/images/pod%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F.png">
+<meta property="og:image" content="http://yoursite.com/images/pod%E7%8A%B6%E6%80%81.png">
+<meta property="og:image" content="http://yoursite.com/images/%E5%AE%B9%E5%99%A8%E7%8A%B6%E6%80%81.png">
+<meta property="og:image" content="http://yoursite.com/images/%E6%9D%A1%E4%BB%B6%E7%8A%B6%E6%80%81.png">
+<meta property="og:image" content="http://yoursite.com/images/ReadinessProbe.png">
+<meta property="og:updated_time" content="2019-08-23T03:15:21.770Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes Pod 生命周期和重启策略">
+<meta name="twitter:description" content="我们在调度、管理 Pod 时，需要熟悉 Pod 在整个生命周期的各个状态，而设置 Pod 的重启策略也是基于对 Pod 的各种状态的了解。 Pod 生命周期：  说明：  初始化容器阶段初始化pod中每一个容器,他们是串行执行的，执行完成后就退出了 启动主容器main container 在main container刚刚启动之后可以执行post start命令 在整个main container">
+<meta name="twitter:image" content="http://yoursite.com/images/pod%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/08/23/Kubernetes-Pod-生命周期和重启策略/">
+
+
+
+
+
+  <title>Kubernetes Pod 生命周期和重启策略 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes-Pod-生命周期和重启策略/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes Pod 生命周期和重启策略</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T10:24:44+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>我们在调度、管理 Pod 时，需要熟悉 Pod 在整个生命周期的各个状态，而设置 Pod 的重启策略也是基于对 Pod 的各种状态的了解。</p>
+<h3 id="Pod-生命周期："><a href="#Pod-生命周期：" class="headerlink" title="Pod 生命周期："></a>Pod 生命周期：</h3><p><img src="/images/pod%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F.png" alt="pod生命周期"></p>
+<ul>
+<li><p>说明：</p>
+<ul>
+<li>初始化容器阶段初始化pod中每一个容器,他们是串行执行的，执行完成后就退出了</li>
+<li>启动主容器main container</li>
+<li>在main container刚刚启动之后可以执行post start命令</li>
+<li>在整个main container执行的过程中可以做两类探测：liveness probe(存活探测)和readiness probe(就绪探测)</li>
+<li>在main container结束前可以执行pre stop命令</li>
+</ul>
+</li>
+<li><p>配置启动后钩子(post start)和终止前钩子(pre stop)</p>
+<ul>
+<li>post start：容器创建之后立即执行，如果失败了就会按照重启策略重启容器</li>
+<li>pre stop：容器终止前立即执行，执行完成之后容器将成功终止</li>
+</ul>
+</li>
+<li><p>可以使用以下命令查看post start和pre stop的设置格式：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@master manifests]# kubectl explain pod.spec.containers.lifecycle.preStop</span><br><span class="line">[root@master manifests]# kubectl explain pod.spec.containers.lifecycle.postStart</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h3 id="Pod-的状态（phase）："><a href="#Pod-的状态（phase）：" class="headerlink" title="Pod 的状态（phase）："></a>Pod 的状态（phase）：</h3><ul>
+<li>Pod 的所有状态总共有 5 种，分别如下：<ul>
+<li>挂起（Pending）：Pod 已被 Kubernetes 系统接受，但有一个或者多个容器镜像尚未创建。等待时间包括调度 Pod 的时间和通过网络下载镜像的时间，这可能需要花点时间。</li>
+<li>运行中（Running）：该 Pod 已经绑定到了一个节点上，Pod 中所有的容器都已被创建。至少有一个容器正在运行，或者正处于启动或重启状态。</li>
+<li>成功（Succeeded）：Pod 中的所有容器都被成功终止，并且不会再重启。</li>
+<li>失败（Failed）：Pod 中的所有容器都已终止了，并且至少有一个容器是因为失败终止。也就是说，容器以非0状态退出或者被系统终止。</li>
+<li>未知（Unknown）：因为某些原因无法取得 Pod 的状态，通常是因为与 Pod 所在主机通信失败。</li>
+</ul>
+</li>
+</ul>
+<h3 id="使用命令查看："><a href="#使用命令查看：" class="headerlink" title="使用命令查看："></a>使用命令查看：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[root@master app]# kubectl describe pods test1 -n kube-system</span><br></pre></td></tr></table></figure>
+
+<h4 id="pod状态（phase）："><a href="#pod状态（phase）：" class="headerlink" title="pod状态（phase）："></a>pod状态（phase）：</h4><p><img src="/images/pod%E7%8A%B6%E6%80%81.png" alt="pod状态"></p>
+<h4 id="容器状态："><a href="#容器状态：" class="headerlink" title="容器状态："></a>容器状态：</h4><p><img src="/images/%E5%AE%B9%E5%99%A8%E7%8A%B6%E6%80%81.png" alt="容器状态"></p>
+<h4 id="条件状态："><a href="#条件状态：" class="headerlink" title="条件状态："></a>条件状态：</h4><p><img src="/images/%E6%9D%A1%E4%BB%B6%E7%8A%B6%E6%80%81.png" alt="条件状态"></p>
+<h3 id="容器探针："><a href="#容器探针：" class="headerlink" title="容器探针："></a>容器探针：</h3><p>探针 是由 kubelet 对容器执行的定期诊断。要执行诊断，kubelet 调用由容器实现的 Handler。有三种类型的处理程序：</p>
+<ul>
+<li>ExecAction：在容器内执行指定命令。如果命令退出时返回码为 0 则认为诊断成功。</li>
+<li>TCPSocketAction：对指定端口上的容器的 IP 地址进行 TCP 检查。如果端口打开，则诊断被认为是成功的。</li>
+<li>HTTPGetAction：对指定的端口和路径上的容器的 IP 地址执行 HTTP Get 请求。如果响应的状态码大于等于200 且小于 400，则诊断被认为是成功的。</li>
+</ul>
+<h3 id="每次探测都将获得以下三种结果之一："><a href="#每次探测都将获得以下三种结果之一：" class="headerlink" title="每次探测都将获得以下三种结果之一："></a>每次探测都将获得以下三种结果之一：</h3><ul>
+<li>成功：容器通过了诊断。</li>
+<li>失败：容器未通过诊断。</li>
+<li>未知：诊断失败，因此不会采取任何行动。</li>
+</ul>
+<h3 id="Kubelet-可以选择是否执行在容器上运行的两种探针执行和做出反应："><a href="#Kubelet-可以选择是否执行在容器上运行的两种探针执行和做出反应：" class="headerlink" title="Kubelet 可以选择是否执行在容器上运行的两种探针执行和做出反应："></a>Kubelet 可以选择是否执行在容器上运行的两种探针执行和做出反应：</h3><ul>
+<li>livenessProbe：指示容器是否正在运行。如果存活探测失败，则 kubelet 会杀死容器，并且容器将受到其 重启策略 的影响。如果容器不提供存活探针，则默认状态为 Success。</li>
+<li>readinessProbe：就绪探测是用于容器是否准备好服务请求。如果就绪探测失败，端点控制器将从与 Pod 匹配的所有 Service 的端点中删除该 Pod 的 IP 地址。初始延迟之前的就绪状态默认为 Failure。如果容器不提供就绪探针，则默认状态为 Success。</li>
+</ul>
+<h3 id="Pod的重启策略："><a href="#Pod的重启策略：" class="headerlink" title="Pod的重启策略："></a>Pod的重启策略：</h3><p>Pod 的重启策略有 3 种，默认值为 Always。</p>
+<ul>
+<li>Always ： 容器失效时，kubelet 自动重启该容器；</li>
+<li>OnFailure ： 容器终止运行且退出码不为0时重启；</li>
+<li>Never ： 不论状态为何， kubelet 都不重启该容器。<br>失败的容器由 kubelet 以五分钟为上限的指数退避延迟（10秒，20秒，40秒…）重新启动，并在成功执行十分钟后重置。</li>
+</ul>
+<h3 id="Pod-的生命："><a href="#Pod-的生命：" class="headerlink" title="Pod 的生命："></a>Pod 的生命：</h3><p>一般来说，Pod 不会消失，直到人为销毁他们。这可能是一个人或控制器。这个规则的唯一例外是成功或失败的 phase 超过一段时间（由 master 确定）的Pod将过期并被自动销毁。</p>
+<p>有三种可用的控制器：</p>
+<ul>
+<li>使用 Job 运行预期会终止的 Pod，例如批量计算。Job 仅适用于重启策略为 OnFailure 或 Never 的 Pod。</li>
+<li>对预期不会终止的 Pod 使用 ReplicationController、ReplicaSet 和 Deployment ，例如 Web 服务器。ReplicationController 仅适用于具有 restartPolicy 为 Always 的 Pod。</li>
+<li>提供特定于机器的系统服务，使用 DaemonSet 为每台机器运行一个 Pod 。</li>
+</ul>
+<p>所有这三种类型的控制器都包含一个 PodTemplate。建议创建适当的控制器，让它们来创建 Pod，而不是直接自己创建 Pod。这是因为单独的 Pod 在机器故障的情况下没有办法自动复原，而控制器却可以。</p>
+<p>如果节点死亡或与集群的其余部分断开连接，则 Kubernetes 将应用一个策略将丢失节点上的所有 Pod 的 phase 设置为 Failed。</p>
+<h3 id="LivenessProbe-存活检查-："><a href="#LivenessProbe-存活检查-：" class="headerlink" title="LivenessProbe (存活检查)："></a>LivenessProbe (存活检查)：</h3><h4 id="livenessProbe参数解析："><a href="#livenessProbe参数解析：" class="headerlink" title="livenessProbe参数解析："></a>livenessProbe参数解析：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master ~]# kubectl explain pod.spec.containers.livenessProbe</span><br><span class="line"></span><br><span class="line">KIND:     Pod</span><br><span class="line">VERSION:  v1</span><br><span class="line"></span><br><span class="line">RESOURCE: livenessProbe &lt;Object&gt;</span><br><span class="line"></span><br><span class="line">exec  command的方式探测,例如 ps 一个进程</span><br><span class="line"></span><br><span class="line">failureThreshold 探测几次失败 才算失败 默认是连续三次</span><br><span class="line"></span><br><span class="line">periodSeconds 每次的多长时间探测一次  默认10s</span><br><span class="line"></span><br><span class="line">timeoutSeconds 探测超市的秒数 默认1s</span><br><span class="line"></span><br><span class="line">initialDelaySeconds  初始化延迟探测，第一次探测的时候，因为主程序未必启动完成</span><br><span class="line"></span><br><span class="line">tcpSocket 检测端口的探测</span><br><span class="line"></span><br><span class="line">httpGet http请求探测</span><br></pre></td></tr></table></figure>
+
+<h4 id="ExecAction探测方式："><a href="#ExecAction探测方式：" class="headerlink" title="ExecAction探测方式："></a>ExecAction探测方式：</h4><p>举个例子：定义一个liveness的pod资源类型，基础镜像为busybox，在busybox这个容器启动后会执行创建/tmp/test的文件啊，并删除，然后等待3600秒。随后定义了存活性探测，方式是以exec的方式执行命令判断/tmp/test是否存在，存在即表示存活，不存在则表示容器已经挂了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: liveness-exec-pod</span><br><span class="line">  namespace: default</span><br><span class="line">  labels:</span><br><span class="line">    name: myapp</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: livess-exec</span><br><span class="line">    image: busybox:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">    command: [&quot;/bin/sh&quot;,&quot;-c&quot;,&quot;touch /tmp/test; sleep 30; rm -f /tmp/test; sleep 3600&quot;]</span><br><span class="line">    livenessProbe:</span><br><span class="line">      exec:</span><br><span class="line">        command: [&quot;test&quot;,&quot;-e&quot;,&quot;/tmp/test&quot;]</span><br><span class="line">      initialDelaySeconds: 1</span><br><span class="line">      periodSeconds: 3</span><br></pre></td></tr></table></figure>
+
+<h4 id="HTTPGetAction探测方式："><a href="#HTTPGetAction探测方式：" class="headerlink" title="HTTPGetAction探测方式："></a>HTTPGetAction探测方式：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-test1</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: nginxtest</span><br><span class="line">    image: nginx:1.7.9</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">    ports:</span><br><span class="line">     - name: http</span><br><span class="line">       containerPort: 80</span><br><span class="line">     - name: https</span><br><span class="line">       containerPort: 443</span><br><span class="line">    livenessProbe:</span><br><span class="line">      httpGet:</span><br><span class="line">        path: /index.html</span><br><span class="line">        port: 80</span><br><span class="line">      initialDelaySeconds: 1</span><br><span class="line">      periodSeconds: 3</span><br></pre></td></tr></table></figure>
+
+<h3 id="Pod状态（phase）示例："><a href="#Pod状态（phase）示例：" class="headerlink" title="Pod状态（phase）示例："></a>Pod状态（phase）示例：</h3><ul>
+<li><p>Pod 中只有一个容器并且正在运行。容器成功退出。</p>
+<ul>
+<li>记录完成事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：Pod phase 变成 Succeeded。</li>
+<li>Never：Pod phase 变成 Succeeded。</li>
+</ul>
+</li>
+<li><p>Pod 中只有一个容器并且正在运行。容器退出失败。</p>
+<ul>
+<li>记录失败事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：重启容器；Pod phase 仍为 Running。</li>
+<li>Never：Pod phase 变成 Failed。</li>
+</ul>
+</li>
+<li><p>Pod 中有两个容器并且正在运行。有一个容器退出失败。</p>
+<ul>
+<li>记录失败事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：重启容器；Pod phase 仍为 Running。</li>
+<li>Never：不重启容器；Pod phase 仍为 Running。<ul>
+<li>如果有一个容器没有处于运行状态，并且两个容器退出：</li>
+<li>记录失败事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：重启容器；Pod phase 仍为 Running。</li>
+<li>Never：Pod phase 变成 Failed。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>Pod 中只有一个容器并处于运行状态。容器运行时内存超出限制：</p>
+<ul>
+<li>容器以失败状态终止。</li>
+<li>记录 OOM 事件。</li>
+<li>如果 restartPolicy 为：</li>
+<li>Always：重启容器；Pod phase 仍为 Running。</li>
+<li>OnFailure：重启容器；Pod phase 仍为 Running。</li>
+<li>Never: 记录失败事件；Pod phase 仍为 Failed。</li>
+</ul>
+</li>
+<li><p>Pod 正在运行，磁盘故障：</p>
+<ul>
+<li>杀掉所有容器。</li>
+<li>记录适当事件。</li>
+<li>Pod phase 变成 Failed。</li>
+<li>如果使用控制器来运行，Pod 将在别处重建。</li>
+</ul>
+</li>
+<li><p>Pod 正在运行，其节点被分段。</p>
+<ul>
+<li>节点控制器等待直到超时。</li>
+<li>节点控制器将 Pod phase 设置为 Failed。</li>
+<li>如果是用控制器来运行，Pod 将在别处重建。</li>
+</ul>
+</li>
+</ul>
+<h3 id="ReadinessProbe-就绪检查-："><a href="#ReadinessProbe-就绪检查-：" class="headerlink" title="ReadinessProbe (就绪检查)："></a>ReadinessProbe (就绪检查)：</h3><p>就绪探测是用于容器是否准备好服务请求。如果就绪探测失败，端点控制器将从与 Pod 匹配的所有 Service 的端点中删除该 Pod 的 IP 地址。初始延迟之前的就绪状态默认为 Failure。如果容器不提供就绪探针，则默认状态为 Success。（注：默认为read状态）</p>
+<p><img src="/images/ReadinessProbe.png" alt="ReadinessProbe"></p>
+<p>有时，应用程序暂时无法对外部流量提供服务。 例如，应用程序可能需要在启动期间加载大量数据或配置文件。 在这种情况下，你不想杀死应用程序，但你也不想发送请求。 Kubernetes提供了readiness probe来检测和减轻这些情况。 Pod中的容器可以报告自己还没有准备，不能处理Kubernetes服务发送过来的流量。（如果在Pod没有ready的情况下是不会被加入到service中，如果已经加入到service中但设置了readiness probe检测发现Pod服务未处于ready状态也会被service移除）</p>
+<p>Readiness probe的配置跟liveness probe很像。唯一的不同是使用 readinessProbe而不是livenessProbe。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">readinessProbe:</span><br><span class="line">  exec:</span><br><span class="line">    command:</span><br><span class="line">    - cat</span><br><span class="line">    - /tmp/healthy</span><br><span class="line">  initialDelaySeconds: 5</span><br><span class="line">  periodSeconds: 5</span><br></pre></td></tr></table></figure>
+
+<p>Readiness probe的HTTP和TCP的探测器配置跟liveness probe一样。</p>
+<p>Readiness和livenss probe可以并行用于同一容器。 使用两者可以确保流量无法到达未准备好的容器，并且容器在失败时重新启动。</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/23/Kubernetes-定义Pod资源清单/" rel="next" title="Kubernetes 定义Pod资源清单">
+                <i class="fa fa-chevron-left"></i> Kubernetes 定义Pod资源清单
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/23/Kubernetes-Pod-初始化容器/" rel="prev" title="Kubernetes Pod 初始化容器">
+                Kubernetes Pod 初始化容器 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">12</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod-生命周期："><span class="nav-number">1.</span> <span class="nav-text">Pod 生命周期：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod-的状态（phase）："><span class="nav-number">2.</span> <span class="nav-text">Pod 的状态（phase）：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用命令查看："><span class="nav-number">3.</span> <span class="nav-text">使用命令查看：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#pod状态（phase）："><span class="nav-number">3.1.</span> <span class="nav-text">pod状态（phase）：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#容器状态："><span class="nav-number">3.2.</span> <span class="nav-text">容器状态：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#条件状态："><span class="nav-number">3.3.</span> <span class="nav-text">条件状态：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容器探针："><span class="nav-number">4.</span> <span class="nav-text">容器探针：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#每次探测都将获得以下三种结果之一："><span class="nav-number">5.</span> <span class="nav-text">每次探测都将获得以下三种结果之一：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Kubelet-可以选择是否执行在容器上运行的两种探针执行和做出反应："><span class="nav-number">6.</span> <span class="nav-text">Kubelet 可以选择是否执行在容器上运行的两种探针执行和做出反应：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod的重启策略："><span class="nav-number">7.</span> <span class="nav-text">Pod的重启策略：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod-的生命："><span class="nav-number">8.</span> <span class="nav-text">Pod 的生命：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#LivenessProbe-存活检查-："><span class="nav-number">9.</span> <span class="nav-text">LivenessProbe (存活检查)：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#livenessProbe参数解析："><span class="nav-number">9.1.</span> <span class="nav-text">livenessProbe参数解析：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ExecAction探测方式："><span class="nav-number">9.2.</span> <span class="nav-text">ExecAction探测方式：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#HTTPGetAction探测方式："><span class="nav-number">9.3.</span> <span class="nav-text">HTTPGetAction探测方式：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod状态（phase）示例："><span class="nav-number">10.</span> <span class="nav-text">Pod状态（phase）示例：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ReadinessProbe-就绪检查-："><span class="nav-number">11.</span> <span class="nav-text">ReadinessProbe (就绪检查)：</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

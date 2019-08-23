@@ -88,7 +88,7 @@
 <meta property="og:description" content="定义一个简单的pod资源清单：1234567891011apiVersion: v1kind: Podmetadata:  name: nginx-ye  namespace: kube-system  labels:    app: myappspec:  containers:  - name: nginx    image: nginx:1.7.9  yaml格式的pod定义文件完整内容：1">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://yoursite.com/images/args.png">
-<meta property="og:updated_time" content="2019-08-23T02:20:35.512Z">
+<meta property="og:updated_time" content="2019-08-23T02:21:54.320Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes 定义Pod资源清单">
 <meta name="twitter:description" content="定义一个简单的pod资源清单：1234567891011apiVersion: v1kind: Podmetadata:  name: nginx-ye  namespace: kube-system  labels:    app: myappspec:  containers:  - name: nginx    image: nginx:1.7.9  yaml格式的pod定义文件完整内容：1">
@@ -332,7 +332,7 @@
 <li>如果提供了command和args，则Docker镜像中定义的Entrypoint和Cmd将被忽略。直接运行你提供的command和args</li>
 </ul>
 <p><img src="/images/args.png" alt="args"></p>
-<h3 id="Label（标签）："><a href="#Label（标签）：" class="headerlink" title="Label（标签）："></a>Label（标签）：</h3><blockquote>
+<h3 id="Label（标签）"><a href="#Label（标签）" class="headerlink" title="Label（标签）"></a>Label（标签）</h3><blockquote>
 <p>在kubernetes第一篇文章中已经对labels做了详细的描述，现在来看如何通过labels过滤指定查看某一种类型的pod</p>
 </blockquote>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">#首先我们先查看所有的pod并显示出他们所定义的有哪些labels</span><br><span class="line">[root@master app]# kubectl get pods -n kube-system --show-labels</span><br></pre></td></tr></table></figure>
@@ -380,6 +380,10 @@
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/23/Kubernetes-Pod-生命周期和重启策略/" rel="prev" title="Kubernetes Pod 生命周期和重启策略">
+                Kubernetes Pod 生命周期和重启策略 <i class="fa fa-chevron-right"></i>
+              </a>
             
           </div>
         </div>
@@ -458,7 +462,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">9</span>
+                  <span class="site-state-item-count">12</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -495,7 +499,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#定义一个简单的pod资源清单："><span class="nav-number">1.</span> <span class="nav-text">定义一个简单的pod资源清单：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#yaml格式的pod定义文件完整内容："><span class="nav-number">2.</span> <span class="nav-text">yaml格式的pod定义文件完整内容：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#下表给出了Docker-与-Kubernetes中对应的字段名称。"><span class="nav-number">3.</span> <span class="nav-text">下表给出了Docker 与 Kubernetes中对应的字段名称。</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如果要覆盖默认的Entrypoint-与-Cmd，需要遵循如下规则："><span class="nav-number">4.</span> <span class="nav-text">如果要覆盖默认的Entrypoint 与 Cmd，需要遵循如下规则：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Label（标签）："><span class="nav-number">5.</span> <span class="nav-text">Label（标签）：</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#定义一个简单的pod资源清单："><span class="nav-number">1.</span> <span class="nav-text">定义一个简单的pod资源清单：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#yaml格式的pod定义文件完整内容："><span class="nav-number">2.</span> <span class="nav-text">yaml格式的pod定义文件完整内容：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#下表给出了Docker-与-Kubernetes中对应的字段名称。"><span class="nav-number">3.</span> <span class="nav-text">下表给出了Docker 与 Kubernetes中对应的字段名称。</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如果要覆盖默认的Entrypoint-与-Cmd，需要遵循如下规则："><span class="nav-number">4.</span> <span class="nav-text">如果要覆盖默认的Entrypoint 与 Cmd，需要遵循如下规则：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Label（标签）"><span class="nav-number">5.</span> <span class="nav-text">Label（标签）</span></a></li></ol></div>
             
 
           </div>
