@@ -88,7 +88,7 @@
 <meta property="og:description" content="对于ReplicaSet、ReplicationController等类型的控制器而言，它希望pod保持预期数目、持久运行下去，除非用户明确删除，否则这些对象一直存在，它们针对的是耐久性任务，如web服务等。对于非耐久性任务，比如压缩文件，任务完成后，pod需要结束运行，不需要pod继续保持在系统中，这个时候就要用到Job。因此说Job是对ReplicaSet、ReplicationContro">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="http://yoursite.com/images/job.png">
-<meta property="og:updated_time" content="2019-08-23T07:17:20.146Z">
+<meta property="og:updated_time" content="2019-08-23T07:30:44.204Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之Job">
 <meta name="twitter:description" content="对于ReplicaSet、ReplicationController等类型的控制器而言，它希望pod保持预期数目、持久运行下去，除非用户明确删除，否则这些对象一直存在，它们针对的是耐久性任务，如web服务等。对于非耐久性任务，比如压缩文件，任务完成后，pod需要结束运行，不需要pod继续保持在系统中，这个时候就要用到Job。因此说Job是对ReplicaSet、ReplicationContro">
@@ -315,7 +315,7 @@
 </li>
 </ul>
 <h3 id="Job参数："><a href="#Job参数：" class="headerlink" title="Job参数："></a>Job参数：</h3><blockquote>
-<p>.spec.completions标志Job结束需要成功运行的Pod个数，默认为1<br>.spec.parallelism标志并行运行的Pod的个数，默认为1<br>.spec.backoffLimit 指定在此Job在标记为失败之前重试的次数，默认为6次</p>
+<p><code>.spec.completions</code>标志Job结束需要成功运行的Pod个数，默认为1<br><code>.spec.parallelism</code>标志并行运行的Pod的个数，默认为1<br><code>.spec.backoffLimit</code>指定在此Job在标记为失败之前重试的次数，默认为6次</p>
 </blockquote>
 <blockquote>
 <p>根据.spec.completions和.spec.Parallelism的设置，可以将Job划分为以下几种pattern：</p>
