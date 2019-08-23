@@ -230,6 +230,253 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes之DaemonSet/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/08/23/Kubernetes之DaemonSet/" itemprop="url">Kubernetes之DaemonSet</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T13:47:36+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <blockquote>
+<p>DaemonSet 确保全部（或者一些）Node 上运行一个 Pod 的副本。当有 Node 加入集群时，也会为他们新增一个 Pod 。当有 Node 从集群移除时，这些 Pod 也会被回收。删除 DaemonSet 将会删除它创建的所有 Pod。</p>
+</blockquote>
+<h3 id="使用-DaemonSet-的一些典型用法："><a href="#使用-DaemonSet-的一些典型用法：" class="headerlink" title="使用 DaemonSet 的一些典型用法："></a>使用 DaemonSet 的一些典型用法：</h3><blockquote>
+<ul>
+<li>运行集群存储 daemon，例如在每个 Node 上运行 glusterd、ceph。</li>
+<li>在每个 Node 上运行日志收集 daemon，例如fluentd、logstash。</li>
+<li>在每个 Node 上运行监控 daemon，例如 Prometheus Node Exporter、collectd、Datadog 代理、New Relic 代理，或 Ganglia gmond。</li>
+</ul>
+</blockquote>
+<h3 id="创建DaemonSet："><a href="#创建DaemonSet：" class="headerlink" title="创建DaemonSet："></a>创建DaemonSet：</h3><blockquote>
+<p>以下是DaemonSet的示例spec文件，运行fluentd-elasticsearch image：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: DaemonSet</span><br><span class="line">metadata:</span><br><span class="line">  name: fluentd-elasticsearch</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  labels:</span><br><span class="line">    k8s-app: fluentd-logging</span><br><span class="line">spec:</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      name: fluentd-elasticsearch</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        name: fluentd-elasticsearch</span><br><span class="line">    spec:</span><br><span class="line">      tolerations:</span><br><span class="line">      - key: node-role.kubernetes.io/master</span><br><span class="line">        effect: NoSchedule</span><br><span class="line">      containers:</span><br><span class="line">      - name: fluentd-elasticsearch</span><br><span class="line">        image: k8s.gcr.io/fluentd-elasticsearch:1.20</span><br><span class="line">        resources:</span><br><span class="line">          limits:</span><br><span class="line">            memory: 200Mi</span><br><span class="line">          requests:</span><br><span class="line">            cpu: 100m</span><br><span class="line">            memory: 200Mi</span><br><span class="line">        volumeMounts:</span><br><span class="line">        - name: varlog</span><br><span class="line">          mountPath: /var/log</span><br><span class="line">        - name: varlibdockercontainers</span><br><span class="line">          mountPath: /var/lib/docker/containers</span><br><span class="line">          readOnly: true</span><br><span class="line">      terminationGracePeriodSeconds: 30   #k8s将会给应用发送SIGTERM信号，可以用来正确、优雅地关闭应用,默认为30秒</span><br><span class="line">      volumes:</span><br><span class="line">      - name: varlog</span><br><span class="line">        hostPath:</span><br><span class="line">          path: /var/log</span><br><span class="line">      - name: varlibdockercontainers</span><br><span class="line">        hostPath:</span><br><span class="line">          path: /var/lib/docker/containers</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>以上DaemonSet中没有RestartPolicy字段，默认为Always。如果有的话，必需将值设置成Always，否则在创建时出现不可用错误。</p>
+</blockquote>
+<blockquote>
+<p>DaemonSet同样会受到Taint（污点）的抵制，如果不在Pod中配置匹配的Toleration（容忍度），那么DaemonSet不会在拥有Taint（污点）属性的node上部署Pod。上例中有如下内容：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">tolerations:</span><br><span class="line">    - key: node-role.kubernetes.io/master</span><br><span class="line">      effect: NoSchedule</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>原因就是系统默认为master节点增加了 “node-role.kubernetes.io/master”的Taint（污点），以抵制普通Pod部署在Master节点上，为了使master成为专用节点而添加的Taint（污点）。因为我们预期上例DaemonSet在集群内全局部署，因此需要加入相匹配的Toleration（容忍度）这样Master节点也会部署DaemonSet。</p>
+</blockquote>
+<h3 id="仅在相同的-Node-上运行-Pod："><a href="#仅在相同的-Node-上运行-Pod：" class="headerlink" title="仅在相同的 Node 上运行 Pod："></a>仅在相同的 Node 上运行 Pod：</h3><blockquote>
+<p>如果指定了 .spec.template.spec.nodeSelector，则DaemonSet只会在满足条件的node上部署pod。 类似这种情况，可以指定 .spec.template.spec.affinity，然后 DaemonSet Controller 将在能够与 Node Affinity 匹配的节点上创建 Pod。 如果根本就没有指定，则 DaemonSet Controller 将在所有节点上创建 Pod。<br>总之，可以通过Taint（污点）、Toleration（容忍度）、Affinity（亲和力）、node label控制DaemonSet部署pod的节点范围。</p>
+</blockquote>
+<h3 id="系统如何调度DaemonSet-pod（自1-12起默认禁用）："><a href="#系统如何调度DaemonSet-pod（自1-12起默认禁用）：" class="headerlink" title="系统如何调度DaemonSet pod（自1.12起默认禁用）："></a>系统如何调度DaemonSet pod（自1.12起默认禁用）：</h3><blockquote>
+<p>默认情况下DaemonSet在创建pod时如果为其增加.spec.template.spec.nodeName字段，也就是说所创建的pod运行在那个节上在创建阶段就已经确定，所以DaemonSet中的pod实际上没有接受kubernetes scheduler的调度，它不需要调度，因此产生以下两个特性：</p>
+<ul>
+<li>DaemonSet中的pod不遵从节点的unreachable条件，也就是即使节点被系统判定为不可达，DaemonSet仍然试图在其上部署pod。</li>
+<li>在集群引导阶段，即使kubernetes scheduler还没有部署生效，DaemonSet仍然可以将pod部署到集群中的任何节点，此特性主要是在集群引导阶段使用。</li>
+</ul>
+</blockquote>
+<h3 id="因为DaemonSet不同于常规pod的调度特性，它带来两个问题："><a href="#因为DaemonSet不同于常规pod的调度特性，它带来两个问题：" class="headerlink" title="因为DaemonSet不同于常规pod的调度特性，它带来两个问题："></a>因为DaemonSet不同于常规pod的调度特性，它带来两个问题：</h3><blockquote>
+<ul>
+<li>pod行为不一致。普通pod被创建以后等待调度的阶段称为pending，因为DaemonSet中的pod无需调度，因而无此状态，用户会因此产生迷惑。</li>
+<li>pod优先级特性由kubernetes scheduler实现，DaemonSet无此特性。当系统打开pod优先级功能时，pod优先级特性会被DaemonSet忽略，DaemonSet控制器将自己做出调度决策。</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>为了解决以上两个问题可以使用ScheduleDaemonSetPods，ScheduleDaemonSetPods允许您使用默认调度器(而不是DaemonSet controller)调度DaemonSets，方法是向DaemonSet pods添加NodeAffinity项，而不是.spec.template.spec.nodeName。然后使用默认调度程序将pod绑定到目标主机。如果DaemonSet pod的节点关联性已经存在，则替换它。DaemonSet controller仅在创建或修改DaemonSet pods时执行这些操作，并且对DaemonSet的spec.template不做任何更改。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">nodeAffinity:</span><br><span class="line">  requiredDuringSchedulingIgnoredDuringExecution:</span><br><span class="line">    nodeSelectorTerms:</span><br><span class="line">    - matchFields:</span><br><span class="line">      - key: metadata.name</span><br><span class="line">        operator: In</span><br><span class="line">        values:</span><br><span class="line">        - target-host-name</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>其中”target-host-name”就是原来.spec.nodeName的值，这样pod就会被kubernetes scheduler调度。通过以上操作解决了上述两个问题。但DaemonSet的调度有自己因有的特性，在上文中提到的“不受节点unreachable条件限制”，为了使DaemonSet在使用kubernetes scheduler时仍然保持此特性需要打开集群的”TaintNodesByCondition”特性。</p>
+</blockquote>
+<blockquote>
+<p>如果DaemonSet使用主机网络那么必需在DaemonSet中添加如下的Toleration：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">node.kubernetes.io/network-unavailable:NoSchedule</span><br></pre></td></tr></table></figure>
+
+<h3 id="DaemonSet自动添加的Toleration："><a href="#DaemonSet自动添加的Toleration：" class="headerlink" title="DaemonSet自动添加的Toleration："></a>DaemonSet自动添加的Toleration：</h3><blockquote>
+<p>系统在某此条件下会自动为节点添加Taint，比如硬盘不足、网络不可达等，以阻止新pod往不满足条件的节点上调度。但DaemonSet的目的是在全部有资格的node上部署，不希望被这种Taint打断，因经系统也默认为DaemonSet上的pod添加Toleration。如下表：</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>容忍度</th>
+<th>Effect</th>
+<th>版本</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>node.kubernetes.io/not-ready</td>
+<td>NoExecute</td>
+<td>1.13+</td>
+<td>当存在诸如网络分区之类的节点问题时，不会驱逐DaemonSet pod。</td>
+</tr>
+<tr>
+<td>node.kubernetes.io/unreachable</td>
+<td>NoExecute</td>
+<td>1.13+</td>
+<td>当存在诸如网络分区之类的节点问题时，不会驱逐DaemonSet pod。</td>
+</tr>
+<tr>
+<td>node.kubernetes.io/disk-pressure</td>
+<td>NoSchedule</td>
+<td>1.8+</td>
+<td></td>
+</tr>
+<tr>
+<td>node.kubernetes.io/memory-pressure</td>
+<td>NoSchedule</td>
+<td>1.8+</td>
+<td></td>
+</tr>
+<tr>
+<td>node.kubernetes.io/unschedulable</td>
+<td>NoExecute</td>
+<td>1.12+</td>
+<td>DaemonSet pods可以通过默认调度程序容忍不可调度的属性。</td>
+</tr>
+<tr>
+<td>node.kubernetes.io/unreachable</td>
+<td>NoExecute</td>
+<td>1.12+</td>
+<td>使用主机网络的DaemonSet pod可以通过默认调度程序容忍网络不可用的属性。</td>
+</tr>
+</tbody></table>
+<h3 id="对-DaemonSet-执行回滚"><a href="#对-DaemonSet-执行回滚" class="headerlink" title="对 DaemonSet 执行回滚"></a>对 DaemonSet 执行回滚</h3><p>找到想要 DaemonSet 回滚到的历史版本（revision）<br>列出 DaemonSet 的所有版本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl rollout history daemonset &lt;daemonset-name&gt;</span><br></pre></td></tr></table></figure>
+
+<p>该命令返回 DaemonSet 版本列表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">daemonsets &quot;&lt;daemonset-name&gt;&quot;</span><br><span class="line">REVISION        CHANGE-CAUSE</span><br><span class="line">1               ...</span><br><span class="line">2               ...</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>执行以下命令，来查看指定版本的详细信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl rollout history daemonset &lt;daemonset-name&gt; --revision=1</span><br></pre></td></tr></table></figure>
+
+<p>该命令返回相应版本的详细信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">daemonsets &quot;&lt;daemonset-name&gt;&quot; with revision #1</span><br><span class="line">Pod Template:</span><br><span class="line">Labels:       foo=bar</span><br><span class="line">Containers:</span><br><span class="line">app:</span><br><span class="line"> Image:       ...</span><br><span class="line"> Port:        ...</span><br><span class="line"> Environment: ...</span><br><span class="line"> Mounts:      ...</span><br><span class="line">Volumes:       ...</span><br></pre></td></tr></table></figure>
+
+<p>回滚到指定版本</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># 在 --to-revision 中指定您从步骤 1 中获取的版本序号</span><br><span class="line">kubectl rollout undo daemonset &lt;daemonset-name&gt; --to-revision=&lt;revision&gt;</span><br></pre></td></tr></table></figure>
+
+<p>如果成功，命令会返回：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">daemonset &quot;&lt;daemonset-name&gt;&quot; rolled back</span><br></pre></td></tr></table></figure>
+
+<p>如果 <code>--to-revision</code> 参数未指定，将选中最近的版本。</p>
+<p>观察 DaemonSet 回滚进度<br><code>kubectl rollout undo daemonset</code> 向服务器表明启动<code>DaemonSet</code> 回滚。 真正的回滚是在服务器端异步完成的。</p>
+<p>执行以下命令，来观察<code>DaemonSet</code>回滚进度：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl rollout status ds/&lt;daemonset-name&gt;</span><br></pre></td></tr></table></figure>
+
+<p>回滚完成时，输出形如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">daemonset &quot;&lt;daemonset-name&gt;&quot; successfully rolled out</span><br></pre></td></tr></table></figure>
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes-定义Deployment控制器/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1814,161 +2061,6 @@
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/22/Kubernetes-Deployment介绍/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Mr.Ye">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/touxiang.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Mr.Ye Blogs">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2019/08/22/Kubernetes-Deployment介绍/" itemprop="url">Kubernetes Deployment介绍</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-22T17:13:38+08:00">
-                2019-08-22
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <p>Deployment是Kubernetes v1.2引入的概念，引入的目的是为了更好地解决Pod的编排问题。为此，Deployment在内部使用了Replica Set来实现目的，无论从Deployment的作用与目的，它的YAML定义，还是从它的具体命令行操作来看，我们都可以把它看作RC的一次升级，两者相似度超过90%。</p>
-<p>Deployment相对于RC的一个最大升级是我们随时知道当前Pod“部署”的进度。实际上由于一个Pod的创建、调度、绑定节点及在目标Node上启动对应的容器这一完整过程需要一定的时间，所以我们期待系统启动N个Pod副本的目标状态，实际上是一个连续变化的“部署过程”导致的最终状态。</p>
-<h3 id="Deployment的典型使用场景有以下几个。"><a href="#Deployment的典型使用场景有以下几个。" class="headerlink" title="Deployment的典型使用场景有以下几个。"></a>Deployment的典型使用场景有以下几个。</h3><ul>
-<li>创建一个Deployment对象来生成对应的Replica Set并完成Pod副本的创建过程。</li>
-<li>检查Deployment的状态来看部署动作是否完成（Pod副本的数量是否达到预期的值）。</li>
-<li>更新Deployment以创建新的Pod（比如镜像升级）。</li>
-<li>如果当前Deployment不稳定，则回滚到一个早先的Deployment版本。</li>
-<li>暂停Deployment以便于一次性修改多个PodTemplateSpec的配置项，之后再恢复Deployment，进行新的发布。</li>
-<li>扩展Deployment以应对高负载。</li>
-<li>查看Deployment的状态，以此作为发布是否成功的指标。</li>
-<li>清理不再需要的旧版本ReplicaSets。</li>
-</ul>
-<p>Deployment的定义与Replica Set的定义很类似，除了API声明与Kind类型等有所区别：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: extensions/v1beta1      apiVersion: v1</span><br><span class="line">kind: Deployment                    kind: ReplicaSet</span><br><span class="line">metadata:                           metadata:</span><br><span class="line">  name: nginx-deployment              name: nginx-repset</span><br></pre></td></tr></table></figure>
-
-<p>下面我们通过运行一些例子来一起直观地感受这个新概念。首先创建一个名为tomcat-deployment.yaml的Deployment描述文件，内容如下：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  name: frontend</span><br><span class="line">spec:</span><br><span class="line">  replicas: 1</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      tier: frontend</span><br><span class="line">    matchExpressions:</span><br><span class="line">      - &#123;key: tier, operator: In, values: [frontend]&#125;</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: app-demo</span><br><span class="line">        tier: frontend</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - name: tomcat-demo</span><br><span class="line">        image: tomcat</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 8080</span><br></pre></td></tr></table></figure>
-
-<h3 id="运行下述命令创建Deploymeny"><a href="#运行下述命令创建Deploymeny" class="headerlink" title="运行下述命令创建Deploymeny:"></a>运行下述命令创建Deploymeny:</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># kubectl create -f tomcat-deployment.yaml</span><br><span class="line">deployment &quot;tomcat-deploy&quot; created</span><br></pre></td></tr></table></figure>
-
-<h3 id="运行下述命令查看Deployment的信息："><a href="#运行下述命令查看Deployment的信息：" class="headerlink" title="运行下述命令查看Deployment的信息："></a>运行下述命令查看Deployment的信息：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># kubectl get deployments</span><br><span class="line">NAME            DESIRED     CURRENT     UP-TO-DATE      AVAILABLE   AGE</span><br><span class="line">tomcat-deploy   1           1           1               1           4m</span><br></pre></td></tr></table></figure>
-
-<h3 id="对上述输出中涉及的数量解释如下："><a href="#对上述输出中涉及的数量解释如下：" class="headerlink" title="对上述输出中涉及的数量解释如下："></a>对上述输出中涉及的数量解释如下：</h3><ul>
-<li>DESIRED：Pod副本数量的期望值，即Deployment里定义的Replica。</li>
-<li>CURRENT：当前Replica的值，实际上是Deployment所创建的Replica Set里的Replica值，这个值不断增加，直到达到DESIRED为止，表明整个部署过程完成。</li>
-<li>UP-TO-DATE：最新版本的Pod副本数量，用于指示在滚动升级的过程中，有多少个Pod副本已经成功升级。</li>
-<li>AVAILABLE：当前集群中可用的Pod副本数量，即集群中当前存活的Pod数量。</li>
-</ul>
-<p>运行下述命令查看对应的Replica Set，我们看到它的命名与Deployment的名字有关系：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># kubectl get rs</span><br><span class="line">NAME                        DESIRED     CURRENT     AGE</span><br><span class="line">tomcat-deploy-1640611518    1           1           1m</span><br></pre></td></tr></table></figure>
-
-<p>运行下述命令查看创建的Pod，我们发现Pod的命名以Deployment对应的Replica Set的名字为前缀，这种命名很清晰地表明了一个Replica Set创建了哪些Pod，对于滚动升级这种复杂的过程来说，很容易排查错误：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># kubectl get pods</span><br><span class="line">NAME                            READY       STATUS      RESTARTS    AGE</span><br><span class="line">tomcat-deploy-1640611518-zhrsc  1/1         Running     0           3m</span><br></pre></td></tr></table></figure>
-
-<p>运行kubectl describe deployments，可以清楚地看到Deployment控制的Pod的水平扩展过程。</p>
-<p>Pod的管理对象，除了RC和Deployment，还包括ReplicaSet、DaemonSet、StatefulSet、Job等，分别用于不同的应用场景中，下面的会陆续介绍。</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -2021,7 +2113,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">12</span>
+                  <span class="site-state-item-count">13</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>

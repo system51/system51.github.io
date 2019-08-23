@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="DaemonSet 确保全部（或者一些）Node 上运行一个 Pod 的副本。当有 Node 加入集群时，也会为他们新增一个 Pod 。当有 Node 从集群移除时，这些 Pod 也会被回收。删除 DaemonSet 将会删除它创建的所有 Pod。  使用 DaemonSet 的一些典型用法：  运行集群存储 daemon，例如在每个 Node 上运行 glusterd、ceph。 在每个 No">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之DaemonSet">
+<meta property="og:url" content="http://yoursite.com/2019/08/23/Kubernetes之DaemonSet/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="DaemonSet 确保全部（或者一些）Node 上运行一个 Pod 的副本。当有 Node 加入集群时，也会为他们新增一个 Pod 。当有 Node 从集群移除时，这些 Pod 也会被回收。删除 DaemonSet 将会删除它创建的所有 Pod。  使用 DaemonSet 的一些典型用法：  运行集群存储 daemon，例如在每个 Node 上运行 glusterd、ceph。 在每个 No">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-23T06:33:21.199Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes之DaemonSet">
+<meta name="twitter:description" content="DaemonSet 确保全部（或者一些）Node 上运行一个 Pod 的副本。当有 Node 加入集群时，也会为他们新增一个 Pod 。当有 Node 从集群移除时，这些 Pod 也会被回收。删除 DaemonSet 将会删除它创建的所有 Pod。  使用 DaemonSet 的一些典型用法：  运行集群存储 daemon，例如在每个 Node 上运行 glusterd、ceph。 在每个 No">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/08/23/Kubernetes之DaemonSet/">
+
+
+
+
+
+  <title>Kubernetes之DaemonSet | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes之DaemonSet/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes之DaemonSet</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T13:47:36+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>DaemonSet 确保全部（或者一些）Node 上运行一个 Pod 的副本。当有 Node 加入集群时，也会为他们新增一个 Pod 。当有 Node 从集群移除时，这些 Pod 也会被回收。删除 DaemonSet 将会删除它创建的所有 Pod。</p>
+</blockquote>
+<h3 id="使用-DaemonSet-的一些典型用法："><a href="#使用-DaemonSet-的一些典型用法：" class="headerlink" title="使用 DaemonSet 的一些典型用法："></a>使用 DaemonSet 的一些典型用法：</h3><blockquote>
+<ul>
+<li>运行集群存储 daemon，例如在每个 Node 上运行 glusterd、ceph。</li>
+<li>在每个 Node 上运行日志收集 daemon，例如fluentd、logstash。</li>
+<li>在每个 Node 上运行监控 daemon，例如 Prometheus Node Exporter、collectd、Datadog 代理、New Relic 代理，或 Ganglia gmond。</li>
+</ul>
+</blockquote>
+<h3 id="创建DaemonSet："><a href="#创建DaemonSet：" class="headerlink" title="创建DaemonSet："></a>创建DaemonSet：</h3><blockquote>
+<p>以下是DaemonSet的示例spec文件，运行fluentd-elasticsearch image：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: DaemonSet</span><br><span class="line">metadata:</span><br><span class="line">  name: fluentd-elasticsearch</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  labels:</span><br><span class="line">    k8s-app: fluentd-logging</span><br><span class="line">spec:</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      name: fluentd-elasticsearch</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        name: fluentd-elasticsearch</span><br><span class="line">    spec:</span><br><span class="line">      tolerations:</span><br><span class="line">      - key: node-role.kubernetes.io/master</span><br><span class="line">        effect: NoSchedule</span><br><span class="line">      containers:</span><br><span class="line">      - name: fluentd-elasticsearch</span><br><span class="line">        image: k8s.gcr.io/fluentd-elasticsearch:1.20</span><br><span class="line">        resources:</span><br><span class="line">          limits:</span><br><span class="line">            memory: 200Mi</span><br><span class="line">          requests:</span><br><span class="line">            cpu: 100m</span><br><span class="line">            memory: 200Mi</span><br><span class="line">        volumeMounts:</span><br><span class="line">        - name: varlog</span><br><span class="line">          mountPath: /var/log</span><br><span class="line">        - name: varlibdockercontainers</span><br><span class="line">          mountPath: /var/lib/docker/containers</span><br><span class="line">          readOnly: true</span><br><span class="line">      terminationGracePeriodSeconds: 30   #k8s将会给应用发送SIGTERM信号，可以用来正确、优雅地关闭应用,默认为30秒</span><br><span class="line">      volumes:</span><br><span class="line">      - name: varlog</span><br><span class="line">        hostPath:</span><br><span class="line">          path: /var/log</span><br><span class="line">      - name: varlibdockercontainers</span><br><span class="line">        hostPath:</span><br><span class="line">          path: /var/lib/docker/containers</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>以上DaemonSet中没有RestartPolicy字段，默认为Always。如果有的话，必需将值设置成Always，否则在创建时出现不可用错误。</p>
+</blockquote>
+<blockquote>
+<p>DaemonSet同样会受到Taint（污点）的抵制，如果不在Pod中配置匹配的Toleration（容忍度），那么DaemonSet不会在拥有Taint（污点）属性的node上部署Pod。上例中有如下内容：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">tolerations:</span><br><span class="line">    - key: node-role.kubernetes.io/master</span><br><span class="line">      effect: NoSchedule</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>原因就是系统默认为master节点增加了 “node-role.kubernetes.io/master”的Taint（污点），以抵制普通Pod部署在Master节点上，为了使master成为专用节点而添加的Taint（污点）。因为我们预期上例DaemonSet在集群内全局部署，因此需要加入相匹配的Toleration（容忍度）这样Master节点也会部署DaemonSet。</p>
+</blockquote>
+<h3 id="仅在相同的-Node-上运行-Pod："><a href="#仅在相同的-Node-上运行-Pod：" class="headerlink" title="仅在相同的 Node 上运行 Pod："></a>仅在相同的 Node 上运行 Pod：</h3><blockquote>
+<p>如果指定了 .spec.template.spec.nodeSelector，则DaemonSet只会在满足条件的node上部署pod。 类似这种情况，可以指定 .spec.template.spec.affinity，然后 DaemonSet Controller 将在能够与 Node Affinity 匹配的节点上创建 Pod。 如果根本就没有指定，则 DaemonSet Controller 将在所有节点上创建 Pod。<br>总之，可以通过Taint（污点）、Toleration（容忍度）、Affinity（亲和力）、node label控制DaemonSet部署pod的节点范围。</p>
+</blockquote>
+<h3 id="系统如何调度DaemonSet-pod（自1-12起默认禁用）："><a href="#系统如何调度DaemonSet-pod（自1-12起默认禁用）：" class="headerlink" title="系统如何调度DaemonSet pod（自1.12起默认禁用）："></a>系统如何调度DaemonSet pod（自1.12起默认禁用）：</h3><blockquote>
+<p>默认情况下DaemonSet在创建pod时如果为其增加.spec.template.spec.nodeName字段，也就是说所创建的pod运行在那个节上在创建阶段就已经确定，所以DaemonSet中的pod实际上没有接受kubernetes scheduler的调度，它不需要调度，因此产生以下两个特性：</p>
+<ul>
+<li>DaemonSet中的pod不遵从节点的unreachable条件，也就是即使节点被系统判定为不可达，DaemonSet仍然试图在其上部署pod。</li>
+<li>在集群引导阶段，即使kubernetes scheduler还没有部署生效，DaemonSet仍然可以将pod部署到集群中的任何节点，此特性主要是在集群引导阶段使用。</li>
+</ul>
+</blockquote>
+<h3 id="因为DaemonSet不同于常规pod的调度特性，它带来两个问题："><a href="#因为DaemonSet不同于常规pod的调度特性，它带来两个问题：" class="headerlink" title="因为DaemonSet不同于常规pod的调度特性，它带来两个问题："></a>因为DaemonSet不同于常规pod的调度特性，它带来两个问题：</h3><blockquote>
+<ul>
+<li>pod行为不一致。普通pod被创建以后等待调度的阶段称为pending，因为DaemonSet中的pod无需调度，因而无此状态，用户会因此产生迷惑。</li>
+<li>pod优先级特性由kubernetes scheduler实现，DaemonSet无此特性。当系统打开pod优先级功能时，pod优先级特性会被DaemonSet忽略，DaemonSet控制器将自己做出调度决策。</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>为了解决以上两个问题可以使用ScheduleDaemonSetPods，ScheduleDaemonSetPods允许您使用默认调度器(而不是DaemonSet controller)调度DaemonSets，方法是向DaemonSet pods添加NodeAffinity项，而不是.spec.template.spec.nodeName。然后使用默认调度程序将pod绑定到目标主机。如果DaemonSet pod的节点关联性已经存在，则替换它。DaemonSet controller仅在创建或修改DaemonSet pods时执行这些操作，并且对DaemonSet的spec.template不做任何更改。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">nodeAffinity:</span><br><span class="line">  requiredDuringSchedulingIgnoredDuringExecution:</span><br><span class="line">    nodeSelectorTerms:</span><br><span class="line">    - matchFields:</span><br><span class="line">      - key: metadata.name</span><br><span class="line">        operator: In</span><br><span class="line">        values:</span><br><span class="line">        - target-host-name</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>其中”target-host-name”就是原来.spec.nodeName的值，这样pod就会被kubernetes scheduler调度。通过以上操作解决了上述两个问题。但DaemonSet的调度有自己因有的特性，在上文中提到的“不受节点unreachable条件限制”，为了使DaemonSet在使用kubernetes scheduler时仍然保持此特性需要打开集群的”TaintNodesByCondition”特性。</p>
+</blockquote>
+<blockquote>
+<p>如果DaemonSet使用主机网络那么必需在DaemonSet中添加如下的Toleration：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">node.kubernetes.io/network-unavailable:NoSchedule</span><br></pre></td></tr></table></figure>
+
+<h3 id="DaemonSet自动添加的Toleration："><a href="#DaemonSet自动添加的Toleration：" class="headerlink" title="DaemonSet自动添加的Toleration："></a>DaemonSet自动添加的Toleration：</h3><blockquote>
+<p>系统在某此条件下会自动为节点添加Taint，比如硬盘不足、网络不可达等，以阻止新pod往不满足条件的节点上调度。但DaemonSet的目的是在全部有资格的node上部署，不希望被这种Taint打断，因经系统也默认为DaemonSet上的pod添加Toleration。如下表：</p>
+</blockquote>
+<table>
+<thead>
+<tr>
+<th>容忍度</th>
+<th>Effect</th>
+<th>版本</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>node.kubernetes.io/not-ready</td>
+<td>NoExecute</td>
+<td>1.13+</td>
+<td>当存在诸如网络分区之类的节点问题时，不会驱逐DaemonSet pod。</td>
+</tr>
+<tr>
+<td>node.kubernetes.io/unreachable</td>
+<td>NoExecute</td>
+<td>1.13+</td>
+<td>当存在诸如网络分区之类的节点问题时，不会驱逐DaemonSet pod。</td>
+</tr>
+<tr>
+<td>node.kubernetes.io/disk-pressure</td>
+<td>NoSchedule</td>
+<td>1.8+</td>
+<td></td>
+</tr>
+<tr>
+<td>node.kubernetes.io/memory-pressure</td>
+<td>NoSchedule</td>
+<td>1.8+</td>
+<td></td>
+</tr>
+<tr>
+<td>node.kubernetes.io/unschedulable</td>
+<td>NoExecute</td>
+<td>1.12+</td>
+<td>DaemonSet pods可以通过默认调度程序容忍不可调度的属性。</td>
+</tr>
+<tr>
+<td>node.kubernetes.io/unreachable</td>
+<td>NoExecute</td>
+<td>1.12+</td>
+<td>使用主机网络的DaemonSet pod可以通过默认调度程序容忍网络不可用的属性。</td>
+</tr>
+</tbody></table>
+<h3 id="对-DaemonSet-执行回滚"><a href="#对-DaemonSet-执行回滚" class="headerlink" title="对 DaemonSet 执行回滚"></a>对 DaemonSet 执行回滚</h3><p>找到想要 DaemonSet 回滚到的历史版本（revision）<br>列出 DaemonSet 的所有版本：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl rollout history daemonset &lt;daemonset-name&gt;</span><br></pre></td></tr></table></figure>
+
+<p>该命令返回 DaemonSet 版本列表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">daemonsets &quot;&lt;daemonset-name&gt;&quot;</span><br><span class="line">REVISION        CHANGE-CAUSE</span><br><span class="line">1               ...</span><br><span class="line">2               ...</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>执行以下命令，来查看指定版本的详细信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl rollout history daemonset &lt;daemonset-name&gt; --revision=1</span><br></pre></td></tr></table></figure>
+
+<p>该命令返回相应版本的详细信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">daemonsets &quot;&lt;daemonset-name&gt;&quot; with revision #1</span><br><span class="line">Pod Template:</span><br><span class="line">Labels:       foo=bar</span><br><span class="line">Containers:</span><br><span class="line">app:</span><br><span class="line"> Image:       ...</span><br><span class="line"> Port:        ...</span><br><span class="line"> Environment: ...</span><br><span class="line"> Mounts:      ...</span><br><span class="line">Volumes:       ...</span><br></pre></td></tr></table></figure>
+
+<p>回滚到指定版本</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># 在 --to-revision 中指定您从步骤 1 中获取的版本序号</span><br><span class="line">kubectl rollout undo daemonset &lt;daemonset-name&gt; --to-revision=&lt;revision&gt;</span><br></pre></td></tr></table></figure>
+
+<p>如果成功，命令会返回：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">daemonset &quot;&lt;daemonset-name&gt;&quot; rolled back</span><br></pre></td></tr></table></figure>
+
+<p>如果 <code>--to-revision</code> 参数未指定，将选中最近的版本。</p>
+<p>观察 DaemonSet 回滚进度<br><code>kubectl rollout undo daemonset</code> 向服务器表明启动<code>DaemonSet</code> 回滚。 真正的回滚是在服务器端异步完成的。</p>
+<p>执行以下命令，来观察<code>DaemonSet</code>回滚进度：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl rollout status ds/&lt;daemonset-name&gt;</span><br></pre></td></tr></table></figure>
+
+<p>回滚完成时，输出形如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">daemonset &quot;&lt;daemonset-name&gt;&quot; successfully rolled out</span><br></pre></td></tr></table></figure>
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/23/Kubernetes-定义Deployment控制器/" rel="next" title="Kubernetes 定义Deployment控制器">
+                <i class="fa fa-chevron-left"></i> Kubernetes 定义Deployment控制器
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-DaemonSet-的一些典型用法："><span class="nav-number">1.</span> <span class="nav-text">使用 DaemonSet 的一些典型用法：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建DaemonSet："><span class="nav-number">2.</span> <span class="nav-text">创建DaemonSet：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#仅在相同的-Node-上运行-Pod："><span class="nav-number">3.</span> <span class="nav-text">仅在相同的 Node 上运行 Pod：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#系统如何调度DaemonSet-pod（自1-12起默认禁用）："><span class="nav-number">4.</span> <span class="nav-text">系统如何调度DaemonSet pod（自1.12起默认禁用）：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#因为DaemonSet不同于常规pod的调度特性，它带来两个问题："><span class="nav-number">5.</span> <span class="nav-text">因为DaemonSet不同于常规pod的调度特性，它带来两个问题：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#DaemonSet自动添加的Toleration："><span class="nav-number">6.</span> <span class="nav-text">DaemonSet自动添加的Toleration：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#对-DaemonSet-执行回滚"><span class="nav-number">7.</span> <span class="nav-text">对 DaemonSet 执行回滚</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
