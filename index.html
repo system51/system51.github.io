@@ -230,6 +230,162 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes之Job/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/08/23/Kubernetes之Job/" itemprop="url">Kubernetes之Job</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T15:12:00+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <blockquote>
+<p>对于ReplicaSet、ReplicationController等类型的控制器而言，它希望pod保持预期数目、持久运行下去，除非用户明确删除，否则这些对象一直存在，它们针对的是耐久性任务，如web服务等。对于非耐久性任务，比如压缩文件，任务完成后，pod需要结束运行，不需要pod继续保持在系统中，这个时候就要用到Job。因此说Job是对ReplicaSet、ReplicationController等持久性控制器的补充。</p>
+</blockquote>
+<h3 id="Job与其它控制器的细微差别："><a href="#Job与其它控制器的细微差别：" class="headerlink" title="Job与其它控制器的细微差别："></a>Job与其它控制器的细微差别：</h3><ul>
+<li>Job定义方法与ReplicaSet等控制器相似，只有细微差别，如下：<ul>
+<li>Job中的restartPolicy必需是”Never”或者”OnFailure”，这个很好理解，因为pod要运行到结束，而不是反复重新启动。</li>
+<li>Job不需要选择器，其中的pod也不需要标签，系统在创建Job时会自动添加相关内容。当然用户也可以出于资源组织的目的添加标签，但这个与Job本身的实现没有关系。</li>
+<li>Job新增加两个字段：.spec.completions、.spec.parallelism。</li>
+<li>backoffLimit字段</li>
+</ul>
+</li>
+</ul>
+<h3 id="Job参数："><a href="#Job参数：" class="headerlink" title="Job参数："></a>Job参数：</h3><blockquote>
+<p>.spec.completions标志Job结束需要成功运行的Pod个数，默认为1<br>.spec.parallelism标志并行运行的Pod的个数，默认为1<br>.spec.backoffLimit 指定在此Job在标记为失败之前重试的次数，默认为6次</p>
+</blockquote>
+<blockquote>
+<p>根据.spec.completions和.spec.Parallelism的设置，可以将Job划分为以下几种pattern：</p>
+</blockquote>
+<p><img src="/images/job.png" alt="job"></p>
+<h3 id="Job-Controller："><a href="#Job-Controller：" class="headerlink" title="Job Controller："></a>Job Controller：</h3><blockquote>
+<p>Job Controller负责根据Job Spec创建Pod，并持续监控Pod的状态，直至其成功结束。如果失败，则根据restartPolicy（只支持OnFailure和Never，不支持Always）决定是否创建新的Pod再次重试任务。</p>
+</blockquote>
+<h4 id="Job-注意："><a href="#Job-注意：" class="headerlink" title="Job 注意："></a>Job 注意：</h4><blockquote>
+<p>1、RestartPolicy仅支持Never或OnFailure<br>2、单个Pod时，默认Pod成功运行后Job即结束</p>
+</blockquote>
+<p>一个简单的例子：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: batch/v1</span><br><span class="line">kind: Job</span><br><span class="line">metadata:</span><br><span class="line">  name: pi</span><br><span class="line">spec:</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      name: pi</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - name: pi</span><br><span class="line">        image: perl</span><br><span class="line">        command: [&quot;perl&quot;,  &quot;-Mbignum=bpi&quot;, &quot;-wle&quot;, &quot;print bpi(2000)&quot;]</span><br><span class="line">      restartPolicy: Never</span><br></pre></td></tr></table></figure>
+
+<p>命令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create -f ./job.yaml</span><br><span class="line">job &quot;pi&quot; created</span><br><span class="line">$ pods=$(kubectl get pods --selector=job-name=pi --output=jsonpath=&#123;.items..metadata.name&#125;)</span><br><span class="line">$ kubectl logs $pods</span><br><span class="line">3.141592653589793238462643383279502...</span><br></pre></td></tr></table></figure>
+
+<p>固定结束次数的Job示例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: batch/v1</span><br><span class="line">kind: Job</span><br><span class="line">metadata:</span><br><span class="line">  name: busybox</span><br><span class="line">spec:</span><br><span class="line">  completions: 3</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      name: busybox</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - name: busybox</span><br><span class="line">        image: busybox</span><br><span class="line">        command: [&quot;echo&quot;, &quot;hello&quot;]</span><br><span class="line">      restartPolicy: Never</span><br></pre></td></tr></table></figure>
+
+<h3 id="裸Pods："><a href="#裸Pods：" class="headerlink" title="裸Pods："></a>裸Pods：</h3><blockquote>
+<p>所谓裸Pods是指直接用PodSpec来创建的Pod（即不在ReplicaSets或者ReplicationCtroller的管理之下的Pods）。这些Pod在Node重启后不会自动重启，但Job则会创建新的Pod继续任务。所以，推荐使用Job来替代裸Pods，即便是应用只需要一个Pod。</p>
+</blockquote>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/kuburnetes的Taints与Tolerations/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -2014,144 +2170,6 @@
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes-Namespace介绍/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Mr.Ye">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/touxiang.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Mr.Ye Blogs">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2019/08/23/Kubernetes-Namespace介绍/" itemprop="url">Kubernetes Namespace介绍</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T08:48:29+08:00">
-                2019-08-23
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <p>Namespace（命名空间）是Kubernetes系统中的另一个非常重要的概念，Namespace在很多情况下用于实现多租户的资源隔离。Nameaspace通过将集群内部的资源对象“分配”到不同的Namespce中，形成逻辑上分组的不同项目、小组或用户组，便于不同的分组在共享使用整个集群的资源的同时还能被分别管理。</p>
-<p>Kubernetes集群在启动后，会创建一个名为“default”的Namespace，通过kubectl可以查看到：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get namespaces</span><br><span class="line">NAME          STATUS    AGE</span><br><span class="line">default       Active    21h</span><br><span class="line">docker        Active    21h</span><br><span class="line">kube-public   Active    21h</span><br><span class="line">kube-system   Active    21h</span><br></pre></td></tr></table></figure>
-
-<p>接下来，如果不特别指明Namespace，则用户创建的Pod、RC、Service都被系统创建到这个默认的名为default的Namespace中。</p>
-<p>Namespace的定义很简单。如下所示的yaml定义了名为development的Namespace。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Namespace</span><br><span class="line">metadata:</span><br><span class="line">  name: development</span><br></pre></td></tr></table></figure>
-
-<p>一旦创建了Namespace，我们在创建资源对象时就可以指定这个资源对象属于哪个Namespace。比如在下面的例子中，我们定义了一个名为busybox的Pod，放人development这个Namespace里：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: busybox</span><br><span class="line">  namespace: development</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - image: busybox</span><br><span class="line">    command:</span><br><span class="line">      - sleep</span><br><span class="line">      - &quot;3600&quot;</span><br><span class="line">    name: busybox</span><br></pre></td></tr></table></figure>
-
-<p>此时，使用kubectl get命令查看将无法显示：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># kubectl get pods</span><br><span class="line">NAME                       READY     STATUS    RESTARTS   AGE</span><br></pre></td></tr></table></figure>
-
-<p>这是因为如果不加参数，则kubectl get 命令将仅显示属于“default”命名空间的资源对象。</p>
-<p>可以在kubectl命令中加入–namespace参数来查看某个命名空间中的对象：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># kubectl get pods --namespace=development</span><br><span class="line">NAME      READY     STATUS    RESTARTS   AGE</span><br><span class="line">busybox   1/1       Running   0          2m</span><br></pre></td></tr></table></figure>
-
-<p>当我们給每个租户创建一个Namespace来实现多租户的资源隔离时，还能结合Kubernetes的资源配额管理，限定不同租户能占用的资源，例如CPU使用量、内存使用量等。关于资源配额管理等问题，在后面的章节中会详细介绍。</p>
-
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -2204,7 +2222,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">14</span>
+                  <span class="site-state-item-count">15</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
