@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="类似于Linux的Cron模块，CronJob用来运行定时性任务，或者周期性、重复性任务。注意CronJob启动的是kubernetes中的Job，不是ReplicaSet、DaemonSet等其它控制器类型。  示例： 以下CronJob每分钟运行一次，打印出当前时间与hello消息。  123456789101112131415161718apiVersion: batch/v1beta1k">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-08-23T07:27:50.009Z">
+<meta property="og:updated_time" content="2019-08-23T08:06:48.290Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之CronJob">
 <meta name="twitter:description" content="类似于Linux的Cron模块，CronJob用来运行定时性任务，或者周期性、重复性任务。注意CronJob启动的是kubernetes中的Job，不是ReplicaSet、DaemonSet等其它控制器类型。  示例： 以下CronJob每分钟运行一次，打印出当前时间与hello消息。  123456789101112131415161718apiVersion: batch/v1beta1k">
@@ -309,7 +309,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: batch/v1beta1</span><br><span class="line">kind: CronJob</span><br><span class="line">metadata:</span><br><span class="line">  name: hello</span><br><span class="line">spec:</span><br><span class="line">  schedule: &quot;*/1 * * * *&quot;</span><br><span class="line">  jobTemplate:</span><br><span class="line">    spec:</span><br><span class="line">      template:</span><br><span class="line">        spec:</span><br><span class="line">          containers:</span><br><span class="line">          - name: hello</span><br><span class="line">            image: busybox</span><br><span class="line">            args:</span><br><span class="line">            - /bin/sh</span><br><span class="line">            - -c</span><br><span class="line">            - date; echo Hello from the Kubernetes cluster</span><br><span class="line">          restartPolicy: OnFailure</span><br></pre></td></tr></table></figure>
 
 <blockquote>
-<p>以上内容，schedule: “*/1 * * * *”与Linux Cron意义相同，表示每分钟启动一次。</p>
+<p>以上内容，<code>schedule: &quot;*/1 * * * *&quot;</code>与Linux Cron意义相同，表示每分钟启动一次。</p>
 </blockquote>
 <h3 id="运行CronJob"><a href="#运行CronJob" class="headerlink" title="运行CronJob"></a>运行CronJob</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create -f ./cronjob.yaml</span><br><span class="line">cronjob &quot;hello&quot; created</span><br></pre></td></tr></table></figure>
 
@@ -400,6 +400,10 @@
 
           <div class="post-nav-prev post-nav-item">
             
+              <a href="/2019/08/23/Kubernetes之Service/" rel="prev" title="Kubernetes之Service">
+                Kubernetes之Service <i class="fa fa-chevron-right"></i>
+              </a>
+            
           </div>
         </div>
       
@@ -477,7 +481,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">16</span>
+                  <span class="site-state-item-count">17</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
