@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="状态查询12345678# 查看集群信息kubectl cluster-infosystemctl status kube-apiserversystemctl status kubeletsystemctl status kube-proxysystemctl status kube-schedulersystemctl status kube-controller-managersystemc">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes 命令大全">
+<meta property="og:url" content="http://yoursite.com/2019/08/23/Kubernetes-命令大全/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="状态查询12345678# 查看集群信息kubectl cluster-infosystemctl status kube-apiserversystemctl status kubeletsystemctl status kube-proxysystemctl status kube-schedulersystemctl status kube-controller-managersystemc">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-23T01:12:12.058Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes 命令大全">
+<meta name="twitter:description" content="状态查询12345678# 查看集群信息kubectl cluster-infosystemctl status kube-apiserversystemctl status kubeletsystemctl status kube-proxysystemctl status kube-schedulersystemctl status kube-controller-managersystemc">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/08/23/Kubernetes-命令大全/">
+
+
+
+
+
+  <title>Kubernetes 命令大全 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes-命令大全/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes 命令大全</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T09:07:27+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="状态查询"><a href="#状态查询" class="headerlink" title="状态查询"></a>状态查询</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 查看集群信息</span><br><span class="line">kubectl cluster-info</span><br><span class="line">systemctl status kube-apiserver</span><br><span class="line">systemctl status kubelet</span><br><span class="line">systemctl status kube-proxy</span><br><span class="line">systemctl status kube-scheduler</span><br><span class="line">systemctl status kube-controller-manager</span><br><span class="line">systemctl status docker</span><br></pre></td></tr></table></figure>
+
+<h3 id="node相关"><a href="#node相关" class="headerlink" title="node相关"></a>node相关</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"># 查看namespaces</span><br><span class="line">kubectl get namespaces</span><br><span class="line">kubectl get ns</span><br><span class="line"></span><br><span class="line"># 为节点增加lable</span><br><span class="line">kubectl label nodes 10.126.72.31 points=test</span><br><span class="line"></span><br><span class="line"># 查看节点和lable</span><br><span class="line">kubectl get nodes --show-labels</span><br><span class="line"></span><br><span class="line"># 查看状态</span><br><span class="line">kubectl get componentstatuses</span><br><span class="line">kubectl get cs</span><br><span class="line"></span><br><span class="line"># Node的隔离与恢复</span><br><span class="line">## 隔离</span><br><span class="line">kubectl cordon k8s-node1</span><br><span class="line"></span><br><span class="line">## 恢复</span><br><span class="line">kubectl uncordon k8s-node1</span><br></pre></td></tr></table></figure>
+
+<h3 id="查询"><a href="#查询" class="headerlink" title="查询"></a>查询</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"># 查看所有nodes节点</span><br><span class="line">kubectl get nodes</span><br><span class="line"></span><br><span class="line"># 查看一个node</span><br><span class="line">$ kubectl describe nodes node1</span><br><span class="line"></span><br><span class="line"># 通过yaml文件查询</span><br><span class="line">kubectl get -f xxx-yaml/</span><br><span class="line"></span><br><span class="line"># endpoints端</span><br><span class="line">kubectl get endpoints</span><br><span class="line"></span><br><span class="line">#### 查看pods ####</span><br><span class="line"></span><br><span class="line"># 查看指定空间`kube-system`的pods</span><br><span class="line">kubectl get po -n kube-system</span><br><span class="line"></span><br><span class="line"># 查看所有空间的</span><br><span class="line">kubectl get pods -o wide --all-namespaces</span><br><span class="line"></span><br><span class="line"># 其他的写法</span><br><span class="line">kubectl get pod -o wide --namespace=kube-system</span><br><span class="line"></span><br><span class="line"># 获取svc</span><br><span class="line">kubectl get svc --all-namespaces</span><br><span class="line"></span><br><span class="line"># 其他写法</span><br><span class="line">kubectl get services --all-namespaces</span><br><span class="line"></span><br><span class="line"># 通过lable查询</span><br><span class="line">kubectl get pods -l app=nginx -o yaml|grep podIP</span><br><span class="line"></span><br><span class="line"># 当我们发现一个pod迟迟无法创建时，可以使用describe来查看详细信息。</span><br><span class="line">kubectl describe pod xxx</span><br></pre></td></tr></table></figure>
+
+<h3 id="删除所有pod"><a href="#删除所有pod" class="headerlink" title="删除所有pod"></a>删除所有pod</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"># 删除所有pods</span><br><span class="line">kubectl delete pods --all</span><br><span class="line"></span><br><span class="line"># 删除所有包含某个lable的pod和serivce</span><br><span class="line">kubectl delete pods,services -l name=&lt;lable-name&gt;</span><br><span class="line"></span><br><span class="line"># 删除ui server,然后重建</span><br><span class="line">kubectl delete deployments kubernetes-dashboard --namespace=kube-system</span><br><span class="line">kubectl delete services kubernetes-dashboard --namespace=kube-system</span><br><span class="line"></span><br><span class="line"># 强制删除部署</span><br><span class="line">kubectl delete deployment kafka-1</span><br><span class="line"></span><br><span class="line"># 删除rc</span><br><span class="line">kubectl delete rs --all &amp;&amp; kubectl delete rc --all</span><br><span class="line"></span><br><span class="line">## 强制删除Terminating状态的pod</span><br><span class="line">kubectl delete deployment kafka-1 --grace-period=0 --force</span><br></pre></td></tr></table></figure>
+
+<h3 id="滚动"><a href="#滚动" class="headerlink" title="滚动"></a>滚动</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># 升级</span><br><span class="line">kubectl apply -f xxx.yaml --record</span><br><span class="line"></span><br><span class="line"># 回滚</span><br><span class="line">kubectl rollout undo deployment javademo</span><br><span class="line"></span><br><span class="line"># 查看滚动升级记录</span><br><span class="line">kubectl rollout history deployment &#123;名称&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看日志"><a href="#查看日志" class="headerlink" title="查看日志"></a>查看日志</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"># 查看指定镜像的日志</span><br><span class="line">kubectl logs -f kube-dns-699984412-vz1q6 -n kube-system</span><br><span class="line"></span><br><span class="line">kubectl logs --tail=10 nginx  </span><br><span class="line"></span><br><span class="line">#指定其中一个查看日志</span><br><span class="line">kubectl logs kube-dns-699984412-n5zkz -c kubedns --namespace=kube-system</span><br><span class="line">kubectl logs kube-dns-699984412-vz1q6 -c dnsmasq --namespace=kube-system</span><br><span class="line">kubectl logs kube-dns-699984412-mqb14 -c sidecar --namespace=kube-system</span><br><span class="line"></span><br><span class="line"># 看日志</span><br><span class="line">journalctl -f</span><br></pre></td></tr></table></figure>
+
+<h3 id="扩展"><a href="#扩展" class="headerlink" title="扩展"></a>扩展</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 扩展副本</span><br><span class="line">kubectl scale rc xxxx --replicas=3</span><br><span class="line">kubectl scale rc mysql --replicas=1</span><br><span class="line">kubectl scale --replicas=3 -f foo.yaml</span><br></pre></td></tr></table></figure>
+
+<h3 id="执行"><a href="#执行" class="headerlink" title="执行"></a>执行</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># 启动</span><br><span class="line">nohup kubectl proxy --address=&apos;10.1.70.247&apos; --port=8001 --accept-hosts=&apos;^*$&apos; &gt;/dev/null 2&gt;&amp;1 &amp;</span><br><span class="line"></span><br><span class="line"># 进入镜像</span><br><span class="line">kubectl exec kube-dns-699984412-vz1q6 -n kube-system -c kubedns ifconfig</span><br><span class="line">kubectl exec kube-dns-699984412-vz1q6 -n kube-system -c kubedns ifconfig /bin/bash</span><br><span class="line"></span><br><span class="line"># 执行镜像内命令</span><br><span class="line">kubectl exec kube-dns-4140740281-pfjhr -c etcd --namespace=kube-system etcdctl get /skydns/local/cluster/default/redis-master</span><br></pre></td></tr></table></figure>
+
+<h3 id="无限循环命令"><a href="#无限循环命令" class="headerlink" title="无限循环命令"></a>无限循环命令</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">while true; do sleep 1; done</span><br></pre></td></tr></table></figure>
+
+<h3 id="其他"><a href="#其他" class="headerlink" title="其他"></a>其他</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"># 创建和删除</span><br><span class="line">kubectl create -f dashboard-controller.yaml</span><br><span class="line">kubectl delete -f dashboard-dashboard.yaml</span><br><span class="line"></span><br><span class="line"># 查看指定pods的环境变量</span><br><span class="line">kubectl exec xxx env</span><br><span class="line"></span><br><span class="line"># 判断dns是否通</span><br><span class="line">kubectl exec busybox -- nslookup kube-dns.kube-system</span><br><span class="line"></span><br><span class="line"># kube-proxy状态</span><br><span class="line">systemctl status kube-proxy -l</span><br><span class="line"></span><br><span class="line"># token的</span><br><span class="line">kubectl get serviceaccount/kube-dns --namespace=kube-system -o yaml|grep token</span><br></pre></td></tr></table></figure>
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/23/Kubernetes-Namespace介绍/" rel="next" title="Kubernetes Namespace介绍">
+                <i class="fa fa-chevron-left"></i> Kubernetes Namespace介绍
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/23/Kubectl-命令详解/" rel="prev" title="Kubectl 命令详解">
+                Kubectl 命令详解 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#状态查询"><span class="nav-number">1.</span> <span class="nav-text">状态查询</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#node相关"><span class="nav-number">2.</span> <span class="nav-text">node相关</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查询"><span class="nav-number">3.</span> <span class="nav-text">查询</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#删除所有pod"><span class="nav-number">4.</span> <span class="nav-text">删除所有pod</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#滚动"><span class="nav-number">5.</span> <span class="nav-text">滚动</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查看日志"><span class="nav-number">6.</span> <span class="nav-text">查看日志</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#扩展"><span class="nav-number">7.</span> <span class="nav-text">扩展</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#执行"><span class="nav-number">8.</span> <span class="nav-text">执行</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#无限循环命令"><span class="nav-number">9.</span> <span class="nav-text">无限循环命令</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#其他"><span class="nav-number">10.</span> <span class="nav-text">其他</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
