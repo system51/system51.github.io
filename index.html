@@ -230,6 +230,231 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/kuburnetes的Taints与Tolerations/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2019/08/23/kuburnetes的Taints与Tolerations/" itemprop="url">kuburnetes的Taints与Tolerations</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T14:39:36+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <blockquote>
+<p>Taints（污点）与tolerations（容忍度）一起工作确保Pod不会被调度到不合适的节点上。单个节点可以应用多个taint（污点），node不接受无法容忍taint（污点）的pod调度。Toleration（容忍度）是pod的属性，允许（非强制）pod调度到taints（污点）相匹配的node上去。（注意taints是node的属性，affinity是pod的属性。）</p>
+</blockquote>
+<h3 id="概念："><a href="#概念：" class="headerlink" title="概念："></a>概念：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">#通过kubectl taint为node添加taint，如：</span><br><span class="line">kubectl taint nodes node1 key=value:NoSchedule</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>为node节点 node1增加一条taint（污点）。Taint（污点）的关键字为key，值为value，taint（污点）影响NoSchedule。意味着没有pod会被调度到node1上，除非Pod它有匹配的toleration（容忍度）。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">#为node1删除刚才添加的taints，如下：</span><br><span class="line">kubectl taint nodes node1 key:NoSchedule-</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>可以为pod指定toleration（容忍度）。以下的两种toleration（容忍度）都与上文中创建的taint（污点）匹配，因此这个pod有可能被调试到node1上。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">tolerations:</span><br><span class="line">- key: &quot;key&quot;</span><br><span class="line">  operator: &quot;Equal&quot;</span><br><span class="line">  value: &quot;value&quot;</span><br><span class="line">  effect: &quot;NoSchedule&quot;</span><br><span class="line">tolerations:</span><br><span class="line">- key: &quot;key&quot;</span><br><span class="line">  operator: &quot;Exists&quot;</span><br><span class="line">  effect: &quot;NoSchedule&quot;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Toleration（容忍度）与taint（污点）匹配的条件是key相同、effect相同，并且：</p>
+<ul>
+<li>Operator的值是Exists（无需指定values的值）</li>
+<li>Operator是Equal，并且values的值相等<br>如果不指定，operator默认是Equal。</li>
+</ul>
+</blockquote>
+<h3 id="注意：两种特殊情况。"><a href="#注意：两种特殊情况。" class="headerlink" title="注意：两种特殊情况。"></a>注意：两种特殊情况。</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#Key为空，operator为Exists表示匹配所有的key。如下例表示匹配所有的taint（污点）：</span><br><span class="line">tolerations:</span><br><span class="line">- operator: &quot;Exists&quot;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">#空effect表示匹配所有effect，如：</span><br><span class="line">tolerations:</span><br><span class="line">- key: &quot;key&quot;</span><br><span class="line">  operator: &quot;Exists&quot;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>上例中用到了NoSchedule的effect。另外，可以使用PreferNoSchedule的effect，这是NoSchedule的“偏好”或者“软“版本。系统尽量避免非tolerate的pod调度到taint node上，但非强制要求。第三种可用的effect是NoExecute，后文描述。</p>
+</blockquote>
+<blockquote>
+<p>可以为单个node指定多条taint（污点），也可以为单个pod指定多条toleration（容忍度）。系统采用过滤的方式处理这种情况：首先从node的所有taint（污点）开始，然后将与pod中的toleration（容忍度）相匹配的taint（污点）删除，余下的taint（污点）对部署进来的pod产生影响。特别地：</p>
+<ul>
+<li>如果余下的taint（污点）中至少有一条的effect是NoSchedule，kubernetes将不会高度这个pod到的node上。</li>
+<li>如果余下的taint（污点）中没有effect为NoSchedule的taint（污点），但至少有一条effect为PreferNoSchedule，则系统尝试着不将pod部署在node上（也就是有可能还是会部署到这个node上）。</li>
+<li>如果余下的taint（污点）中至少有一条的effect是NoExecute，那么不旦新的pod不会被调度到这个node上，而且已经运行在这个node上的pod还会被驱逐出去。</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>例如，假如像这样taint一个node：</p>
+<ul>
+<li><code>kubectl taint nodes node1 key1=value1:NoSchedule</code></li>
+<li><code>kubectl taint nodes node1 key1=value1:NoExecute</code></li>
+<li><code>kubectl taint nodes node1 key2=value2:NoSchedule</code></li>
+</ul>
+</blockquote>
+<h3 id="pod有两个toleration："><a href="#pod有两个toleration：" class="headerlink" title="pod有两个toleration："></a>pod有两个toleration：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">tolerations:</span><br><span class="line">- key: &quot;key1&quot;</span><br><span class="line">  operator: &quot;Equal&quot;</span><br><span class="line">  value: &quot;value1&quot;</span><br><span class="line">  effect: &quot;NoSchedule&quot;</span><br><span class="line">- key: &quot;key1&quot;</span><br><span class="line">  operator: &quot;Equal&quot;</span><br><span class="line">  value: &quot;value1&quot;</span><br><span class="line">  effect: &quot;NoExecute&quot;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>这种情况下，pod不能调度到node上。因为pod没有toleration（容忍度）与node的第三条taint（污点）匹配。但是在添加taint（污点）之前已经运行在node上的pod不受影响（这里之前运行的pod指添加了toleration（容忍度）的pod），可能将pod排除出node的noExecute因为被过滤而没有生效。</p>
+</blockquote>
+<blockquote>
+<p>一般情况下，如果一个effect为NoExecute的taint（污点）应用于node，运行在node上的所有不能容忍这条taint（污点）的pod都会被排挤出node，能容忍这种taint（污点）的pod则不会被排挤。然而，如果effect为NoExecute的toleration（容忍度）指定给pod，同时添加可选的tolerationSeconds字段，则表示pod被排挤出node之前，以taint（污点）的添加时间为起点，允许此pod在此node上的生存时间。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">#例如：</span><br><span class="line"></span><br><span class="line">tolerations:</span><br><span class="line">- key: &quot;key1&quot;</span><br><span class="line">  operator: &quot;Equal&quot;</span><br><span class="line">  value: &quot;value1&quot;</span><br><span class="line">  effect: &quot;NoExecute&quot;</span><br><span class="line">  tolerationSeconds: 3600</span><br><span class="line"></span><br><span class="line">#表示可以多存活3600秒。</span><br></pre></td></tr></table></figure>
+
+<h3 id="使用案例："><a href="#使用案例：" class="headerlink" title="使用案例："></a>使用案例：</h3><blockquote>
+<p>Taints与tolerations可以灵活的控制pod远离node，或者将不应该运行的pod从node上排挤出去。以下是几个使用案例：</p>
+<ul>
+<li>专用node：如果打算指定特定node集合供特定用户专用，那么可以给这些node添加一条taint（kubectl taint nodes nodename dedicated=groupName:NoSchedule），然后在相应的pod上添加匹配的toleration（容忍度）。拥有toleration的pod被允许像使用集群中的其它node一样使用拥有taint的node。如果打算让pod只使用taint性质的node，并且只能使用taint的node的话，可以对这些taint的node再额外增加标签（例如：dedicated=groupName），然后再通过入口控制器为这些pod额外再增加亲和性要求它们只能部署到拥有dedicated=groupName的node上。总结就是通过标签的亲和性控制pod部署到特定的node上，通过为node增加taint并且为pod增加toleration抵制其它pod部署到这些node上，从而实现node专用。</li>
+<li>拥有特殊硬件的node：在集群中，有少数node拥有特殊的硬件配置（例如 GPUs），希望那些不使用特殊的硬件的pod尽量不要部署到这些拥有特殊硬件的node上，为后续到达的需要使用特殊硬件的pod预留出空间。通过如下方法达到这个目的。首先为node添加taint，taint表示node拥有特殊硬件（例如： kubectl taint nodes nodename special=true:NoSchedule 或者 kubectl taint nodes nodename special=true:PreferNoSchedule），然后为需要使用特殊硬件的pod添加相应的toleration。像专用node的例子一样，通过入口控制器很容易为pod添加对应的toleration。例如：推荐使用“扩展资源”代表特殊硬件，使用“扩展资源”的名称为拥有特殊硬件的node添加taint，当提交的pod被配置为需要使用特殊硬件时，扩展资源入口控制器自动为其加上正确的toleration。</li>
+<li>基于taint的驱逐（测试特性）：一种当node出现问题时per-pod-configurable的驱逐行为，下节介绍。</li>
+</ul>
+</blockquote>
+<h3 id="基于taint的驱逐"><a href="#基于taint的驱逐" class="headerlink" title="基于taint的驱逐:"></a>基于taint的驱逐:</h3><blockquote>
+<p>先前提到的effect为NoExecute的taint，它对已经运行在node上的pod的影响如下：</p>
+<ul>
+<li>如果pod没有toleration这个taint的话，pod立即被驱逐。</li>
+<li>如果toleration了这个taint，并且没有指定tolerationSeconds的值，则一直不会驱逐</li>
+<li>如果toleration了这个taint，但是指定tolerationSeconds限定了容忍的时间，则到期后驱逐</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>此外，Kubernetes用taint代表node出了问题（1.13beta版）。换句话说，当Node某些条件为<code>True</code>时，节点控制器自动为Node节点添加污点，而在状态为Ready的Node上，之前设置过的普通的驱逐逻辑将会被禁用。内置以下污点：</p>
+<ul>
+<li><code>node.kubernetes.io/not-ready</code>：节点尚未就绪。这对应于NodeCondition Ready为“ False”。</li>
+<li><code>node.kubernetes.io/unreachable</code>：Node controlloer无法访问节点。这对应于NodeCondition Ready为“ Unknown”。</li>
+<li><code>node.kubernetes.io/out-of-disk</code>：节点变得磁盘不足。</li>
+<li><code>node.kubernetes.io/memory-pressure</code>：节点有内存压力。</li>
+<li><code>node.kubernetes.io/disk-pressure</code>：节点有磁盘压力。</li>
+<li><code>node.kubernetes.io/network-unavailable</code>：节点的网络不可用。</li>
+<li><code>node.kubernetes.io/unschedulable</code>：节点是不可调度的。</li>
+<li><code>node.cloudprovider.kubernetes.io/uninitialized</code>：当使用“外部”云提供程序启动kubelet时，会在节点上设置此污点以将其标记为不可用。在cloud-controller-manager的控制器初始化此节点后，kubelet将删除此污点。</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>注意：在节点故障的情况下，为了保持现存的Pod驱逐的限速设置，系统将会以限速的模式逐步给Node设置Taint，这就能避免在一些特定情况下（比如Master暂时失联）大量的Pod被驱逐。这一功能兼容于<code>tolerationSeconds</code>允许Pod定义节点故障时持续多久才被逐出。<br>例如：一个包含很多本地状态的应用可能需要在网络发生故障时，还能持续在节点上运行，期望网络能够快速恢复，从而避免被从这个节点上驱逐。Pod的toleration可以这样定义：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">tolerations:</span><br><span class="line">- key: &quot;node.kubernetes.io/unreachable&quot;</span><br><span class="line">  operator: &quot;Exists&quot;</span><br><span class="line">  effect: &quot;NoExecute&quot;</span><br><span class="line">  tolerationSeconds: 6000</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li>对于Node未就绪状态，可以把Key设置为<code>node.kubernetes.io/not-ready</code>如果没有为Pod指定<code>node.kubernetes.io/not-ready</code> 的<code>Tolerations</code>，那么Kubernetes会自动为Pod加入<code>tolerationSeconds= 300</code>的<code>node.kubernetes.io/not-ready</code>类型的<code>Tolerations</code></li>
+<li>同样如果Pod没有定义<code>node.kubernetes.io/unreachable</code>的<code>Tolerations</code>那么系统会自动为其加入<code>tolerationSeconds=300</code>的<code>node.kubernetes.io/unreachable</code>类型的<code>Tolerations</code></li>
+</ul>
+</blockquote>
+<blockquote>
+<p> 这些系统自动设置的<code>Tolerations</code>在Node发现问题时，能够为Pod确保驱逐前再运行5min。</p>
+</blockquote>
+<h4 id="其阈值由kubelet如下参数控制："><a href="#其阈值由kubelet如下参数控制：" class="headerlink" title="其阈值由kubelet如下参数控制："></a>其阈值由kubelet如下参数控制：</h4><blockquote>
+<ul>
+<li><code>--eviction-hard</code>：驱逐阈值(例如memory.available&lt;1Gi)，如果满足这些阈值，就会触发pod驱逐。(默认imagefs.available &lt; 15%, memory.available &lt; 100 mi, nodefs.available &lt; 10%, nodefs.inodesFree &lt; 5%)</li>
+<li><code>--eviction-soft</code>：驱逐阈值(例如memory.available&lt;1.5Gi)，如果在相应的宽限期内达到该阈值，就会触发pod驱逐。</li>
+<li><code>--eviction-minimum-reclaim</code>：最小回收(例如imagef .available=2Gi)，描述kubelet在执行pod回收(如果该资源处于压力之下)时回收的最小资源量。</li>
+<li><code>--eviction-pressure-transition-period</code>：kubelet必须等待一段时间才能从驱逐压力状态过渡出来。(默认5m0)</li>
+</ul>
+</blockquote>
+<h4 id="编辑kubelet-conf-yml文件修改默认阈值来调整驱逐条件："><a href="#编辑kubelet-conf-yml文件修改默认阈值来调整驱逐条件：" class="headerlink" title="编辑kubelet-conf.yml文件修改默认阈值来调整驱逐条件："></a>编辑kubelet-conf.yml文件修改默认阈值来调整驱逐条件：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">- pods</span><br><span class="line">eventBurst: 10</span><br><span class="line">eventRecordQPS: 5</span><br><span class="line">evictionHard:</span><br><span class="line">  imagefs.available: 15%</span><br><span class="line">  memory.available: 100Mi</span><br><span class="line">  nodefs.available: 10%</span><br><span class="line">  nodefs.inodesFree: 5%</span><br><span class="line">evictionPressureTransitionPeriod: 5m0s</span><br></pre></td></tr></table></figure>
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/23/Kubernetes之DaemonSet/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1927,140 +2152,6 @@
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/22/自动扩容之Horizontal-Pod-Autoscaling（HPA）/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Mr.Ye">
-      <meta itemprop="description" content>
-      <meta itemprop="image" content="/images/touxiang.png">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Mr.Ye Blogs">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2019/08/22/自动扩容之Horizontal-Pod-Autoscaling（HPA）/" itemprop="url">自动扩容之Horizontal Pod Autoscaling（HPA）</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-22T17:32:18+08:00">
-                2019-08-22
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          
-            <p>我们通过手动执行kubectl scale命令，可以实现Pod扩容。但是，分布式系统要能够根据当前负载的变化情况自动触发水平扩展或缩容的行为，因为这一过程可能是频繁发生的、不可预料的，所以手动控制的方式是不现实的。</p>
-<p>因此，在Kubernetes1.1版本中首次发布了这一重量级新特性—–Horizontal Pod Autoscaler。</p>
-<p>Horizontal Pod Autoscaler简称HAP，意思是Pod横向自动扩容，与之前的RC、Deployment一样，也属于一种Kubernetes资源对象。通过追踪分析RC控制的所有目标Pod的负载来自动水平扩容，如果系统负载超过预定值，就开始增加Pod的个数，如果低于某个值，就自动减少Pod的个数。</p>
-<h3 id="目前，可以有以下两种方式作为Pod负载的度量指标："><a href="#目前，可以有以下两种方式作为Pod负载的度量指标：" class="headerlink" title="目前，可以有以下两种方式作为Pod负载的度量指标："></a>目前，可以有以下两种方式作为Pod负载的度量指标：</h3><p>1、CPU utilization percentageb，<br>2、应用程序自定义的度量指标，比如服务在每秒内的相应的请求数（TPS或QPS）。</p>
-<p>CPU utilization percentage是一个算术平均值，即目标pod所有副本自身的CPU利用率的平均值。一个Pod自身的CPU利用率是该Pod当前CPU使用量除以它的Pod request的值。比如当我们定义一个Pod的pod request为0.4，而当前pod的cpu使用量为0.2，则使用率为50%。如此可以得出一个平均值，如果某一个时刻CPU utilization percentage超过80%，则意味着当前Pod副本不足以支撑接下来更多的请求，需要进行动态扩容。而当请求高峰时段过去后，Pod CPU利用率又会降下来，此时对应的Pod副本数应该自动减少到一个合理的水平。</p>
-<p>CPU utilization percentage计算过程使用到的Pod的CPU使用量通常是1分钟的平均值。</p>
-<h3 id="条件"><a href="#条件" class="headerlink" title="条件"></a>条件</h3><p>HPA通过定期（定期轮询的时间通过–horizontal-pod-autoscaler-sync-period选项来设置，默认的时间为30秒）通过Status.PodSelector来查询pods的状态，获得pod的CPU使用率。然后，通过现有pods的CPU使用率的平均值（计算方式是最近的pod使用量（最近一分钟的平均值，从heapster中获得）除以设定的每个Pod的CPU使用率限额）跟目标使用率进行比较，并且在扩容时，还要遵循预先设定的副本数限制：MinReplicas &lt;= Replicas &lt;= MaxReplicas。</p>
-<p>计算扩容后Pod的个数：sum(最近一分钟内某个Pod的CPU使用率的平均值)/CPU使用上限的整数+1</p>
-<h3 id="流程"><a href="#流程" class="headerlink" title="流程"></a>流程</h3><p>1、创建HPA资源，设定目标CPU使用率限额，以及最大、最小实例数<br>2、收集一组中（PodSelector）每个Pod最近一分钟内的CPU使用率，并计算平均值<br>3、读取HPA中设定的CPU使用限额<br>4、计算：平均值之和/限额，求出目标调整的实例个数<br>5、目标调整的实例数不能超过1中设定的最大、最小实例数，如果没有超过，则扩容；超过，则扩容至最大的实例个数</p>
-<h3 id="例外"><a href="#例外" class="headerlink" title="例外"></a>例外</h3><p>考虑到自动扩展的决策可能需要一段时间才会生效，甚至在短时间内会引入一些噪声。例如当pod所需要的CPU负荷过大，从而运行一个新的pod进行分流，在创建过程中，系统的CPU使用量可能会有一个攀升的过程。所以，在每一次作出决策后的一段时间内，将不再进行扩展决策。对于ScaleUp而言，这个时间段为3分钟，Scaledown为5分钟。</p>
-<p>HPA允许一定范围内的CPU使用量的不稳定，只有avg(CurrentPodsConsumption) / Target小于90%或者大于110%时才会触发扩容或缩容，避免频繁扩容、缩容造成颠簸。</p>
-<h3 id="为什么选择相对比率"><a href="#为什么选择相对比率" class="headerlink" title="为什么选择相对比率"></a>为什么选择相对比率</h3><p>为了简便，选用了相对比率（90%的CPU资源）而不是0.6个CPU core来描述扩容、缩容条件。如果选择使用绝对度量，用户需要保证目标（限额）要比请求使用的低，否则，过载的Pod未必能够消耗那么多，从而自动扩容永远不会被触发：假设设置CPU为1个核，那么这个pod只能使用1个核，可能Pod在过载的情况下也不能完全利用这个核，所以扩容不会发生。在修改申请资源时，还有同时调整扩容的条件，比如将1个core变为1.2core，那么扩容条件应该同步改为1.2core，真是太麻烦了，与自动扩容的目标相悖。</p>
-<h3 id="下面是HPA定义的一个具体例子："><a href="#下面是HPA定义的一个具体例子：" class="headerlink" title="下面是HPA定义的一个具体例子："></a>下面是HPA定义的一个具体例子：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: autoscaling/v1</span><br><span class="line">kind: HorizontalPodAutoscaler</span><br><span class="line">metadata:</span><br><span class="line">  name: java-apache</span><br><span class="line">  namespace: default</span><br><span class="line">spec:</span><br><span class="line">  minReplicas: 1</span><br><span class="line">  maxReplicas: 10</span><br><span class="line">  scaleTargetRef:</span><br><span class="line">    kind: Deployment</span><br><span class="line">    name: java-apache</span><br><span class="line">  targetCPUUtilizationPercentage: 90</span><br></pre></td></tr></table></figure>
-
-<p>根据上面的定义，我们可以知道，这个HPA控制的目标对象为一个名叫java-apache的Deployment里的Pod副本，当这些Pod副本的CPUUtilizationPercentage的值超过90%时会触发自动动态扩容行为，扩容或缩容时必须满足的一个约束条件是Pod的副本数要介于1与10之间。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl autoscale deployment java-apache --cpu-percent=90 --min=1 --max=10</span><br></pre></td></tr></table></figure>
-          
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -2113,7 +2204,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-count">14</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
