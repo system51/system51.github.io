@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="Scheduler： 当用户请求向API server创建新的Pod时，API server检查授权、权限等没有任何问题的话，他会把这个请求交由Scheduler，由Scheduler它会检查所有符合该Pod要求的Nodelist，为Pod安排一个落脚点（Node）,选定Node完成后会把选择结果返回给API server，并将选定信息写入etcd中。接下来API server将指挥被选定Node">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之调度器和调度过程">
+<meta property="og:url" content="http://yoursite.com/2019/08/26/Kubernetes之调度器和调度过程/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Scheduler： 当用户请求向API server创建新的Pod时，API server检查授权、权限等没有任何问题的话，他会把这个请求交由Scheduler，由Scheduler它会检查所有符合该Pod要求的Nodelist，为Pod安排一个落脚点（Node）,选定Node完成后会把选择结果返回给API server，并将选定信息写入etcd中。接下来API server将指挥被选定Node">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://yoursite.com/images/scheduler-1.png">
+<meta property="og:updated_time" content="2019-08-26T03:37:40.970Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes之调度器和调度过程">
+<meta name="twitter:description" content="Scheduler： 当用户请求向API server创建新的Pod时，API server检查授权、权限等没有任何问题的话，他会把这个请求交由Scheduler，由Scheduler它会检查所有符合该Pod要求的Nodelist，为Pod安排一个落脚点（Node）,选定Node完成后会把选择结果返回给API server，并将选定信息写入etcd中。接下来API server将指挥被选定Node">
+<meta name="twitter:image" content="http://yoursite.com/images/scheduler-1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/08/26/Kubernetes之调度器和调度过程/">
+
+
+
+
+
+  <title>Kubernetes之调度器和调度过程 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/26/Kubernetes之调度器和调度过程/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes之调度器和调度过程</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T11:31:37+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="Scheduler："><a href="#Scheduler：" class="headerlink" title="Scheduler："></a>Scheduler：</h3><blockquote>
+<p>当用户请求向API server创建新的Pod时，API server检查授权、权限等没有任何问题的话，他会把这个请求交由Scheduler，由Scheduler它会检查所有符合该Pod要求的Nodelist，为Pod安排一个落脚点（Node）,选定Node完成后会把选择结果返回给API server，并将选定信息写入etcd中。接下来API server将指挥被选定Node的kubelet去创建Pod（或者说kubelet始终去watch API server当中与当前节点相关联的事件变动），因此接下来这个node就要去尝试着获取到API server当中定义的这个pod的配置清单，根据配置清单当中的定义去创建pod。具体来说Scheduler的作用是将待调度的Pod按照特定的调度算法和调度策略绑定到集群中的某个合适的Node上，整个调度过程中涉及三个对象，分别是：待调度的Pod列表，可以的Node列表，以及调度算法和策略。</p>
+</blockquote>
+<h3 id="Kubernetes-Scheduler-提供的调度流程分三步："><a href="#Kubernetes-Scheduler-提供的调度流程分三步：" class="headerlink" title="Kubernetes Scheduler 提供的调度流程分三步："></a>Kubernetes Scheduler 提供的调度流程分三步：</h3><blockquote>
+<ul>
+<li>预选策略(predicate) 遍历nodelist，选择出符合要求的候选节点，Kubernetes内置了多种预选规则供用户选择。</li>
+<li>优选策略(priority) 在选择出符合要求的候选节点中，采用优选规则计算出每个节点的积分，最后选择得分最高的。</li>
+<li>选定(select)  如果最高得分有好几个节点，select就会从中随机选择一个节点。</li>
+</ul>
+</blockquote>
+<p>如图：<br><img src="/images/scheduler-1.png" alt="scheduler-1"></p>
+<h3 id="高级调度方式"><a href="#高级调度方式" class="headerlink" title="高级调度方式"></a>高级调度方式</h3><blockquote>
+<p>当我们想把Pod调度到预期的节点上，我们可以使用如下高级调度方式进行Pod调度：</p>
+<ul>
+<li>节点选择器： nodeSelector（Pod仅运行在能匹配到节点标签的主机上）、nodeName（Pod仅运行特定node）</li>
+<li>节点亲和性调度： nodeAffinity</li>
+<li>Pod亲和性调度：PodAffinity</li>
+<li>Pod反亲和性调度：podAntiAffinity</li>
+</ul>
+</blockquote>
+<h3 id="调度器分类："><a href="#调度器分类：" class="headerlink" title="调度器分类："></a>调度器分类：</h3><blockquote>
+<ul>
+<li>nodeAffinity：主要解决POD要部署在哪些主机，以及POD不能部署在哪些主机上的问题，处理的是POD和主机之间的关系。</li>
+<li>podAffinity：主要解决POD可以和哪些POD部署在同一个拓扑域中的问题（拓扑域用主机标签实现，可以是单个主机，也可以是多个主机组成的cluster、zone等。），podAntiAffinity主要解决POD不能和哪些POD部署在同一个拓扑域中的问题。podAntiAffinity和podAffinity它们都是处理Kubernetes集群内部POD和POD之间的关系。比如一个 pod 在一个节点上了，那么我这个也得在这个节点，或者你这个 pod 在节点上了，那么我就不想和你待在同一个节点上。</li>
+</ul>
+</blockquote>
+<h3 id="三种亲和性和反亲和性策略的比较如下表所示："><a href="#三种亲和性和反亲和性策略的比较如下表所示：" class="headerlink" title="三种亲和性和反亲和性策略的比较如下表所示："></a>三种亲和性和反亲和性策略的比较如下表所示：</h3><table>
+<thead>
+<tr>
+<th>策略名称</th>
+<th>匹配目标</th>
+<th>支持的操作符</th>
+<th>支持拓扑域</th>
+<th>设计目标</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>nodeAffinity</td>
+<td>主机标签</td>
+<td>In，NotIn，Exists，DoesNotExist，Gt，Lt</td>
+<td>不支持</td>
+<td>决定Pod可以部署在哪些主机上</td>
+</tr>
+<tr>
+<td>podAffinity</td>
+<td>Pod标签</td>
+<td>In，NotIn，Exists，DoesNotExist</td>
+<td>支持</td>
+<td>决定Pod可以和哪些Pod部署在同一拓扑域</td>
+</tr>
+<tr>
+<td>PodAntiAffinity</td>
+<td>Pod标签</td>
+<td>In，NotIn，Exists，DoesNotExist</td>
+<td>支持</td>
+<td>决定Pod不可以和哪些Pod部署在同一拓扑域</td>
+</tr>
+</tbody></table>
+<blockquote>
+<ul>
+<li>In：label 的值在某个列表中</li>
+<li>NotIn：label 的值不在某个列表中</li>
+<li>Gt：label 的值大于某个值</li>
+<li>Lt：label 的值小于某个值</li>
+<li>Exists：某个 label 存在（Values必须为空）</li>
+<li>DoesNotExist：某个 label 不存在（Values必须为空）</li>
+</ul>
+</blockquote>
+<h3 id="使用场景"><a href="#使用场景" class="headerlink" title="使用场景"></a>使用场景</h3><blockquote>
+<h3 id="nodeAffinity使用场景："><a href="#nodeAffinity使用场景：" class="headerlink" title="nodeAffinity使用场景："></a>nodeAffinity使用场景：</h3><ul>
+<li>将S1服务的所有Pod部署到指定的符合标签规则的主机上。</li>
+<li>将S1服务的所有Pod部署到除部分主机外的其他主机上。</li>
+</ul>
+</blockquote>
+<blockquote>
+<h3 id="podAffinity使用场景："><a href="#podAffinity使用场景：" class="headerlink" title="podAffinity使用场景："></a>podAffinity使用场景：</h3><ul>
+<li>将某一特定服务的pod部署在同一拓扑域中，不用指定具体的拓扑域。</li>
+<li>如果S1服务使用S2服务，为了减少它们之间的网络延迟（或其它原因），把S1服务的POD和S2服务的pod部署在同一拓扑域中。</li>
+</ul>
+</blockquote>
+<blockquote>
+<h3 id="podAntiAffinity使用场景："><a href="#podAntiAffinity使用场景：" class="headerlink" title="podAntiAffinity使用场景："></a>podAntiAffinity使用场景：</h3><ul>
+<li>将一个服务的POD分散在不同的主机或者拓扑域中，提高服务本身的稳定性。</li>
+<li>给POD对于一个节点的独占访问权限来保证资源隔离，保证不会有其它pod来分享节点资源。</li>
+<li>把可能会相互影响的服务的POD分散在不同的主机上。</li>
+</ul>
+</blockquote>
+<h3 id="NodeSelector"><a href="#NodeSelector" class="headerlink" title="NodeSelector"></a>NodeSelector</h3><blockquote>
+<p>现在我们给node1打上一个标签node=ssd</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# kubectl label nodes node-1 node=ssd</span><br><span class="line">node/node-1 labeled</span><br><span class="line"></span><br><span class="line">[root@master-1 app]#  kubectl get nodes --show-labels</span><br><span class="line">NAME       STATUS   ROLES    AGE   VERSION   LABELS</span><br><span class="line">master-1   Ready    master   43d   v1.13.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=master-1,node-role.kubernetes.io/master=</span><br><span class="line">node-0     Ready    &lt;none&gt;   43d   v1.13.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=node-0</span><br><span class="line">node-1     Ready    &lt;none&gt;   43d   v1.13.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=node-1,node=ssd</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>我们定义一个pod,让其选择带有zone=backend这个标签的节点</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# vim node-selector-demo.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: myapp</span><br><span class="line">  namespace: default</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: myapp</span><br><span class="line">    image: nginx:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">  nodeSelector:</span><br><span class="line">    node: ssd</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl apply -f node-selector-demo.yaml</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl get pod  -o wide</span><br><span class="line">NAME                               READY   STATUS    RESTARTS   AGE   IP             NODE     NOMINATED NODE   READINESS GATES</span><br><span class="line">...</span><br><span class="line">myapp                              1/1     Running   0          14s   10.244.2.7     node-1   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">#从上面的效果可以看出，设置了nodeSelector以后只会将Pod调度到符合标签的node1上，但是需要注意的是如果没有一个node满足nodeSelector的标签那么Pod会一直处于Pending状态直到有Node满足条件。</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl get pod</span><br><span class="line">NAME                               READY   STATUS    RESTARTS   AGE</span><br><span class="line">curl                               1/1     Running   328        13d</span><br><span class="line">myapp                              0/1     Pending   0          10s</span><br><span class="line">myapp-0                            1/1     Running   0          37d</span><br><span class="line">myapp-1                            1/1     Running   0          37d</span><br><span class="line">myapp-2                            1/1     Running   0          37d</span><br><span class="line">myapp-3                            1/1     Running   0          37d</span><br><span class="line">nfs-provisioner-6fdb9fbdbd-6jkkm   1/1     Running   0          40d</span><br></pre></td></tr></table></figure>
+
+<h3 id="nodeAffinity"><a href="#nodeAffinity" class="headerlink" title="nodeAffinity"></a>nodeAffinity</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# kubectl explain pod.spec.affinity.nodeAffinity </span><br><span class="line">KIND:     Pod</span><br><span class="line">VERSION:  v1</span><br><span class="line"></span><br><span class="line">RESOURCE: nodeAffinity &lt;Object&gt;</span><br><span class="line"></span><br><span class="line">DESCRIPTION:</span><br><span class="line">     Describes node affinity scheduling rules for the pod.</span><br><span class="line"></span><br><span class="line">     Node affinity is a group of node affinity scheduling rules.</span><br><span class="line"></span><br><span class="line">FIELDS:</span><br><span class="line">   preferredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;</span><br><span class="line">     The scheduler will prefer to schedule pods to nodes that satisfy the</span><br><span class="line">     affinity expressions specified by this field, but it may choose a node that</span><br><span class="line">     violates one or more of the expressions. The node that is most preferred is</span><br><span class="line">     the one with the greatest sum of weights, i.e. for each node that meets all</span><br><span class="line">     of the scheduling requirements (resource request, requiredDuringScheduling</span><br><span class="line">     affinity expressions, etc.), compute a sum by iterating through the</span><br><span class="line">     elements of this field and adding &quot;weight&quot; to the sum if the node matches</span><br><span class="line">     the corresponding matchExpressions; the node(s) with the highest sum are</span><br><span class="line">     the most preferred.</span><br><span class="line"></span><br><span class="line">   requiredDuringSchedulingIgnoredDuringExecution	&lt;Object&gt;</span><br><span class="line">     If the affinity requirements specified by this field are not met at</span><br><span class="line">     scheduling time, the pod will not be scheduled onto the node. If the</span><br><span class="line">     affinity requirements specified by this field cease to be met at some point</span><br><span class="line">     during pod execution (e.g. due to an update), the system may or may not try</span><br><span class="line">     to eventually evict the pod from its node.</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li>requiredDuringSchedulingIgnoredDuringExecution 硬亲和性  必须满足亲和性。 <ul>
+<li>matchExpressions  匹配表达式,这个标签可以指定一段，例如pod中定义的key为zone，operator为In(包含那些)，values为 foo和bar。表示就是在node节点中包含foo和bar的标签中调度</li>
+<li>matchFields  匹配字段 和上面定义方式一样，不过他定义的不是标签值而是定义字段。</li>
+</ul>
+</li>
+<li>preferredDuringSchedulingIgnoredDuringExecution   软亲和性 能满足最好，不满足也没关系。<ul>
+<li>preference 配置节点选择器，与相应的权重相关联。</li>
+<li>weight 权重1-100范围内，因为它是软性条件，所以并非一定要全匹配。在preference中匹配到的条目越多越符合条件。最后通过计算权重决定那个节点更符合条件。</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<h4 id="硬亲和性："><a href="#硬亲和性：" class="headerlink" title="硬亲和性："></a>硬亲和性：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# vim test.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: myapp</span><br><span class="line">  namespace: default</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: myapp</span><br><span class="line">    image: nginx:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">  affinity:</span><br><span class="line">    nodeAffinity:</span><br><span class="line">       requiredDuringSchedulingIgnoredDuringExecution:</span><br><span class="line">          nodeSelectorTerms:</span><br><span class="line">            - matchExpressions:</span><br><span class="line">               - key: node</span><br><span class="line">                 operator: In</span><br><span class="line">                 values: [&quot;foo&quot;,&quot;bar&quot;]</span><br><span class="line">								 </span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl apply -f test.yaml </span><br><span class="line">pod/myapp created</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl get pod</span><br><span class="line">NAME                               READY   STATUS    RESTARTS   AGE</span><br><span class="line">...</span><br><span class="line">myapp                              1/1     Running   0          2m17s</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<h4 id="软亲和性："><a href="#软亲和性：" class="headerlink" title="软亲和性："></a>软亲和性：</h4><blockquote>
+<p>与requiredDuringSchedulingIgnoredDuringExecution比较，这里需要注意的是preferredDuringSchedulingIgnoredDuringExecution是个列表对象，而preference不是一个列表了而是一个对象。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# vim test1.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: myapp</span><br><span class="line">  namespace: default</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: myapp</span><br><span class="line">    image: nginx:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">  affinity:</span><br><span class="line">    nodeAffinity:</span><br><span class="line">      preferredDuringSchedulingIgnoredDuringExecution:</span><br><span class="line">        - weight: 50</span><br><span class="line">          preference:</span><br><span class="line">            matchExpressions:</span><br><span class="line">              - key: zone</span><br><span class="line">                operator: In</span><br><span class="line">                values: [&quot;foo&quot;,&quot;bar&quot;]</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl apply -f test1.yaml </span><br><span class="line">pod/myapp created</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl get pod</span><br><span class="line">NAME                               READY   STATUS    RESTARTS   AGE</span><br><span class="line">...</span><br><span class="line">myapp                              1/1     Running   0          2m17s</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<h3 id="podAffinity"><a href="#podAffinity" class="headerlink" title="podAffinity"></a>podAffinity</h3><blockquote>
+<p>Pod亲和性场景，我们的k8s集群的节点分布在不同的区域或者不同的机房，当服务A和服务B要求部署在同一个区域或者同一机房的时候，我们就需要亲和性调度了。</p>
+</blockquote>
+<p>-</p>
+<blockquote>
+<p>kubectl explain pod.spec.affinity.podAffinity和NodeAffinity是一样的，都是有硬亲和性和软亲和性</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# kubectl explain pod.spec.affinity.podAffinity</span><br><span class="line">KIND:     Pod</span><br><span class="line">VERSION:  v1</span><br><span class="line"></span><br><span class="line">RESOURCE: podAffinity &lt;Object&gt;</span><br><span class="line"></span><br><span class="line">DESCRIPTION:</span><br><span class="line">     Describes pod affinity scheduling rules (e.g. co-locate this pod in the</span><br><span class="line">     same node, zone, etc. as some other pod(s)).</span><br><span class="line"></span><br><span class="line">     Pod affinity is a group of inter pod affinity scheduling rules.</span><br><span class="line"></span><br><span class="line">FIELDS:</span><br><span class="line">   preferredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;</span><br><span class="line">     The scheduler will prefer to schedule pods to nodes that satisfy the</span><br><span class="line">     affinity expressions specified by this field, but it may choose a node that</span><br><span class="line">     violates one or more of the expressions. The node that is most preferred is</span><br><span class="line">     the one with the greatest sum of weights, i.e. for each node that meets all</span><br><span class="line">     of the scheduling requirements (resource request, requiredDuringScheduling</span><br><span class="line">     affinity expressions, etc.), compute a sum by iterating through the</span><br><span class="line">     elements of this field and adding &quot;weight&quot; to the sum if the node has pods</span><br><span class="line">     which matches the corresponding podAffinityTerm; the node(s) with the</span><br><span class="line">     highest sum are the most preferred.</span><br><span class="line"></span><br><span class="line">   requiredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;</span><br><span class="line">     If the affinity requirements specified by this field are not met at</span><br><span class="line">     scheduling time, the pod will not be scheduled onto the node. If the</span><br><span class="line">     affinity requirements specified by this field cease to be met at some point</span><br><span class="line">     during pod execution (e.g. due to a pod label update), the system may or</span><br><span class="line">     may not try to eventually evict the pod from its node. When there are</span><br><span class="line">     multiple elements, the lists of nodes corresponding to each podAffinityTerm</span><br><span class="line">     are intersected, i.e. all terms must be satisfied.</span><br></pre></td></tr></table></figure>
+
+<h3 id="通用参数"><a href="#通用参数" class="headerlink" title="通用参数"></a>通用参数</h3><blockquote>
+<ul>
+<li>labelSelector  选择跟那组Pod亲和</li>
+<li>namespaces 选择哪个命名空间</li>
+<li>topologyKey 用来缩小节点选择范围，其值可以是任何合法的节点标签（key），在大规模集群中，为此字段不指定或者指定错误值，可能引发巨大的性能、安全问题。因此，对其使用有如下限制：<ul>
+<li>对于Pod亲和与Pod硬性反亲和，topologyKey字段值不能为空。</li>
+<li>对于硬性反亲和，topoloygKey只能是kubernetes.io/hostname，除非禁止LimitPodHardAntiAffinityTopology允入控制器或者修改其实现。</li>
+<li>对于Pod软反亲和，允许topoloygKey为空，表示对节点拓扑没有限制。</li>
+<li>以上情况外，topologyKey可以是任何合法标签（key）。</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<h3 id="硬亲和性：-1"><a href="#硬亲和性：-1" class="headerlink" title="硬亲和性："></a>硬亲和性：</h3><blockquote>
+<p>由于我们这里只有一个集群，并没有区域或者机房的概念，所以我们这里直接使用主机名来作为拓扑域(topologyKey)，把 pod 创建在同一个主机上面。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# kubectl get nodes --show-labels</span><br><span class="line">NAME       STATUS   ROLES    AGE   VERSION   LABELS</span><br><span class="line">master-1   Ready    master   43d   v1.13.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=master-1,node-role.kubernetes.io/master=</span><br><span class="line">node-0     Ready    &lt;none&gt;   43d   v1.13.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=node-0</span><br><span class="line">node-1     Ready    &lt;none&gt;   43d   v1.13.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=node-1</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# vim pod-affinity-demo.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: node-affinity-pod1</span><br><span class="line">  labels:</span><br><span class="line">    name: podaffinity-myapp</span><br><span class="line">    tier: service</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: myapp</span><br><span class="line">    image: nginx:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">---</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: node-affinity-pod2</span><br><span class="line">  labels:</span><br><span class="line">    tier: front</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: myapp</span><br><span class="line">    image: nginx:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">  affinity:</span><br><span class="line">    podAffinity:</span><br><span class="line">      requiredDuringSchedulingIgnoredDuringExecution:</span><br><span class="line">      - labelSelector:</span><br><span class="line">          matchExpressions:</span><br><span class="line">          - key: name</span><br><span class="line">            operator: In</span><br><span class="line">            values:</span><br><span class="line">            - podaffinity-myapp</span><br><span class="line">        topologyKey: kubernetes.io/hostname</span><br><span class="line">				</span><br><span class="line">[root@master-1 app]# kubectl get pods -o wide</span><br><span class="line">NAME                               READY   STATUS    RESTARTS   AGE     IP             NODE     NOMINATED NODE   READINESS GATES</span><br><span class="line">...</span><br><span class="line">node-affinity-pod1                 1/1     Running   0          7m7s    10.244.2.9     node-1   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">node-affinity-pod2                 1/1     Running   0          7m7s    10.244.2.10    node-1   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>上面这个例子中的Pod node-affinity-pod2 需要调度到某个指定的主机上，至少有一个节点上运行了这样的 pod：这个 pod 有一个name=podaffinity-myapp的 label</p>
+</blockquote>
+<blockquote>
+<p>如果我们把上面的 node-affinity-pod1 删除，然后重新创建 affinity 这个资源，看看能不能正常调度呢：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 pki]# kubectl delete  pod node-affinity-pod1</span><br><span class="line">pod &quot;node-affinity-pod1&quot; deleted</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# vim pod2-affinity-demo.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: node-affinity-pod2</span><br><span class="line">  labels:</span><br><span class="line">    tier: front</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: myapp</span><br><span class="line">    image: nginx:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">  affinity:</span><br><span class="line">    podAffinity:</span><br><span class="line">      requiredDuringSchedulingIgnoredDuringExecution:</span><br><span class="line">      - labelSelector:</span><br><span class="line">          matchExpressions:</span><br><span class="line">          - key: name</span><br><span class="line">            operator: In</span><br><span class="line">            values:</span><br><span class="line">            - podaffinity-myapp</span><br><span class="line">        topologyKey: kubernetes.io/hostname</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl apply -f pod2-affinity-demo.yaml</span><br><span class="line">pod/node-affinity-pod2 created</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl get pod</span><br><span class="line">NAME                               READY   STATUS    RESTARTS   AGE</span><br><span class="line">...</span><br><span class="line">node-affinity-pod2                 0/1     Pending   0          5m57s</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>-</p>
+<blockquote>
+<p>我们可以看到处于Pending状态了，这是因为现在没有一个节点上面拥有name=podaffinity-myapp这个 label 的 pod，而上面我们的调度使用的是硬策略，所以就没办法进行调度了，大家可以去尝试下重新将 node-affinity-pod1 这个 pod 调度到 node-0 这个节点上，看看上面的 affinity 会不会也被调度到 node-0 这个节点上去？</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# vim pod1-affinity-demo.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: node-affinity-pod1</span><br><span class="line">  labels:</span><br><span class="line">    name: podaffinity-myapp</span><br><span class="line">    tier: service</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: myapp</span><br><span class="line">    image: nginx:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">  nodeSelector:</span><br><span class="line">    kubernetes.io/hostname: node-0</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl apply -f pod1-affinity-demo.yaml</span><br><span class="line">pod/node-affinity-pod1 created</span><br><span class="line"></span><br><span class="line">[root@master-1 app]# kubectl get pod -o wide</span><br><span class="line">NAME                               READY   STATUS    RESTARTS   AGE   IP             NODE     NOMINATED NODE   READINESS GATES</span><br><span class="line">...</span><br><span class="line">node-affinity-pod1                 1/1     Running   0          13s   10.244.4.9     node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">node-affinity-pod2                 1/1     Running   0          11m   10.244.4.10    node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>我们这个地方使用的是kubernetes.io/hostname这个拓扑域，意思就是我们当前调度的 pod 要和目标的 pod 处于同一个主机上面，因为要处于同一个拓扑域下面kubernetes.io/hostname=node-0，为了说明这个问题，我们把拓扑域改成beta.kubernetes.io/os，同样的我们当前调度的 pod 要和目标的 pod 处于同一个拓扑域中，目标的 pod 是不是拥有beta.kubernetes.io/os=linux的标签，而我们这里3个节点都有这样的标签，这也就意味着我们3个节点都在同一个拓扑域中，所以我们这里的 pod 可能会被调度到任何一个节点（因为master节点设置了污点所以不会调度至master节点）,判断他们是否在同一拓扑域中是根据topologyKey中指定的node标签的values是否相同，如果相同则表示在同一拓扑域中：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# kubectl get node --show-labels</span><br><span class="line">NAME       STATUS   ROLES    AGE   VERSION   LABELS</span><br><span class="line">master-1   Ready    master   44d   v1.13.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=master-1,node-role.kubernetes.io/master=</span><br><span class="line">node-0     Ready    &lt;none&gt;   44d   v1.13.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=node-0</span><br><span class="line">node-1     Ready    &lt;none&gt;   44d   v1.13.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/hostname=node-1</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# kubectl get pod -o wide</span><br><span class="line">NAME                               READY   STATUS    RESTARTS   AGE   IP             NODE     NOMINATED NODE   READINESS GATES</span><br><span class="line">nginx-ye-5664f956f8-4z26d          1/1     Running   0          8s    10.244.4.12    node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">nginx-ye-5664f956f8-htb86          1/1     Running   0          8s    10.244.4.13    node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">nginx-ye-5664f956f8-pd445          1/1     Running   0          8s    10.244.2.20    node-1   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">nginx-ye-5664f956f8-sqsws          1/1     Running   0          8s    10.244.4.11    node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">nginx-ye-5664f956f8-wns5w          1/1     Running   0          8s    10.244.2.21    node-1   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">node-affinity-pod1                 1/1     Running   0          61m   10.244.2.13    node-1   &lt;none&gt;           &lt;none&gt;</span><br></pre></td></tr></table></figure>
+
+<h3 id="podAntiAffinity"><a href="#podAntiAffinity" class="headerlink" title="podAntiAffinity"></a>podAntiAffinity</h3><blockquote>
+<p>和Pod亲和性的用法一致，只是Pod反亲和性则是反着来的。比如一个节点上运行了某个应用服务pod，那么我们的 数据库服务pod则尽量不要在同一台节点上，这就是反亲和性。</p>
+</blockquote>
+<blockquote>
+<p>kubectl explain pod.spec.affinity.podAntiAffinity也是一样的，都是有硬亲和性和软亲和性；</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# kubectl explain pod.spec.affinity.podAntiAffinity</span><br><span class="line"></span><br><span class="line">KIND:     Pod</span><br><span class="line">VERSION:  v1</span><br><span class="line"></span><br><span class="line">RESOURCE: podAntiAffinity &lt;Object&gt;</span><br><span class="line"></span><br><span class="line">DESCRIPTION:</span><br><span class="line">     Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod</span><br><span class="line">     in the same node, zone, etc. as some other pod(s)).</span><br><span class="line"></span><br><span class="line">     Pod anti affinity is a group of inter pod anti affinity scheduling rules.</span><br><span class="line"></span><br><span class="line">FIELDS:</span><br><span class="line">   preferredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;</span><br><span class="line">     The scheduler will prefer to schedule pods to nodes that satisfy the</span><br><span class="line">     anti-affinity expressions specified by this field, but it may choose a node</span><br><span class="line">     that violates one or more of the expressions. The node that is most</span><br><span class="line">     preferred is the one with the greatest sum of weights, i.e. for each node</span><br><span class="line">     that meets all of the scheduling requirements (resource request,</span><br><span class="line">     requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by</span><br><span class="line">     iterating through the elements of this field and adding &quot;weight&quot; to the sum</span><br><span class="line">     if the node has pods which matches the corresponding podAffinityTerm; the</span><br><span class="line">     node(s) with the highest sum are the most preferred.</span><br><span class="line"></span><br><span class="line">   requiredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;</span><br><span class="line">     If the anti-affinity requirements specified by this field are not met at</span><br><span class="line">     scheduling time, the pod will not be scheduled onto the node. If the</span><br><span class="line">     anti-affinity requirements specified by this field cease to be met at some</span><br><span class="line">     point during pod execution (e.g. due to a pod label update), the system may</span><br><span class="line">     or may not try to eventually evict the pod from its node. When there are</span><br><span class="line">     multiple elements, the lists of nodes corresponding to each podAffinityTerm</span><br><span class="line">     are intersected, i.e. all terms must be satisfied.</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# vim test2.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: node-affinity-pod1</span><br><span class="line">  labels:</span><br><span class="line">    name: podaffinity-myapp</span><br><span class="line">    tier: service</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: myapp</span><br><span class="line">    image: nginx:latest</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">  nodeSelector:</span><br><span class="line">    kubernetes.io/hostname: node-1</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">#反硬亲和调度</span><br><span class="line">[root@master-1 app]# pod-antiaffinity-demo.yaml</span><br><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-ye</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp</span><br><span class="line">spec:</span><br><span class="line">  replicas: 5</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      app: nginx</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: nginx</span><br><span class="line">        version: latest</span><br><span class="line">    spec:</span><br><span class="line">     containers:</span><br><span class="line">     - name: myapp</span><br><span class="line">       image: nginx:latest</span><br><span class="line">       imagePullPolicy: IfNotPresent</span><br><span class="line">     affinity:</span><br><span class="line">       podAntiAffinity:</span><br><span class="line">         requiredDuringSchedulingIgnoredDuringExecution:</span><br><span class="line">           - labelSelector:</span><br><span class="line">               matchExpressions:</span><br><span class="line">                 - key: name</span><br><span class="line">                   operator: In</span><br><span class="line">                   values: [&quot;podaffinity-myapp&quot;]</span><br><span class="line">             topologyKey: kubernetes.io/hostname</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>这里的意思就是如果一个节点上面有一个name=podaffinity-myapp这样的 pod 的话，那么我们的 pod 就别调度到这个节点上面来，上面我们把name=podaffinity-myapp这个 pod 固定到了 node-1这个节点上面来，所以正常来说我们这里的 pod 不会出现在 node-1 节点上：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 app]# kubectl get pod -o wide</span><br><span class="line">NAME                               READY   STATUS    RESTARTS   AGE    IP             NODE     NOMINATED NODE   READINESS GATES</span><br><span class="line">nginx-ye-79c4778f6c-4h5ft          1/1     Running   0          15m    10.244.4.20    node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">nginx-ye-79c4778f6c-8tw9k          1/1     Running   0          15m    10.244.4.16    node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">nginx-ye-79c4778f6c-gpgxb          1/1     Running   0          15m    10.244.4.17    node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">nginx-ye-79c4778f6c-hbrfr          1/1     Running   0          15m    10.244.4.19    node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">nginx-ye-79c4778f6c-rbw5r          1/1     Running   0          15m    10.244.4.18    node-0   &lt;none&gt;           &lt;none&gt;</span><br><span class="line">node-affinity-pod1                 1/1     Running   0          147m   10.244.2.13    node-1   &lt;none&gt;           &lt;none&gt;</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/kubernetes-flannel之Vxlan原理/" rel="next" title="kubernetes flannel之Vxlan原理">
+                <i class="fa fa-chevron-left"></i> kubernetes flannel之Vxlan原理
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">29</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Scheduler："><span class="nav-number">1.</span> <span class="nav-text">Scheduler：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Kubernetes-Scheduler-提供的调度流程分三步："><span class="nav-number">2.</span> <span class="nav-text">Kubernetes Scheduler 提供的调度流程分三步：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#高级调度方式"><span class="nav-number">3.</span> <span class="nav-text">高级调度方式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#调度器分类："><span class="nav-number">4.</span> <span class="nav-text">调度器分类：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#三种亲和性和反亲和性策略的比较如下表所示："><span class="nav-number">5.</span> <span class="nav-text">三种亲和性和反亲和性策略的比较如下表所示：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用场景"><span class="nav-number">6.</span> <span class="nav-text">使用场景</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#nodeAffinity使用场景："><span class="nav-number">7.</span> <span class="nav-text">nodeAffinity使用场景：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#podAffinity使用场景："><span class="nav-number">8.</span> <span class="nav-text">podAffinity使用场景：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#podAntiAffinity使用场景："><span class="nav-number">9.</span> <span class="nav-text">podAntiAffinity使用场景：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#NodeSelector"><span class="nav-number">10.</span> <span class="nav-text">NodeSelector</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#nodeAffinity"><span class="nav-number">11.</span> <span class="nav-text">nodeAffinity</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#硬亲和性："><span class="nav-number">11.1.</span> <span class="nav-text">硬亲和性：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#软亲和性："><span class="nav-number">11.2.</span> <span class="nav-text">软亲和性：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#podAffinity"><span class="nav-number">12.</span> <span class="nav-text">podAffinity</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#通用参数"><span class="nav-number">13.</span> <span class="nav-text">通用参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#硬亲和性：-1"><span class="nav-number">14.</span> <span class="nav-text">硬亲和性：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#podAntiAffinity"><span class="nav-number">15.</span> <span class="nav-text">podAntiAffinity</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
