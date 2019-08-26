@@ -94,7 +94,7 @@
 <meta property="og:image" content="http://yoursite.com/images/Prometheus-5.png">
 <meta property="og:image" content="http://yoursite.com/images/Prometheus-6.png">
 <meta property="og:image" content="http://yoursite.com/images/Prometheus-7.png">
-<meta property="og:updated_time" content="2019-08-26T05:47:09.635Z">
+<meta property="og:updated_time" content="2019-08-26T05:51:21.136Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="初探Prometheus Operator">
 <meta name="twitter:description" content="首先我们要理解： 所有的监控的agent底层最终都是查询的/proc和/sys里的信息推送server端,因为Prometheus Operator收集宿主机信息方面也想用pod跑,会面临到问题：常见的zabbix_agent默认读取fs的/proc和/sys,但容器跑agent会导致读取的不是宿主机的/proc和/sys而prometheus的node-exporter有选项–path.proc">
@@ -461,7 +461,6 @@
 <blockquote>
 <p>该值字面意思可以知道就是指定prometheus server去选择哪些ServiceMonitor,这个概念和svc去选择pod一样,可能一个集群跑很多prometheus server来监控各自选中的ServiceMonitor,如果想一个prometheus server监控所有的则spec.serviceMonitorSelector: {}为空即可,而namespaces的范围同样的设置spec.serviceMonitorNamespaceSelector: {},官方的prometheus实例里我们可以看到设置了这两个值（prometheus-prometheus.yaml）。</p>
 </blockquote>
-<p>-</p>
 <blockquote>
 <p>给prometheus server设置相关的RBAC权限</p>
 </blockquote>
@@ -470,7 +469,6 @@
 <h3 id="部署一组pod及其svc"><a href="#部署一组pod及其svc" class="headerlink" title="部署一组pod及其svc"></a>部署一组pod及其svc</h3><blockquote>
 <p>因为service是prometheus operator监控的最小单位,要监控一个svc下的pod的metrics就声明创建一个servicemonitors即可；</p>
 </blockquote>
-<p>-</p>
 <blockquote>
 <p>首先,我们部署一个带metrics输出的简单程序的deploy,该镜像里的主进程会在8080端口上输出metrics信息</p>
 </blockquote>
@@ -534,6 +532,10 @@
           <span class="post-nav-divider"></span>
 
           <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes-TLS-bootstrapping-那点事/" rel="prev" title="Kubernetes TLS bootstrapping 那点事">
+                Kubernetes TLS bootstrapping 那点事 <i class="fa fa-chevron-right"></i>
+              </a>
             
           </div>
         </div>
@@ -612,7 +614,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">33</span>
+                  <span class="site-state-item-count">38</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
