@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="一、statefulset简介 从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。  -  StatefulS">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之statefulset控制器">
+<meta property="og:url" content="http://yoursite.com/2019/08/26/Kubernetes之statefulset控制器/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="一、statefulset简介 从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。  -  StatefulS">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-26T02:47:46.477Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes之statefulset控制器">
+<meta name="twitter:description" content="一、statefulset简介 从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。  -  StatefulS">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/08/26/Kubernetes之statefulset控制器/">
+
+
+
+
+
+  <title>Kubernetes之statefulset控制器 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/26/Kubernetes之statefulset控制器/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes之statefulset控制器</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T10:47:16+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="一、statefulset简介"><a href="#一、statefulset简介" class="headerlink" title="一、statefulset简介"></a>一、statefulset简介</h3><blockquote>
+<p>从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。</p>
+</blockquote>
+<p>-</p>
+<blockquote>
+<h4 id="StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括："><a href="#StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括：" class="headerlink" title="StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括："></a>StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括：</h4><ul>
+<li>1、稳定的持久化存储，即Pod重新调度后还是能访问到相同的持久化数据，基于PVC来实现</li>
+<li>2、稳定的网络标志，即Pod重新调度后其PodName和HostName不变，基于Headless Service（即没有Cluster IP的Service）来实现</li>
+<li>3、有序部署，有序扩展，即Pod是有顺序的，在部署或者扩展的时候要依据定义的顺序依次依次进行（即从0到N-1，在下一个Pod运行之前所有之前的Pod必须都是Running和Ready状态），基于init containers来实现</li>
+<li>4、有序收缩，有序删除（即从N-1到0）</li>
+<li>5、有序的滚动更新</li>
+</ul>
+</blockquote>
+<p>-</p>
+<blockquote>
+<h4 id="从上面的应用场景可以发现，StatefulSet由以下几个部分组成："><a href="#从上面的应用场景可以发现，StatefulSet由以下几个部分组成：" class="headerlink" title="从上面的应用场景可以发现，StatefulSet由以下几个部分组成："></a>从上面的应用场景可以发现，StatefulSet由以下几个部分组成：</h4><ul>
+<li>用于定义网络标志（DNS domain）的Headless Service（无头服务）</li>
+<li>用于创建PersistentVolumes的volumeClaimTemplates （存储卷申请模板）</li>
+<li>定义具体应用的StatefulSet</li>
+</ul>
+</blockquote>
+<h3 id="二、为什么要有headless？？"><a href="#二、为什么要有headless？？" class="headerlink" title="二、为什么要有headless？？"></a>二、为什么要有headless？？</h3><blockquote>
+<p>在deployment中，每一个pod是没有名称，是随机字符串，是无序的。而statefulset中是要求有序的，每一个pod的名称必须是固定的。当节点挂了，重建之后的标识符是不变的，每一个节点的节点名称是不能改变的。pod名称是作为pod识别的唯一标识符，必须保证其标识符的稳定并且唯一。<br>为了实现标识符的稳定，这时候就需要一个headless service 解析直达到pod，还需要给pod配置一个唯一的名称。</p>
+</blockquote>
+<h3 id="三、为什么要-有volumeClainTemplate？？"><a href="#三、为什么要-有volumeClainTemplate？？" class="headerlink" title="三、为什么要 有volumeClainTemplate？？"></a>三、为什么要 有volumeClainTemplate？？</h3><blockquote>
+<p>大部分有状态副本集都会用到持久存储，比如分布式系统来说，由于数据是不一样的，每个节点都需要自己专用的存储节点。而在deployment中pod模板中创建的存储卷是一个共享的存储卷，多个pod使用同一个存储卷，而statefulset定义中的每一个pod都不能使用同一个存储卷，由此基于pod模板创建pod是不适应的，这就需要引入volumeClainTemplate，当在使用statefulset创建pod时，会自动生成一个PVC，从而请求绑定一个PV，从而有自己专用的存储卷。</p>
+</blockquote>
+<h3 id="四、statefulSet使用演示"><a href="#四、statefulSet使用演示" class="headerlink" title="四、statefulSet使用演示"></a>四、statefulSet使用演示</h3><blockquote>
+<p>在创建StatefulSet之前需要准备的东西，值得注意的是创建顺序非常关键，创建顺序如下：<br>1、Volume<br>2、Persistent Volume<br>3、Persistent Volume Claim<br>4、Service<br>5、StatefulSet<br>Volume可以有很多种类型，比如nfs、glusterfs等，我们这里使用的NFS来创建。</p>
+</blockquote>
+<h4 id="（1）查看statefulset的定义"><a href="#（1）查看statefulset的定义" class="headerlink" title="（1）查看statefulset的定义"></a>（1）查看statefulset的定义</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master ~]# kubectl explain statefulset</span><br><span class="line">KIND:     StatefulSet</span><br><span class="line">VERSION:  apps/v1</span><br><span class="line"></span><br><span class="line">DESCRIPTION:</span><br><span class="line">     StatefulSet represents a set of pods with consistent identities. Identities</span><br><span class="line">     are defined as: - Network: A single stable DNS and hostname. - Storage: As</span><br><span class="line">     many VolumeClaims as requested. The StatefulSet guarantees that a given</span><br><span class="line">     network identity will always map to the same storage identity.</span><br><span class="line"></span><br><span class="line">FIELDS:</span><br><span class="line">   apiVersion   &lt;string&gt;</span><br><span class="line">   kind &lt;string&gt;</span><br><span class="line">   metadata &lt;Object&gt;</span><br><span class="line">   spec &lt;Object&gt;</span><br><span class="line">   status   &lt;Object&gt;</span><br><span class="line"></span><br><span class="line">[root@k8s-master ~]# kubectl explain statefulset.spec</span><br><span class="line">KIND:     StatefulSet</span><br><span class="line">VERSION:  apps/v1</span><br><span class="line"></span><br><span class="line">RESOURCE: spec &lt;Object&gt;</span><br><span class="line"></span><br><span class="line">DESCRIPTION:</span><br><span class="line">     Spec defines the desired identities of pods in this set.</span><br><span class="line"></span><br><span class="line">     A StatefulSetSpec is the specification of a StatefulSet.</span><br><span class="line"></span><br><span class="line">FIELDS:</span><br><span class="line">   podManagementPolicy  &lt;string&gt;  #Pod管理策略</span><br><span class="line">   replicas &lt;integer&gt;    #副本数量</span><br><span class="line">   revisionHistoryLimit &lt;integer&gt;   #历史版本限制</span><br><span class="line">   selector &lt;Object&gt; -required-    #选择器，必选项</span><br><span class="line">   serviceName  &lt;string&gt; -required-  #服务名称，必选项</span><br><span class="line">   template &lt;Object&gt; -required-    #模板，必选项</span><br><span class="line">   updateStrategy   &lt;Object&gt;       #更新策略</span><br><span class="line">   volumeClaimTemplates &lt;[]Object&gt;   #存储卷申请模板，列表对象形式</span><br></pre></td></tr></table></figure>
+
+<h4 id="（2）清单定义statefulset"><a href="#（2）清单定义statefulset" class="headerlink" title="（2）清单定义statefulset"></a>（2）清单定义statefulset</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master mainfests]# vim stateful-demo.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  name: myapp-svc</span><br><span class="line">  labels:</span><br><span class="line">    app: myapp-svc</span><br><span class="line">spec:</span><br><span class="line">  ports:</span><br><span class="line">  - port: 80</span><br><span class="line">    name: web</span><br><span class="line">  clusterIP: None</span><br><span class="line">  selector:</span><br><span class="line">    app: myapp-pod</span><br><span class="line">---</span><br><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: StatefulSet</span><br><span class="line">metadata:</span><br><span class="line">  name: myapp</span><br><span class="line">spec:</span><br><span class="line">  serviceName: myapp-svc</span><br><span class="line">  replicas: 3</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      app: myapp-pod</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        app: myapp-pod</span><br><span class="line">    spec:</span><br><span class="line">      containers:</span><br><span class="line">      - name: myapp</span><br><span class="line">        image: nginx:latest</span><br><span class="line">        imagePullPolicy: IfNotPresent </span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 80</span><br><span class="line">          name: web</span><br><span class="line">        volumeMounts:</span><br><span class="line">        - name: myappdata</span><br><span class="line">          mountPath: /usr/share/nginx/html</span><br><span class="line">  volumeClaimTemplates:</span><br><span class="line">  - metadata:</span><br><span class="line">      name: myappdata</span><br><span class="line">    spec:</span><br><span class="line">      accessModes: [&quot;ReadWriteOnce&quot;]</span><br><span class="line">      resources:</span><br><span class="line">        requests:</span><br><span class="line">          storage: 2Gi</span><br></pre></td></tr></table></figure>
+
+<h4 id="（3）修改pv的大小为2Gi"><a href="#（3）修改pv的大小为2Gi" class="headerlink" title="（3）修改pv的大小为2Gi"></a>（3）修改pv的大小为2Gi</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master ~]# cd mainfests/volumes</span><br><span class="line">[root@k8s-master volumes]# vim pv-demo.yaml </span><br><span class="line">[root@k8s-master volumes]# kubectl apply -f pv-demo.yaml </span><br><span class="line">persistentvolume/pv001 created</span><br><span class="line">persistentvolume/pv002 created</span><br><span class="line">persistentvolume/pv003 created</span><br><span class="line">persistentvolume/pv004 created</span><br><span class="line">persistentvolume/pv005 created</span><br><span class="line">[root@k8s-master volumes]# kubectl get pv</span><br><span class="line">NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM     STORAGECLASS   REASON    AGE</span><br><span class="line">pv001     1Gi        RWO,RWX        Retain           Available                                      5s</span><br><span class="line">pv002     2Gi        RWO            Retain           Available                                      5s</span><br><span class="line">pv003     2Gi        RWO,RWX        Retain           Available                                      5s</span><br><span class="line">pv004     2Gi        RWO,RWX        Retain           Available                                      5s</span><br><span class="line">pv005     2Gi        RWO,RWX        Retain           Available                                      5s</span><br></pre></td></tr></table></figure>
+
+<h4 id="（4）创建statefulset"><a href="#（4）创建statefulset" class="headerlink" title="（4）创建statefulset"></a>（4）创建statefulset</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master mainfests]# kubectl apply -f stateful-demo.yaml </span><br><span class="line">service/myapp-svc created</span><br><span class="line">statefulset.apps/myapp created</span><br><span class="line">[root@k8s-master mainfests]# kubectl get svc  #查看创建的无头服务myapp-svc</span><br><span class="line">NAME         TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)             AGE</span><br><span class="line">kubernetes   ClusterIP   10.96.0.1        &lt;none&gt;        443/TCP             50d</span><br><span class="line">myapp-svc    ClusterIP   None             &lt;none&gt;        80/TCP              38s</span><br><span class="line">[root@k8s-master mainfests]# kubectl get sts    #查看statefulset</span><br><span class="line">NAME      DESIRED   CURRENT   AGE</span><br><span class="line">myapp     3         3         55s</span><br><span class="line">[root@k8s-master mainfests]# kubectl get pvc    #查看pvc绑定</span><br><span class="line">NAME                STATUS    VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   AGE</span><br><span class="line">myappdata-myapp-0   Bound     pv002     2Gi        RWO                           1m</span><br><span class="line">myappdata-myapp-1   Bound     pv003     2Gi        RWO,RWX                       1m</span><br><span class="line">myappdata-myapp-2   Bound     pv004     2Gi        RWO,RWX                       1m</span><br><span class="line">[root@k8s-master mainfests]# kubectl get pv    #查看pv绑定</span><br><span class="line">NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                       STORAGECLASS   REASON    AGE</span><br><span class="line">pv001     1Gi        RWO,RWX        Retain           Available                                                        6m</span><br><span class="line">pv002     2Gi        RWO            Retain           Bound       default/myappdata-myapp-0                            6m</span><br><span class="line">pv003     2Gi        RWO,RWX        Retain           Bound       default/myappdata-myapp-1                            6m</span><br><span class="line">pv004     2Gi        RWO,RWX        Retain           Bound       default/myappdata-myapp-2                            6m</span><br><span class="line">pv005     2Gi        RWO,RWX        Retain           Available                                                        6m</span><br><span class="line"></span><br><span class="line">[root@k8s-master mainfests]# kubectl get pods   #查看Pod信息</span><br><span class="line">NAME                     READY     STATUS    RESTARTS   AGE</span><br><span class="line">myapp-0                  1/1       Running   0          2m</span><br><span class="line">myapp-1                  1/1       Running   0          2m</span><br><span class="line">myapp-2                  1/1       Running   0          2m</span><br><span class="line">pod-vol-demo             2/2       Running   0          1d</span><br><span class="line">redis-5b5d6fbbbd-q8ppz   1/1       Running   1          2d</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>当删除的时候是从myapp-2开始进行删除的，关闭是逆向关闭</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master mainfests]# kubectl delete -f stateful-demo.yaml </span><br><span class="line">service &quot;myapp-svc&quot; deleted</span><br><span class="line">statefulset.apps &quot;myapp&quot; deleted</span><br><span class="line"></span><br><span class="line">[root@k8s-master ~]# kubectl get pods -w</span><br><span class="line">NAME                     READY     STATUS    RESTARTS   AGE</span><br><span class="line">filebeat-ds-hxgdx        1/1       Running   1          33d</span><br><span class="line">filebeat-ds-s466l        1/1       Running   2          33d</span><br><span class="line">myapp-0                  1/1       Running   0          3m</span><br><span class="line">myapp-1                  1/1       Running   0          3m</span><br><span class="line">myapp-2                  1/1       Running   0          3m</span><br><span class="line">pod-vol-demo             2/2       Running   0          1d</span><br><span class="line">redis-5b5d6fbbbd-q8ppz   1/1       Running   1          2d</span><br><span class="line">myapp-0   1/1       Terminating   0         3m</span><br><span class="line">myapp-2   1/1       Terminating   0         3m</span><br><span class="line">myapp-1   1/1       Terminating   0         3m</span><br><span class="line">myapp-1   0/1       Terminating   0         3m</span><br><span class="line">myapp-0   0/1       Terminating   0         3m</span><br><span class="line">myapp-2   0/1       Terminating   0         3m</span><br><span class="line">myapp-1   0/1       Terminating   0         3m</span><br><span class="line">myapp-1   0/1       Terminating   0         3m</span><br><span class="line">myapp-0   0/1       Terminating   0         4m</span><br><span class="line">myapp-0   0/1       Terminating   0         4m</span><br><span class="line">myapp-2   0/1       Terminating   0         3m</span><br><span class="line">myapp-2   0/1       Terminating   0         3m</span><br><span class="line"></span><br><span class="line">此时PVC依旧存在的，再重新创建pod时，依旧会重新去绑定原来的pvc</span><br><span class="line">[root@k8s-master mainfests]# kubectl apply -f stateful-demo.yaml </span><br><span class="line">service/myapp-svc created</span><br><span class="line">statefulset.apps/myapp created</span><br><span class="line"></span><br><span class="line">[root@k8s-master mainfests]# kubectl get pvc</span><br><span class="line">NAME                STATUS    VOLUME    CAPACITY   ACCESS MODES   STORAGECLASS   AGE</span><br><span class="line">myappdata-myapp-0   Bound     pv002     2Gi        RWO                           5m</span><br><span class="line">myappdata-myapp-1   Bound     pv003     2Gi        RWO,RWX                       5m</span><br><span class="line">myappdata-myapp-2   Bound     pv004     2Gi        RWO,RWX                       5m</span><br></pre></td></tr></table></figure>
+
+<h3 id="五、滚动更新、扩展伸缩、版本升级、修改更新策略"><a href="#五、滚动更新、扩展伸缩、版本升级、修改更新策略" class="headerlink" title="五、滚动更新、扩展伸缩、版本升级、修改更新策略"></a>五、滚动更新、扩展伸缩、版本升级、修改更新策略</h3><h4 id="1、滚动更新"><a href="#1、滚动更新" class="headerlink" title="1、滚动更新"></a>1、滚动更新</h4><blockquote>
+<p>RollingUpdate 更新策略在 StatefulSet 中实现 Pod 的自动滚动更新。 当StatefulSet的 .spec.updateStrategy.type 设置为 RollingUpdate 时，默认为：RollingUpdate。StatefulSet 控制器将在 StatefulSet 中删除并重新创建每个 Pod。 它将以与 Pod 终止相同的顺序进行（从最大的序数到最小的序数），每次更新一个 Pod。 在更新其前身之前，它将等待正在更新的 Pod 状态变成正在运行并就绪。如下操作的滚动更新是有2-0的顺序更新。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master mainfests]# vim stateful-demo.yaml  #修改image版本为v2</span><br><span class="line">.....</span><br><span class="line">image: ikubernetes/myapp:v2</span><br><span class="line">....</span><br><span class="line">[root@k8s-master mainfests]# kubectl apply -f stateful-demo.yaml </span><br><span class="line">service/myapp-svc unchanged</span><br><span class="line">statefulset.apps/myapp configured</span><br><span class="line">[root@k8s-master ~]# kubectl get pods -w   #查看滚动更新的过程</span><br><span class="line">NAME                     READY     STATUS    RESTARTS   AGE</span><br><span class="line">myapp-0                  1/1       Running   0          36m</span><br><span class="line">myapp-1                  1/1       Running   0          36m</span><br><span class="line">myapp-2                  1/1       Running   0          36m</span><br><span class="line"></span><br><span class="line">myapp-2   1/1       Terminating   0         36m</span><br><span class="line">myapp-2   0/1       Terminating   0         36m</span><br><span class="line">myapp-2   0/1       Terminating   0         36m</span><br><span class="line">myapp-2   0/1       Terminating   0         36m</span><br><span class="line">myapp-2   0/1       Pending   0         0s</span><br><span class="line">myapp-2   0/1       Pending   0         0s</span><br><span class="line">myapp-2   0/1       ContainerCreating   0         0s</span><br><span class="line">myapp-2   1/1       Running   0         2s</span><br><span class="line">myapp-1   1/1       Terminating   0         36m</span><br><span class="line">myapp-1   0/1       Terminating   0         36m</span><br><span class="line">myapp-1   0/1       Terminating   0         36m</span><br><span class="line">myapp-1   0/1       Terminating   0         36m</span><br><span class="line">myapp-1   0/1       Pending   0         0s</span><br><span class="line">myapp-1   0/1       Pending   0         0s</span><br><span class="line">myapp-1   0/1       ContainerCreating   0         0s</span><br><span class="line">myapp-1   1/1       Running   0         1s</span><br><span class="line">myapp-0   1/1       Terminating   0         37m</span><br><span class="line">myapp-0   0/1       Terminating   0         37m</span><br><span class="line">myapp-0   0/1       Terminating   0         37m</span><br><span class="line">myapp-0   0/1       Terminating   0         37m</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>在创建的每一个Pod中，每一个pod自己的名称都是可以被解析的，如下：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master ~]# kubectl get pods -o wide</span><br><span class="line">NAME                     READY     STATUS    RESTARTS   AGE       IP            NODE</span><br><span class="line">myapp-0                  1/1       Running   0          8m        10.244.1.62   k8s-node01</span><br><span class="line">myapp-1                  1/1       Running   0          8m        10.244.2.49   k8s-node02</span><br><span class="line">myapp-2                  1/1       Running   0          8m        10.244.1.61   k8s-node01</span><br><span class="line"></span><br><span class="line">[root@k8s-master mainfests]# kubectl exec -it myapp-0 -- /bin/sh</span><br><span class="line">/ # nslookup myapp-0.myapp-svc.default.svc.cluster.local</span><br><span class="line">nslookup: can&apos;t resolve &apos;(null)&apos;: Name does not resolve</span><br><span class="line"></span><br><span class="line">Name:      myapp-0.myapp-svc.default.svc.cluster.local</span><br><span class="line">Address 1: 10.244.1.62 myapp-0.myapp-svc.default.svc.cluster.local</span><br><span class="line">/ # nslookup myapp-1.myapp-svc.default.svc.cluster.local</span><br><span class="line">nslookup: can&apos;t resolve &apos;(null)&apos;: Name does not resolve</span><br><span class="line"></span><br><span class="line">Name:      myapp-1.myapp-svc.default.svc.cluster.local</span><br><span class="line">Address 1: 10.244.2.49 myapp-1.myapp-svc.default.svc.cluster.local</span><br><span class="line">/ # nslookup myapp-2.myapp-svc.default.svc.cluster.local</span><br><span class="line">nslookup: can&apos;t resolve &apos;(null)&apos;: Name does not resolve</span><br><span class="line"></span><br><span class="line">Name:      myapp-2.myapp-svc.default.svc.cluster.local</span><br><span class="line">Address 1: 10.244.1.61 myapp-2.myapp-svc.default.svc.cluster.local</span><br><span class="line"></span><br><span class="line">从上面的解析，我们可以看到在容器当中可以通过对Pod的名称进行解析到ip。其解析的域名格式如下：</span><br><span class="line">pod_name.service_name.ns_name.svc.cluster.local</span><br><span class="line">eg: myapp-0.myapp.default.svc.cluster.local</span><br></pre></td></tr></table></figure>
+
+<h4 id="2、扩展伸缩"><a href="#2、扩展伸缩" class="headerlink" title="2、扩展伸缩"></a>2、扩展伸缩</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master mainfests]# kubectl scale sts myapp --replicas=4  #扩容副本增加到4个</span><br><span class="line">statefulset.apps/myapp scaled</span><br><span class="line">[root@k8s-master ~]# kubectl get pods -w  #动态查看扩容</span><br><span class="line">NAME                     READY     STATUS    RESTARTS   AGE</span><br><span class="line">myapp-0                  1/1       Running   0          23m</span><br><span class="line">myapp-1                  1/1       Running   0          23m</span><br><span class="line">myapp-2                  1/1       Running   0          23m</span><br><span class="line"></span><br><span class="line">myapp-3   0/1       Pending   0         0s</span><br><span class="line">myapp-3   0/1       Pending   0         0s</span><br><span class="line">myapp-3   0/1       ContainerCreating   0         0s</span><br><span class="line">myapp-3   1/1       Running   0         1s</span><br><span class="line">[root@k8s-master mainfests]# kubectl get pv  #查看pv绑定</span><br><span class="line">NAME      CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS      CLAIM                       STORAGECLASS   REASON    AGE</span><br><span class="line">pv001     1Gi        RWO,RWX        Retain           Available                                                        1h</span><br><span class="line">pv002     2Gi        RWO            Retain           Bound       default/myappdata-myapp-0                            1h</span><br><span class="line">pv003     2Gi        RWO,RWX        Retain           Bound       default/myappdata-myapp-1                            1h</span><br><span class="line">pv004     2Gi        RWO,RWX        Retain           Bound       default/myappdata-myapp-2                            1h</span><br><span class="line">pv005     2Gi        RWO,RWX        Retain           Bound       default/myappdata-myapp-3                            1h</span><br><span class="line"></span><br><span class="line">[root@k8s-master mainfests]# kubectl patch sts myapp -p &apos;&#123;&quot;spec&quot;:&#123;&quot;replicas&quot;:2&#125;&#125;&apos;  #打补丁方式缩容</span><br><span class="line">statefulset.apps/myapp patched</span><br><span class="line">[root@k8s-master ~]# kubectl get pods -w  #动态查看缩容</span><br><span class="line">NAME                     READY     STATUS    RESTARTS   AGE</span><br><span class="line">myapp-0                  1/1       Running   0          25m</span><br><span class="line">myapp-1                  1/1       Running   0          25m</span><br><span class="line">myapp-2                  1/1       Running   0          25m</span><br><span class="line">myapp-3                  1/1       Running   0          1m</span><br><span class="line">myapp-3   1/1       Terminating   0         2m</span><br><span class="line">myapp-3   0/1       Terminating   0         2m</span><br><span class="line">myapp-3   0/1       Terminating   0         2m</span><br><span class="line">myapp-3   0/1       Terminating   0         2m</span><br><span class="line">myapp-2   1/1       Terminating   0         26m</span><br><span class="line">myapp-2   0/1       Terminating   0         26m</span><br><span class="line">myapp-2   0/1       Terminating   0         27m</span><br><span class="line">myapp-2   0/1       Terminating   0         27m</span><br></pre></td></tr></table></figure>
+
+<h4 id="3、更新策略和版本升级"><a href="#3、更新策略和版本升级" class="headerlink" title="3、更新策略和版本升级"></a>3、更新策略和版本升级</h4><blockquote>
+<p>修改更新策略，以partition方式进行更新，更新值为2，只有myapp编号大于等于2的才会进行更新。类似于金丝雀部署方式。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master mainfests]# kubectl patch sts myapp -p &apos;&#123;&quot;spec&quot;:&#123;&quot;updateStrategy&quot;:&#123;&quot;rollingUpdate&quot;:&#123;&quot;partition&quot;:2&#125;&#125;&#125;&#125;&apos;</span><br><span class="line">statefulset.apps/myapp patched</span><br><span class="line">[root@k8s-master ~]# kubectl get sts myapp</span><br><span class="line">NAME      DESIRED   CURRENT   AGE</span><br><span class="line">myapp     4         4         1h</span><br><span class="line">[root@k8s-master ~]# kubectl describe sts myapp</span><br><span class="line">Name:               myapp</span><br><span class="line">Namespace:          default</span><br><span class="line">CreationTimestamp:  Wed, 10 Oct 2018 21:58:24 -0400</span><br><span class="line">Selector:           app=myapp-pod</span><br><span class="line">Labels:             &lt;none&gt;</span><br><span class="line">Annotations:        kubectl.kubernetes.io/last-applied-configuration=&#123;&quot;apiVersion&quot;:&quot;apps/v1&quot;,&quot;kind&quot;:&quot;StatefulSet&quot;,&quot;metadata&quot;:&#123;&quot;annotations&quot;:&#123;&#125;,&quot;name&quot;:&quot;myapp&quot;,&quot;namespace&quot;:&quot;default&quot;&#125;,&quot;spec&quot;:&#123;&quot;replicas&quot;:3,&quot;selector&quot;:&#123;&quot;match...</span><br><span class="line">Replicas:           4 desired | 4 total</span><br><span class="line">Update Strategy:    RollingUpdate</span><br><span class="line">  Partition:        2</span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>版本升级，将image的版本升级为v3，升级后对比myapp-2和myapp-1的image版本是不同的。这样就实现了金丝雀发布的效果。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master mainfests]# kubectl set image sts/myapp myapp=ikubernetes/myapp:v3</span><br><span class="line">statefulset.apps/myapp image updated</span><br><span class="line">[root@k8s-master ~]# kubectl get sts -o wide</span><br><span class="line">NAME      DESIRED   CURRENT   AGE       CONTAINERS   IMAGES</span><br><span class="line">myapp     4         4         1h        myapp        ikubernetes/myapp:v3</span><br><span class="line">[root@k8s-master ~]# kubectl get pods myapp-2 -o yaml |grep image</span><br><span class="line">  - image: ikubernetes/myapp:v3</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">    image: ikubernetes/myapp:v3</span><br><span class="line">    imageID: docker-pullable://ikubernetes/myapp@sha256:b8d74db2515d3c1391c78c5768272b9344428035ef6d72158fd9f6c4239b2c69</span><br><span class="line"></span><br><span class="line">[root@k8s-master ~]# kubectl get pods myapp-1 -o yaml |grep image</span><br><span class="line">  - image: ikubernetes/myapp:v2</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">    image: ikubernetes/myapp:v2</span><br><span class="line">    imageID: docker-pullable://ikubernetes/myapp@sha256:85a2b81a62f09a414ea33b74fb8aa686ed9b168294b26b4c819df0be0712d358</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>将剩余的Pod也更新版本，只需要将更新策略的partition值改为0即可，如下：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master mainfests]#  kubectl patch sts myapp -p &apos;&#123;&quot;spec&quot;:&#123;&quot;updateStrategy&quot;:&#123;&quot;rollingUpdate&quot;:&#123;&quot;partition&quot;:0&#125;&#125;&#125;&#125;&apos;</span><br><span class="line">statefulset.apps/myapp patched</span><br><span class="line"></span><br><span class="line">[root@k8s-master ~]# kubectl get pods -w</span><br><span class="line">NAME                     READY     STATUS    RESTARTS   AGE</span><br><span class="line">myapp-0                  1/1       Running   0          58m</span><br><span class="line">myapp-1                  1/1       Running   0          58m</span><br><span class="line">myapp-2                  1/1       Running   0          13m</span><br><span class="line">myapp-3                  1/1       Running   0          13m</span><br><span class="line">myapp-1   1/1       Terminating   0         58m</span><br><span class="line">myapp-1   0/1       Terminating   0         58m</span><br><span class="line">myapp-1   0/1       Terminating   0         58m</span><br><span class="line">myapp-1   0/1       Terminating   0         58m</span><br><span class="line">myapp-1   0/1       Pending   0         0s</span><br><span class="line">myapp-1   0/1       Pending   0         0s</span><br><span class="line">myapp-1   0/1       ContainerCreating   0         0s</span><br><span class="line">myapp-1   1/1       Running   0         2s</span><br><span class="line">myapp-0   1/1       Terminating   0         58m</span><br><span class="line">myapp-0   0/1       Terminating   0         58m</span><br><span class="line">myapp-0   0/1       Terminating   0         58m</span><br><span class="line">myapp-0   0/1       Terminating   0         58m</span><br><span class="line">myapp-0   0/1       Pending   0         0s</span><br><span class="line">myapp-0   0/1       Pending   0         0s</span><br><span class="line">myapp-0   0/1       ContainerCreating   0         0s</span><br><span class="line">myapp-0   1/1       Running   0         2s</span><br></pre></td></tr></table></figure>
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes之Secret/" rel="next" title="Kubernetes之Secret">
+                <i class="fa fa-chevron-left"></i> Kubernetes之Secret
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">23</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#一、statefulset简介"><span class="nav-number">1.</span> <span class="nav-text">一、statefulset简介</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括："><span class="nav-number">1.1.</span> <span class="nav-text">StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#从上面的应用场景可以发现，StatefulSet由以下几个部分组成："><span class="nav-number">1.2.</span> <span class="nav-text">从上面的应用场景可以发现，StatefulSet由以下几个部分组成：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#二、为什么要有headless？？"><span class="nav-number">2.</span> <span class="nav-text">二、为什么要有headless？？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#三、为什么要-有volumeClainTemplate？？"><span class="nav-number">3.</span> <span class="nav-text">三、为什么要 有volumeClainTemplate？？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#四、statefulSet使用演示"><span class="nav-number">4.</span> <span class="nav-text">四、statefulSet使用演示</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#（1）查看statefulset的定义"><span class="nav-number">4.1.</span> <span class="nav-text">（1）查看statefulset的定义</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（2）清单定义statefulset"><span class="nav-number">4.2.</span> <span class="nav-text">（2）清单定义statefulset</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（3）修改pv的大小为2Gi"><span class="nav-number">4.3.</span> <span class="nav-text">（3）修改pv的大小为2Gi</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（4）创建statefulset"><span class="nav-number">4.4.</span> <span class="nav-text">（4）创建statefulset</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#五、滚动更新、扩展伸缩、版本升级、修改更新策略"><span class="nav-number">5.</span> <span class="nav-text">五、滚动更新、扩展伸缩、版本升级、修改更新策略</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#1、滚动更新"><span class="nav-number">5.1.</span> <span class="nav-text">1、滚动更新</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2、扩展伸缩"><span class="nav-number">5.2.</span> <span class="nav-text">2、扩展伸缩</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3、更新策略和版本升级"><span class="nav-number">5.3.</span> <span class="nav-text">3、更新策略和版本升级</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="前面我们讲了ConfigMap的使用，我们说ConfigMap这个资源对象是Kubernetes当中非常重要的一个对象，一般情况下ConfigMap是用来存储一些非安全的配置信息，如果涉及到一些安全相关的数据的话用ConfigMap就非常不妥了，因为ConfigMap是明文存储的，我们说这个时候我们就需要用到另外一个资源对象了：Secret，Secret用来保存敏感信息，例如密码、OAuth 令">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之Secret">
+<meta property="og:url" content="http://yoursite.com/2019/08/26/Kubernetes之Secret/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="前面我们讲了ConfigMap的使用，我们说ConfigMap这个资源对象是Kubernetes当中非常重要的一个对象，一般情况下ConfigMap是用来存储一些非安全的配置信息，如果涉及到一些安全相关的数据的话用ConfigMap就非常不妥了，因为ConfigMap是明文存储的，我们说这个时候我们就需要用到另外一个资源对象了：Secret，Secret用来保存敏感信息，例如密码、OAuth 令">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-08-26T02:46:18.870Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes之Secret">
+<meta name="twitter:description" content="前面我们讲了ConfigMap的使用，我们说ConfigMap这个资源对象是Kubernetes当中非常重要的一个对象，一般情况下ConfigMap是用来存储一些非安全的配置信息，如果涉及到一些安全相关的数据的话用ConfigMap就非常不妥了，因为ConfigMap是明文存储的，我们说这个时候我们就需要用到另外一个资源对象了：Secret，Secret用来保存敏感信息，例如密码、OAuth 令">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/08/26/Kubernetes之Secret/">
+
+
+
+
+
+  <title>Kubernetes之Secret | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/26/Kubernetes之Secret/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes之Secret</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T10:43:45+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>前面我们讲了ConfigMap的使用，我们说ConfigMap这个资源对象是Kubernetes当中非常重要的一个对象，一般情况下ConfigMap是用来存储一些非安全的配置信息，如果涉及到一些安全相关的数据的话用ConfigMap就非常不妥了，因为ConfigMap是明文存储的，我们说这个时候我们就需要用到另外一个资源对象了：Secret，Secret用来保存敏感信息，例如密码、OAuth 令牌和 ssh key等等，将这些信息放在Secret中比放在Pod的定义中或者docker镜像中来说更加安全和灵活。</p>
+</blockquote>
+<blockquote>
+<h4 id="Secret有四种TYPE（类型）："><a href="#Secret有四种TYPE（类型）：" class="headerlink" title="Secret有四种TYPE（类型）："></a>Secret有四种TYPE（类型）：</h4><ul>
+<li>Opaque ：base64编码格式的Secret，用来存储密码、密钥、信息、证书等，类型标识符为generic；</li>
+<li>kubernetes.io/dockerconfigjson ：用来存储私有docker registry的认证信息，类型标识为docker-registry。</li>
+<li>kubernetes.io/tls：用于为SSL通信模式存储证书和私钥文件，命令式创建类型标识为tls。</li>
+<li>kubernetes.io/service-account-token：用来访问Kubernetes API，由Kubernetes自动创建，并且会自动挂载到Pod的/var/run/secrets/kubernetes.io/serviceaccount目录中；</li>
+</ul>
+</blockquote>
+<h3 id="Opaque-Secret："><a href="#Opaque-Secret：" class="headerlink" title="Opaque Secret："></a>Opaque Secret：</h3><blockquote>
+<p>Opaque 类型的数据是一个 map 类型，要求value是base64编码格式，比如我们来创建一个用户名为 admin，密码为 admin321 的 Secret 对象，首先我们先把这用户名和密码做 base64 编码，</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ echo -n &quot;admin&quot; | base64</span><br><span class="line">YWRtaW4=</span><br><span class="line">$ echo -n &quot;admin321&quot; | base64</span><br><span class="line">YWRtaW4zMjE=</span><br></pre></td></tr></table></figure>
+
+<p>然后我们就可以利用上面编码过后的数据来编写一个YAML文件：(secret-demo.yaml)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Secret</span><br><span class="line">metadata:</span><br><span class="line">  name: mysecret</span><br><span class="line">type: Opaque</span><br><span class="line">data:</span><br><span class="line">  username: YWRtaW4=</span><br><span class="line">  password: YWRtaW4zMjE=</span><br></pre></td></tr></table></figure>
+
+<p>然后同样的我们就可以使用kubectl命令来创建了：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create -f secret-demo.yaml</span><br><span class="line">secret &quot;mysecret&quot; created</span><br></pre></td></tr></table></figure>
+
+<p>利用get secret命令查看：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get secret</span><br><span class="line">NAME                  TYPE                                  DATA   AGE</span><br><span class="line">default-token-zmv4x     kubernetes.io/service-account-token   3      40h</span><br><span class="line">mysecret              Opaque                                2      45m</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">其中default-token-zmv4x为创建集群时默认创建的 secret，被serviceacount/default 引用。</span><br></pre></td></tr></table></figure>
+
+<p>使用describe命令，查看详情：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl describe secret mysecret</span><br><span class="line">Name:         mysecret</span><br><span class="line">Namespace:    default</span><br><span class="line">Labels:       &lt;none&gt;</span><br><span class="line">Annotations:  &lt;none&gt;</span><br><span class="line"></span><br><span class="line">Type:  Opaque</span><br><span class="line"></span><br><span class="line">Data</span><br><span class="line">====</span><br><span class="line">password:  8 bytes</span><br><span class="line">username:  5 bytes</span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到利用describe命令查看到的Data没有直接显示出来，如果想看到Data里面的详细信息，同样我们可以输出成YAML文件进行查看：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get secret mysecret -o yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">data:</span><br><span class="line">  password: YWRtaW4zMjE=</span><br><span class="line">  username: YWRtaW4=</span><br><span class="line">kind: Secret</span><br><span class="line">metadata:</span><br><span class="line">  creationTimestamp: 2018-06-19T15:27:06Z</span><br><span class="line">  name: mysecret</span><br><span class="line">  namespace: default</span><br><span class="line">  resourceVersion: &quot;3694084&quot;</span><br><span class="line">  selfLink: /api/v1/namespaces/default/secrets/mysecret</span><br><span class="line">  uid: 39c139f5-73d5-11e8-a101-525400db4df7</span><br><span class="line">type: Opaque</span><br></pre></td></tr></table></figure>
+
+<h4 id="创建好Secret对象后，有两种方式来使用它："><a href="#创建好Secret对象后，有两种方式来使用它：" class="headerlink" title="创建好Secret对象后，有两种方式来使用它："></a>创建好Secret对象后，有两种方式来使用它：</h4><ul>
+<li>以环境变量的形式</li>
+<li>以Volume的形式挂载</li>
+</ul>
+<h3 id="环境变量"><a href="#环境变量" class="headerlink" title="环境变量"></a>环境变量</h3><p>首先我们来测试下环境变量的方式，同样的，我们来使用一个简单的busybox镜像来测试下:(secret1-pod.yaml)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: secret1-pod</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: secret1</span><br><span class="line">    image: busybox</span><br><span class="line">    command: [ &quot;/bin/sh&quot;, &quot;-c&quot;, &quot;env&quot; ]</span><br><span class="line">    env:</span><br><span class="line">    - name: USERNAME</span><br><span class="line">      valueFrom:</span><br><span class="line">        secretKeyRef:</span><br><span class="line">          name: mysecret</span><br><span class="line">          key: username</span><br><span class="line">    - name: PASSWORD</span><br><span class="line">      valueFrom:</span><br><span class="line">        secretKeyRef:</span><br><span class="line">          name: mysecret</span><br><span class="line">          key: password</span><br></pre></td></tr></table></figure>
+
+<p>主要上面环境变量中定义的secretKeyRef关键字，和我们上节课的configMapKeyRef是不是比较类似，一个是从Secret对象中获取，一个是从ConfigMap对象中获取，创建上面的Pod：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create -f secret1-pod.yaml</span><br><span class="line">pod &quot;secret1-pod&quot; created</span><br></pre></td></tr></table></figure>
+
+<p>然后我们查看Pod的日志输出：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl logs secret1-pod</span><br><span class="line">...</span><br><span class="line">USERNAME=admin</span><br><span class="line">PASSWORD=admin321</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>可以看到有 USERNAME 和 PASSWORD 两个环境变量输出出来。</p>
+<h3 id="Volume-挂载"><a href="#Volume-挂载" class="headerlink" title="Volume 挂载"></a>Volume 挂载</h3><p>同样的我们用一个Pod来验证下Volume挂载，创建一个Pod文件：(secret2-pod.yaml)</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: secret2-pod</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: secret2</span><br><span class="line">    image: busybox</span><br><span class="line">    command: [&quot;/bin/sh&quot;, &quot;-c&quot;, &quot;ls /etc/secrets&quot;]</span><br><span class="line">    volumeMounts:</span><br><span class="line">    - name: secrets</span><br><span class="line">      mountPath: /etc/secrets</span><br><span class="line">  volumes:</span><br><span class="line">  - name: secrets</span><br><span class="line">    secret:</span><br><span class="line">     secretName: mysecret</span><br></pre></td></tr></table></figure>
+
+<p>创建Pod:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create -f secret-pod2.yaml</span><br><span class="line">pod &quot;secret2-pod&quot; created</span><br></pre></td></tr></table></figure>
+
+<p>然后我们查看输出日志：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl logs secret2-pod</span><br><span class="line">password</span><br><span class="line">username</span><br></pre></td></tr></table></figure>
+
+<p>可以看到secret把两个key挂载成了两个对应的文件。当然如果想要挂载到指定的文件上面，是不是也可以使用上一节课的方法：在secretName下面添加items指定 key 和 path，这个大家可以参考上节课ConfigMap中的方法去测试下。</p>
+<h3 id="kubernetes-io-dockerconfigjson"><a href="#kubernetes-io-dockerconfigjson" class="headerlink" title="kubernetes.io/dockerconfigjson"></a>kubernetes.io/dockerconfigjson</h3><p>除了上面的Opaque这种类型外，我们还可以来创建用户docker registry认证的Secret，直接使用kubectl create命令创建即可，如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create secret docker-registry myregistry --docker-server=DOCKER_SERVER --docker-username=DOCKER_USER --docker-password=DOCKER_PASSWORD --docker-email=DOCKER_EMAIL</span><br><span class="line">secret &quot;myregistry&quot; created</span><br></pre></td></tr></table></figure>
+
+<p>然后查看Secret列表：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get secret</span><br><span class="line">NAME                  TYPE                                  DATA      AGE</span><br><span class="line">default-token-n9w2d    kubernetes.io/service-account-token   3         33d</span><br><span class="line">myregistry            kubernetes.io/dockerconfigjson        1         15s</span><br><span class="line">mysecret              Opaque                                2         34m</span><br></pre></td></tr></table></figure>
+
+<p>注意看上面的TYPE类型，myregistry是不是对应的kubernetes.io/dockerconfigjson，同样的可以使用describe命令来查看详细信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl describe secret myregistry</span><br><span class="line">Name:         myregistry</span><br><span class="line">Namespace:    default</span><br><span class="line">Labels:       &lt;none&gt;</span><br><span class="line">Annotations:  &lt;none&gt;</span><br><span class="line"></span><br><span class="line">Type:  kubernetes.io/dockerconfigjson</span><br><span class="line"></span><br><span class="line">Data</span><br><span class="line">====</span><br><span class="line">.dockerconfigjson:  152 bytes</span><br></pre></td></tr></table></figure>
+
+<p>同样的可以看到Data区域没有直接展示出来，如果想查看的话可以使用-o yaml来输出展示出来：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get secret myregistry -o yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">data:</span><br><span class="line">  .dockerconfigjson: eyJhdXRocyI6eyJET0NLRVJfU0VSVkVSIjp7InVzZXJuYW1lIjoiRE9DS0VSX1VTRVIiLCJwYXNzd29yZCI6IkRPQ0tFUl9QQVNTV09SRCIsImVtYWlsIjoiRE9DS0VSX0VNQUlMIiwiYXV0aCI6IlJFOURTMFZTWDFWVFJWSTZSRTlEUzBWU1gxQkJVMU5YVDFKRSJ9fX0=</span><br><span class="line">kind: Secret</span><br><span class="line">metadata:</span><br><span class="line">  creationTimestamp: 2018-06-19T16:01:05Z</span><br><span class="line">  name: myregistry</span><br><span class="line">  namespace: default</span><br><span class="line">  resourceVersion: &quot;3696966&quot;</span><br><span class="line">  selfLink: /api/v1/namespaces/default/secrets/myregistry</span><br><span class="line">  uid: f91db707-73d9-11e8-a101-525400db4df7</span><br><span class="line">type: kubernetes.io/dockerconfigjson</span><br></pre></td></tr></table></figure>
+
+<p>可以把上面的data.dockerconfigjson下面的数据做一个base64解码，看看里面的数据是怎样的呢？</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ echo eyJhdXRocyI6eyJET0NLRVJfU0VSVkVSIjp7InVzZXJuYW1lIjoiRE9DS0VSX1VTRVIiLCJwYXNzd29yZCI6IkRPQ0tFUl9QQVNTV09SRCIsImVtYWlsIjoiRE9DS0VSX0VNQUlMIiwiYXV0aCI6IlJFOURTMFZTWDFWVFJWSTZSRTlEUzBWU1gxQkJVMU5YVDFKRSJ9fX0= | base64 -d</span><br><span class="line">&#123;&quot;auths&quot;:&#123;&quot;DOCKER_SERVER&quot;:&#123;&quot;username&quot;:&quot;DOCKER_USER&quot;,&quot;password&quot;:&quot;DOCKER_PASSWORD&quot;,&quot;email&quot;:&quot;DOCKER_EMAIL&quot;,&quot;auth&quot;:&quot;RE9DS0VSX1VTRVI6RE9DS0VSX1BBU1NXT1JE&quot;&#125;&#125;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>如果我们需要拉取私有仓库中的docker镜像的话就需要使用到上面的myregistry这个Secret：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: foo</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - name: foo</span><br><span class="line">    image: 192.168.1.100:5000/test:v1</span><br><span class="line">  imagePullSecrets:</span><br><span class="line">  - name: myregistry</span><br></pre></td></tr></table></figure>
+
+<p>我们需要拉取私有仓库镜像192.168.1.100:5000/test:v1，我们就需要针对该私有仓库来创建一个如上的Secret，然后在Pod的 YAML 文件中指定imagePullSecrets，我们会在后面的私有仓库搭建的课程中跟大家详细说明的。</p>
+<h3 id="kubernetes-io-service-account-token"><a href="#kubernetes-io-service-account-token" class="headerlink" title="kubernetes.io/service-account-token"></a>kubernetes.io/service-account-token</h3><p>有些情况下，我们希望在 pod 内部访问 apiserver，获取集群的信息，甚至对集群进行改动。针对这种情况，kubernetes 提供了一种特殊的认证方式：Service Account。 Service Account 是面向 namespace 的，每个 namespace 创建的时候，kubernetes 会自动在这个 namespace 下面创建一个默认的 Service Account；并且这个 Service Account 只能访问该 namespace 的资源。Service Account 和 pod、service、deployment 一样是kubernetes 集群中的一种资源，用户也可以创建自己的 serviceaccount。</p>
+<p>ServiceAccount 主要包含了三个内容：namespace、Token 和 CA。namespace 指定了 pod 所在的 namespace，CA 用于验证 apiserver 的证书，token 用作身份验证。它们都通过mount 的方式挂载到 pod 中，其中 token 保存的路径是 /var/run/secrets/kubernetes.io/serviceaccount/token ，是 kube-controller-manager 通过–service-account-private-key-file私钥签发的token； CA 保存的路径是 /var/run/secrets/kubernetes.io/serviceaccount/ca.crt ，namespace 保存的路径是 /var/run/secrets/kubernetes.io/serviceaccount/namespace 。</p>
+<p>如果 token 能够通过认证，那么请求的用户名将被设置为 system:serviceaccount:(NAMESPACE):(SERVICEACCOUNT) ，而请求的组名有两个： system:serviceaccounts 和 system:serviceaccounts:(NAMESPACE)。</p>
+<h4 id="API-Server的service-account验证过程"><a href="#API-Server的service-account验证过程" class="headerlink" title="API Server的service account验证过程"></a>API Server的service account验证过程</h4><p>以kube-system namespace下的“default” service account为例，Pod的usrname全称为：system:serviceaccount:kube-system:default。有了username，那么credentials呢？就是上面提到的service-account-token中的token。API Server的验证环节支持多种身份校验方式：CA 证书认证、Token 认证、Base 认证。一旦API Server发现client发起的request使用的是service account token的方式，API Server就会自动采用signed bearer token方式进行身份校验。而request就会使用携带的service account token参与验证。该token是API Server在创建service account时用API server启动参数：–service-account-key-file=/etc/kubernetes/pki/sa.pub的值签署(sign)生成的。如果–service-account-key-file=未传入任何值，那么将默认使用–tls-private-key-file的值，即API Server的私钥。</p>
+<p>这里我们使用一个nginx镜像来验证一下，大家想一想为什么不是呀busybox镜像来验证？当然也是可以的，但是我们就不能在command里面来验证了，因为token是需要Pod运行起来过后才会被挂载上去的，直接在command命令中去查看肯定是还没有 token 文件的。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl run secret-pod3 --image nginx:1.7.9</span><br><span class="line">deployment.apps &quot;secret-pod3&quot; created</span><br><span class="line"></span><br><span class="line">$ kubectl get pods</span><br><span class="line">NAME                           READY     STATUS    RESTARTS   AGE</span><br><span class="line">...</span><br><span class="line">secret-pod3-78c8c76db8-7zmqm   1/1       Running   0          13s</span><br><span class="line">...</span><br><span class="line"></span><br><span class="line">$ kubectl exec secret-pod3-78c8c76db8-7zmqm ls /run/secrets/kubernetes.io/serviceaccount</span><br><span class="line">ca.crt</span><br><span class="line">namespace</span><br><span class="line">token</span><br><span class="line"></span><br><span class="line">$ kubectl exec secret-pod3-78c8c76db8-7zmqm cat /run/secrets/kubernetes.io/serviceaccount/token</span><br><span class="line">eyJhbGciOiJSUzI1NiIsImtpZCI6IiJ9.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJkZWZhdWx0Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZWNyZXQubmFtZSI6ImRlZmF1bHQtdG9rZW4tbjl3MmQiLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoiZGVmYXVsdCIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjMzY2FkOWQxLTU5MmYtMTFlOC1hMTAxLTUyNTQwMGRiNGRmNyIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpkZWZhdWx0OmRlZmF1bHQifQ.0FpzPD8WO_fwnMjwpGIOphdVu4K9wUINwpXpBOJAQ-Tawd0RTbAUHcgYy3sEHSk9uvgnl1FJRQpbQN3yVR_DWSIlAtbmd4dIPxK4O7ZVdd4UnmC467cNXEBqL1sDWLfS5f03d7D1dw1ljFJ_pJw2P65Fjd13reKJvvTQnpu5U0SDcfxj675-Z3z-iOO3XSalZmkFIw2MfYMzf_WpxW0yMFCVkUZ8tBSTegA9-NJZededceA_VCOdKcUjDPrDo-CNti3wZqax5WPw95Ou8RJDMAIS5EcVym7M2_zjGiqHEL3VTvcwXbdFKxsNX-1VW6nr_KKuMGKOyx-5vgxebl71QQ</span><br></pre></td></tr></table></figure>
+
+<h3 id="Secret-与-ConfigMap-对比"><a href="#Secret-与-ConfigMap-对比" class="headerlink" title="Secret 与 ConfigMap 对比"></a>Secret 与 ConfigMap 对比</h3><p>最后我们来对比下Secret和ConfigMap这两种资源对象的异同点：</p>
+<blockquote>
+<h4 id="相同点："><a href="#相同点：" class="headerlink" title="相同点："></a>相同点：</h4><ul>
+<li>key/value 的形式</li>
+<li>属于某个特定的namespace</li>
+<li>可以导出到环境变量</li>
+<li>可以通过目录/文件形式挂载</li>
+<li>通过volume挂载的配置信息均可热更新</li>
+</ul>
+</blockquote>
+<blockquote>
+<h4 id="不同点："><a href="#不同点：" class="headerlink" title="不同点："></a>不同点：</h4><ul>
+<li>Secret 可以被ServerAccount关联</li>
+<li>Secret 可以存储docker register的鉴权信息，用在ImagePullSecret 参数中，用于拉取私有仓库的镜像</li>
+<li>Secret 支持Base64加密</li>
+<li>Secret 分为 kubernetes.io/service-account-token、kubernetes.io/dockerconfigjson、Opaque 、kubernetes.io/tls 四种类型，而Configmap不区分类型</li>
+</ul>
+</blockquote>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes之configMap/" rel="next" title="Kubernetes之configMap">
+                <i class="fa fa-chevron-left"></i> Kubernetes之configMap
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes之statefulset控制器/" rel="prev" title="Kubernetes之statefulset控制器">
+                Kubernetes之statefulset控制器 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">23</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#Secret有四种TYPE（类型）："><span class="nav-number">1.</span> <span class="nav-text">Secret有四种TYPE（类型）：</span></a></li></ol><li class="nav-item nav-level-3"><a class="nav-link" href="#Opaque-Secret："><span class="nav-number"></span> <span class="nav-text">Opaque Secret：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建好Secret对象后，有两种方式来使用它："><span class="nav-number">1.</span> <span class="nav-text">创建好Secret对象后，有两种方式来使用它：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#环境变量"><span class="nav-number"></span> <span class="nav-text">环境变量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Volume-挂载"><span class="nav-number"></span> <span class="nav-text">Volume 挂载</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubernetes-io-dockerconfigjson"><span class="nav-number"></span> <span class="nav-text">kubernetes.io/dockerconfigjson</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubernetes-io-service-account-token"><span class="nav-number"></span> <span class="nav-text">kubernetes.io/service-account-token</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#API-Server的service-account验证过程"><span class="nav-number">1.</span> <span class="nav-text">API Server的service account验证过程</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Secret-与-ConfigMap-对比"><span class="nav-number"></span> <span class="nav-text">Secret 与 ConfigMap 对比</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#相同点："><span class="nav-number">1.</span> <span class="nav-text">相同点：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#不同点："><span class="nav-number">2.</span> <span class="nav-text">不同点：</span></a></li></ol></li></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
