@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="什么是Local Persistent Volumes 在kubernetes 1.14版本中， Local Persistent Volumes已变为正式版本（GA），Local PV的概念在1.7中被首次提出（alpha），并在1.10版本中升级到beat版本。现在用户终于可以在生产环境中使用Local PV的功能和API了。首先：Local Persistent Volumes代表了直接绑定">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-08-26T06:16:39.098Z">
+<meta property="og:updated_time" content="2019-08-26T07:13:27.840Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="kubernetes中的local persistent volume">
 <meta name="twitter:description" content="什么是Local Persistent Volumes 在kubernetes 1.14版本中， Local Persistent Volumes已变为正式版本（GA），Local PV的概念在1.7中被首次提出（alpha），并在1.10版本中升级到beat版本。现在用户终于可以在生产环境中使用Local PV的功能和API了。首先：Local Persistent Volumes代表了直接绑定">
@@ -383,10 +383,11 @@
 </blockquote>
 <h3 id="Local-volumes的最佳实践"><a href="#Local-volumes的最佳实践" class="headerlink" title="Local volumes的最佳实践"></a>Local volumes的最佳实践</h3><blockquote>
 <ul>
-<li>为了更好的IO隔离效果，建议将一整块磁盘作为一个存储卷使用；</li>
-<li>为了得到存储空间的隔离，建议为每个存储卷使用一个独立的磁盘分区；</li>
-<li>避免重新创建同名的 Node，否则会导致新 Node 无法识别已绑定旧 Node 的 PV 否则，系统可能会认为新Node节点包含旧的PV。</li>
-<li>对于具有文件系统的存储卷，建议在fstab条目和该卷的mount安装点的目录名中使用它们的UUID（例如ls -l /dev/disk/by-uuid的输出）。 这种做法可确保不会安装错误的本地卷，即使其设备路径发生了更改（例如，如果/dev/sda1在添加新磁盘时变为/dev/sdb1）。 此外，这种做法将确保如果创建了具有相同名称的另一个节点时，该节点上的任何卷仍然都会是唯一的，而不会被误认为是具有相同名称的另一个节点上的卷。</li>
+<li>对于需要强 IO 隔离的场景，推荐使用整块磁盘作为 Volume</li>
+<li>对于需要容量隔离的场景，推荐使用分区作为 Volume</li>
+<li>避免在集群中重新创建同名的Node（无法避免时需要先删除通过 Affinity 引用该 Node 的 PV）</li>
+<li>对于文件系统类型的本地存储，推荐使用 UUID （如 ls -l /dev/disk/by-uuid）作为系统挂载点</li>
+<li>对于无文件系统的块存储，推荐生成一个唯一 ID 作软链接（如 /dev/dis/by-id）。这可以保证 Volume 名字唯一，并不会与其他 Node 上面的同名 Volume 混淆</li>
 </ul>
 </blockquote>
 <h3 id="一个关于local-volume功能局限性问题的讨论"><a href="#一个关于local-volume功能局限性问题的讨论" class="headerlink" title="一个关于local volume功能局限性问题的讨论"></a>一个关于local volume功能局限性问题的讨论</h3><blockquote>
