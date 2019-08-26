@@ -91,7 +91,7 @@
 <meta property="og:image" content="http://yoursite.com/images/volumes-2.png">
 <meta property="og:image" content="http://yoursite.com/images/volumes-3.png">
 <meta property="og:image" content="http://yoursite.com/images/volumes-4.png">
-<meta property="og:updated_time" content="2019-08-26T08:56:12.701Z">
+<meta property="og:updated_time" content="2019-08-26T09:01:47.852Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之存储卷">
 <meta name="twitter:description" content="一、存储卷的概念和类型 为了保证数据的持久性，必须保证数据在外部存储在docker容器中，为了实现数据的持久性存储，在宿主机和容器内做映射，可以保证在容器的生命周期结束，数据依旧可以实现持久性存储。但是在k8s中，由于pod分布在各个不同的节点之上，并不能实现不同节点之间持久性数据的共享，并且，在节点故障时，可能会导致数据的永久性丢失。为此，k8s就引入了外部存储卷的功能。  k8s的存储卷类型：">
@@ -524,7 +524,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get sc</span><br><span class="line">NAME          TYPE</span><br><span class="line">gold (default)  kubetnetes.io/gce-pd</span><br></pre></td></tr></table></figure>
 
 <h3 id="动态PV扩容"><a href="#动态PV扩容" class="headerlink" title="动态PV扩容"></a>动态PV扩容</h3><blockquote>
-<p>v1.11之前需要在<code>feature gate</code>中开启<code>ExpandPersistentVolumes</code>，以及 admission 控制器 <code>PersistentVolumeClaimResize</code>（防止在底层存储不支持扩容的情况下对 PVC 进行扩容）。在Kubernetes v1.11默认被激活。一旦管理员确定底层提供程序支持卷扩展，管理员就可以通过在自己的<code>StorageClass</code>对象中将<code>allowVolumeExpansion</code>字段设置为<code>true</code>，使用户可以使用该特性。</p>
+<p>v1.11之前需要在<code>feature gate</code>中开启<code>ExpandPersistentVolumes</code>，以及 admission 控制器 <code>PersistentVolumeClaimResize</code>（防止在底层存储不支持扩容的情况下对 PVC 进行扩容）。在Kubernetes v1.11+ 默认被激活，一旦管理员确定底层提供程序支持卷扩展，管理员就可以通过在自己的<code>StorageClass</code>对象中将<code>allowVolumeExpansion</code>字段设置为<code>true</code>，使用户可以使用该特性。</p>
 </blockquote>
 <h4 id="以下持久化卷支持扩展持久化卷声明："><a href="#以下持久化卷支持扩展持久化卷声明：" class="headerlink" title="以下持久化卷支持扩展持久化卷声明："></a>以下持久化卷支持扩展持久化卷声明：</h4><ul>
 <li>AWS-EBS</li>
