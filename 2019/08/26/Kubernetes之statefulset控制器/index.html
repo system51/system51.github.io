@@ -79,18 +79,18 @@
 
 
 
-<meta name="description" content="一、statefulset简介 从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。  -  StatefulS">
+<meta name="description" content="一、statefulset简介 从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。   StatefulSet">
 <meta name="keywords" content="kubernetes,devops">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Kubernetes之statefulset控制器">
 <meta property="og:url" content="http://yoursite.com/2019/08/26/Kubernetes之statefulset控制器/index.html">
 <meta property="og:site_name" content="Mr.Ye Blogs">
-<meta property="og:description" content="一、statefulset简介 从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。  -  StatefulS">
+<meta property="og:description" content="一、statefulset简介 从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。   StatefulSet">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-08-26T02:47:46.477Z">
+<meta property="og:updated_time" content="2019-08-26T02:51:20.228Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之statefulset控制器">
-<meta name="twitter:description" content="一、statefulset简介 从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。  -  StatefulS">
+<meta name="twitter:description" content="一、statefulset简介 从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。   StatefulSet">
 
 
 
@@ -303,7 +303,6 @@
         <h3 id="一、statefulset简介"><a href="#一、statefulset简介" class="headerlink" title="一、statefulset简介"></a>一、statefulset简介</h3><blockquote>
 <p>从前面的学习我们知道使用Deployment创建的pod是无状态的，当挂载了Volume之后，如果使用“kubectl delete -f”删除了Deployment资源后，在使用“kubectl apply -f” 新创建的Pod无法在挂载到以前的Volume上。为了解决这一问题，就引入了StatefulSet用于保留Pod的状态信息。</p>
 </blockquote>
-<p>-</p>
 <blockquote>
 <h4 id="StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括："><a href="#StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括：" class="headerlink" title="StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括："></a>StatefulSet是为了解决有状态服务的问题（对应Deployments和ReplicaSets是为无状态服务而设计），其应用场景包括：</h4><ul>
 <li>1、稳定的持久化存储，即Pod重新调度后还是能访问到相同的持久化数据，基于PVC来实现</li>
@@ -313,7 +312,6 @@
 <li>5、有序的滚动更新</li>
 </ul>
 </blockquote>
-<p>-</p>
 <blockquote>
 <h4 id="从上面的应用场景可以发现，StatefulSet由以下几个部分组成："><a href="#从上面的应用场景可以发现，StatefulSet由以下几个部分组成：" class="headerlink" title="从上面的应用场景可以发现，StatefulSet由以下几个部分组成："></a>从上面的应用场景可以发现，StatefulSet由以下几个部分组成：</h4><ul>
 <li>用于定义网络标志（DNS domain）的Headless Service（无头服务）</li>
@@ -402,6 +400,10 @@
 
           <div class="post-nav-prev post-nav-item">
             
+              <a href="/2019/08/26/Kubernetes之ServiceAccount/" rel="prev" title="Kubernetes之ServiceAccount">
+                Kubernetes之ServiceAccount <i class="fa fa-chevron-right"></i>
+              </a>
+            
           </div>
         </div>
       
@@ -479,7 +481,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">23</span>
+                  <span class="site-state-item-count">25</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
