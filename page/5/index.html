@@ -291,7 +291,7 @@
                   <i class="fa fa-comment-o"></i>
                 </span>
                 <a href="/2019/08/21/kubernetes-重要概念/#comments" itemprop="discussionUrl">
-                  <span class="post-comments-count fb-comments-count" data-href="http://yoursite.com/2019/08/21/kubernetes-重要概念/" itemprop="commentCount">0</span> comments
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/21/kubernetes-重要概念/" itemprop="commentCount"></span>
                 </a>
               </span>
             
@@ -589,14 +589,6 @@ MasterMaster 是 Cluster 的大脑，它的主要职责是调度，即决定将�
 
   
 
-    
-      <script id="dsq-count-scr" src="https://.disqus.com/count.js" async></script>
-    
-
-    
-
-  
-
 
 
 
@@ -622,6 +614,28 @@ MasterMaster 是 Cluster 的大脑，它的主要职责是调度，即决定将�
 
 
 
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
 
 
 
