@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="当 Kubernetes 中 Node 节点出现状态异常的情况下，节点上的 Pod 会被重新调度到其他节点上去，但是有的时候我们会发现节点 Down 掉以后，Pod 并不会立即触发重新调度，这实际上就是和 Kubelet 的状态更新机制密切相关的，Kubernetes 提供了一些参数配置来触发重新调度到node时间，下面我们来分析下 Kubelet 状态更新的基本流程。   默认情况下,正常的行">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-08-26T06:04:24.284Z">
+<meta property="og:updated_time" content="2019-09-04T08:39:42.276Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubelet 状态更新机制">
 <meta name="twitter:description" content="当 Kubernetes 中 Node 节点出现状态异常的情况下，节点上的 Pod 会被重新调度到其他节点上去，但是有的时候我们会发现节点 Down 掉以后，Pod 并不会立即触发重新调度，这实际上就是和 Kubelet 的状态更新机制密切相关的，Kubernetes 提供了一些参数配置来触发重新调度到node时间，下面我们来分析下 Kubelet 状态更新的基本流程。   默认情况下,正常的行">
@@ -339,24 +339,24 @@
 </tr>
 </thead>
 <tbody><tr>
-<td>–node-status-update-frequency</td>
+<td><code>--node-status-update-frequency</code></td>
 <td>10s</td>
-<td>kubelet</td>
+<td><code>kubelet</code></td>
 </tr>
 <tr>
-<td>–node-monitor-period</td>
+<td><code>--node-monitor-period</code></td>
 <td>5s</td>
-<td>controller manager</td>
+<td><code>controller manager</code></td>
 </tr>
 <tr>
-<td>–node-monitor-grace-period</td>
+<td><code>--node-monitor-grace-period</code></td>
 <td>40s</td>
-<td>controller manager</td>
+<td><code>controller manager</code></td>
 </tr>
 <tr>
-<td>–pod-eviction-timeout</td>
+<td><code>--pod-eviction-timeout</code></td>
 <td>5m</td>
-<td>controller manager</td>
+<td><code>controller manager</code></td>
 </tr>
 </tbody></table>
 <h4 id="快速更新和快速响应"><a href="#快速更新和快速响应" class="headerlink" title="快速更新和快速响应"></a>快速更新和快速响应</h4><table>
@@ -367,19 +367,19 @@
 </tr>
 </thead>
 <tbody><tr>
-<td>–node-status-update-frequency</td>
+<td><code>--node-status-update-frequency</code></td>
 <td>4s</td>
 </tr>
 <tr>
-<td>–node-monitor-period</td>
+<td><code>--node-monitor-period</code></td>
 <td>2s</td>
 </tr>
 <tr>
-<td>–node-monitor-grace-period</td>
+<td><code>--node-monitor-grace-period</code></td>
 <td>20s</td>
 </tr>
 <tr>
-<td>–pod-eviction-timeout</td>
+<td><code>--pod-eviction-timeout</code></td>
 <td>30s</td>
 </tr>
 </tbody></table>
@@ -400,19 +400,19 @@
 </tr>
 </thead>
 <tbody><tr>
-<td>–node-status-update-frequency</td>
+<td><code>--node-status-update-frequency</code></td>
 <td>20s</td>
 </tr>
 <tr>
-<td>–node-monitor-period</td>
+<td><code>--node-monitor-period</code></td>
 <td>5s</td>
 </tr>
 <tr>
-<td>–node-monitor-grace-period</td>
+<td><code>--node-monitor-grace-period</code></td>
 <td>2m</td>
 </tr>
 <tr>
-<td>–pod-eviction-timeout</td>
+<td><code>--pod-eviction-timeout</code></td>
 <td>1m</td>
 </tr>
 </tbody></table>
@@ -430,19 +430,19 @@
 </tr>
 </thead>
 <tbody><tr>
-<td>–node-status-update-frequency</td>
+<td><code>--node-status-update-frequency</code></td>
 <td>1m</td>
 </tr>
 <tr>
-<td>–node-monitor-period</td>
+<td><code>--node-monitor-period</code></td>
 <td>5s</td>
 </tr>
 <tr>
-<td>–node-monitor-grace-period</td>
+<td><code>--node-monitor-grace-period</code></td>
 <td>5m</td>
 </tr>
 <tr>
-<td>–pod-eviction-timeout</td>
+<td><code>--pod-eviction-timeout</code></td>
 <td>1m</td>
 </tr>
 </tbody></table>
