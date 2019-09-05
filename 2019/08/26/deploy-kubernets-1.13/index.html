@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="注意：适合有基础的观看，没有太详细的说明；本文完全摘自https://kuops.com Kuops神Blog，服务器初始化请看上一篇文章二进制部署Kubernetes v1.13.5（一） 节点初始化三个 master 节点，三个 woker 节点    hostname os vip ip    k8s-master1 centos7 10.0.7.100 10.0.7.101   k8s-m">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="二进制安装 kubernetes v1.13.5（二）">
+<meta property="og:url" content="http://yoursite.com/2019/08/26/deploy-kubernets-1.13/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="注意：适合有基础的观看，没有太详细的说明；本文完全摘自https://kuops.com Kuops神Blog，服务器初始化请看上一篇文章二进制部署Kubernetes v1.13.5（一） 节点初始化三个 master 节点，三个 woker 节点    hostname os vip ip    k8s-master1 centos7 10.0.7.100 10.0.7.101   k8s-m">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-09-05T06:40:25.291Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="二进制安装 kubernetes v1.13.5（二）">
+<meta name="twitter:description" content="注意：适合有基础的观看，没有太详细的说明；本文完全摘自https://kuops.com Kuops神Blog，服务器初始化请看上一篇文章二进制部署Kubernetes v1.13.5（一） 节点初始化三个 master 节点，三个 woker 节点    hostname os vip ip    k8s-master1 centos7 10.0.7.100 10.0.7.101   k8s-m">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/08/26/deploy-kubernets-1.13/">
+
+
+
+
+
+  <title>二进制安装 kubernetes v1.13.5（二） | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/08/26/deploy-kubernets-1.13/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">二进制安装 kubernetes v1.13.5（二）</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T14:14:00+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category">
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Kubernetes/" itemprop="url" rel="index">
+                    <span itemprop="name">Kubernetes</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/08/26/deploy-kubernets-1.13/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/26/deploy-kubernets-1.13/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>注意：适合有基础的观看，没有太详细的说明；本文完全摘自<code>https://kuops.com</code> Kuops神Blog，服务器初始化请看上一篇文章<code>二进制部署Kubernetes v1.13.5（一）</code></p>
+<h2 id="节点初始化"><a href="#节点初始化" class="headerlink" title="节点初始化"></a>节点初始化</h2><p>三个 master 节点，三个 woker 节点</p>
+<table>
+<thead>
+<tr>
+<th>hostname</th>
+<th>os</th>
+<th>vip</th>
+<th>ip</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>k8s-master1</td>
+<td>centos7</td>
+<td>10.0.7.100</td>
+<td>10.0.7.101</td>
+</tr>
+<tr>
+<td>k8s-master2</td>
+<td>centos7</td>
+<td>10.0.7.100</td>
+<td>10.0.7.102</td>
+</tr>
+<tr>
+<td>k8s-master3</td>
+<td>centos7</td>
+<td>10.0.7.100</td>
+<td>10.0.7.103</td>
+</tr>
+<tr>
+<td>k8s-worker1</td>
+<td>centos7</td>
+<td>无</td>
+<td>10.0.7.104</td>
+</tr>
+<tr>
+<td>k8s-worker2</td>
+<td>centos7</td>
+<td>无</td>
+<td>10.0.7.105</td>
+</tr>
+<tr>
+<td>k8s-worker3</td>
+<td>centos7</td>
+<td>无</td>
+<td>10.0.7.106</td>
+</tr>
+</tbody></table>
+<h2 id="配置每台主机的hosts文件，添加到-etc-hosts文件中"><a href="#配置每台主机的hosts文件，添加到-etc-hosts文件中" class="headerlink" title="配置每台主机的hosts文件，添加到/etc/hosts文件中"></a>配置每台主机的hosts文件，添加到/etc/hosts文件中</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">10.0.7.101 k8s-master1</span><br><span class="line">10.0.7.102 k8s-master2</span><br><span class="line">10.0.7.103 k8s-master3</span><br><span class="line">10.0.7.104 k8s-worker1</span><br><span class="line">10.0.7.105 k8s-worker2</span><br><span class="line">10.0.7.106 k8s-worker3</span><br></pre></td></tr></table></figure>
+
+<p>安装 kubernetes 二进制</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">wget https://storage.googleapis.com/kubernetes-release/release/v1.13.5/kubernetes-server-linux-amd64.tar.gz</span><br><span class="line">tar xf kubernetes-server-linux-amd64.tar.gz</span><br><span class="line">cp kubernetes/server/bin/kube&#123;-apiserver,-controller-manager,-scheduler,ctl,-proxy,let&#125; /usr/local/bin/</span><br></pre></td></tr></table></figure>
+
+<p>发送到其他节点</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">scp  -r  /usr/local/bin root@k8s-master2:/usr/local</span><br><span class="line">scp  -r  /usr/local/bin root@k8s-master3:/usr/local</span><br><span class="line">scp  -r  /usr/local/bin root@k8s-worker1:/usr/local</span><br></pre></td></tr></table></figure>
+
+<h2 id="准备证书"><a href="#准备证书" class="headerlink" title="准备证书"></a>准备证书</h2><p>openssl 证书配置文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /etc/kubernetes/pki/etcd</span><br><span class="line">cd /etc/kubernetes/pki</span><br><span class="line"></span><br><span class="line">cat &lt;&lt;EOF&gt; /etc/kubernetes/pki/openssl.cnf</span><br><span class="line">[ req ]</span><br><span class="line">default_bits = 2048</span><br><span class="line">default_md = sha256</span><br><span class="line">distinguished_name = req_distinguished_name</span><br><span class="line"></span><br><span class="line">[req_distinguished_name]</span><br><span class="line"></span><br><span class="line">[ v3_ca ]</span><br><span class="line">basicConstraints = critical, CA:TRUE</span><br><span class="line">keyUsage = critical, digitalSignature, keyEncipherment, keyCertSign</span><br><span class="line"></span><br><span class="line">[ v3_req_server ]</span><br><span class="line">basicConstraints = CA:FALSE</span><br><span class="line">keyUsage = critical, digitalSignature, keyEncipherment</span><br><span class="line">extendedKeyUsage = serverAuth</span><br><span class="line"></span><br><span class="line">[ v3_req_client ]</span><br><span class="line">basicConstraints = CA:FALSE</span><br><span class="line">keyUsage = critical, digitalSignature, keyEncipherment</span><br><span class="line">extendedKeyUsage = clientAuth</span><br><span class="line"></span><br><span class="line">[ v3_req_apiserver ]</span><br><span class="line">basicConstraints = CA:FALSE</span><br><span class="line">keyUsage = critical, digitalSignature, keyEncipherment</span><br><span class="line">extendedKeyUsage = serverAuth</span><br><span class="line">subjectAltName = @alt_names_cluster</span><br><span class="line"></span><br><span class="line">[ v3_req_etcd ]</span><br><span class="line">basicConstraints = CA:FALSE</span><br><span class="line">keyUsage = critical, digitalSignature, keyEncipherment</span><br><span class="line">extendedKeyUsage = serverAuth, clientAuth</span><br><span class="line">subjectAltName = @alt_names_etcd</span><br><span class="line"></span><br><span class="line">[ alt_names_cluster ]</span><br><span class="line">DNS.1 = kubernetes</span><br><span class="line">DNS.2 = kubernetes.default</span><br><span class="line">DNS.3 = kubernetes.default.svc</span><br><span class="line">DNS.4 = kubernetes.default.svc.cluster.local</span><br><span class="line">DNS.5 = k8s-master1</span><br><span class="line">DNS.6 = k8s-master2</span><br><span class="line">DNS.7 = k8s-master3</span><br><span class="line">DNS.8 = localhost</span><br><span class="line">IP.1 = 10.96.0.1</span><br><span class="line">IP.2 = 127.0.0.1</span><br><span class="line">IP.3 = 10.0.7.100</span><br><span class="line">IP.4 = 10.0.7.101</span><br><span class="line">IP.5 = 10.0.7.102</span><br><span class="line">IP.6 = 10.0.7.103</span><br><span class="line"></span><br><span class="line">[ alt_names_etcd ]</span><br><span class="line">DNS.1 = localhost</span><br><span class="line">IP.1 = 10.0.7.101</span><br><span class="line">IP.2 = 10.0.7.102</span><br><span class="line">IP.3 = 10.0.7.103</span><br><span class="line">IP.4 = 127.0.0.1</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p>生成 CA 证书</p>
+<table>
+<thead>
+<tr>
+<th>path</th>
+<th>Default CN</th>
+<th>description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ca.crt,key</td>
+<td>kubernetes-ca</td>
+<td>Kubernetes general CA</td>
+</tr>
+<tr>
+<td>etcd/ca.crt,key</td>
+<td>etcd-ca</td>
+<td>For all etcd-related functions</td>
+</tr>
+<tr>
+<td>front-proxy-ca.crt,key</td>
+<td>kubernetes-front-proxy-ca</td>
+<td>For the front-end proxy</td>
+</tr>
+</tbody></table>
+<p>kubernetes-ca</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out ca.key 2048</span><br><span class="line">openssl req -x509 -new -nodes -key ca.key -config openssl.cnf -subj &quot;/CN=kubernetes-ca&quot; -extensions v3_ca -out ca.crt -days 10000</span><br></pre></td></tr></table></figure>
+
+<p>etcd-ca</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out etcd/ca.key 2048</span><br><span class="line">openssl req -x509 -new -nodes -key etcd/ca.key -config openssl.cnf -subj &quot;/CN=etcd-ca&quot; -extensions v3_ca -out etcd/ca.crt -days 10000</span><br></pre></td></tr></table></figure>
+
+<p>front-proxy-ca</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out front-proxy-ca.key 2048</span><br><span class="line">openssl req -x509 -new -nodes -key front-proxy-ca.key -config openssl.cnf -subj &quot;/CN=kubernetes-ca&quot; -extensions v3_ca -out front-proxy-ca.crt -days 10000</span><br></pre></td></tr></table></figure>
+
+<p>生成所有的证书</p>
+<table>
+<thead>
+<tr>
+<th>Default CN</th>
+<th>Parent CA</th>
+<th>O (in Subject)</th>
+<th>kind</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>kube-etcd</td>
+<td>etcd-ca</td>
+<td></td>
+<td>server, client</td>
+</tr>
+<tr>
+<td>kube-etcd-peer</td>
+<td>etcd-ca</td>
+<td></td>
+<td>server, client</td>
+</tr>
+<tr>
+<td>kube-etcd-healthcheck-client</td>
+<td>etcd-ca</td>
+<td></td>
+<td>client</td>
+</tr>
+<tr>
+<td>kube-apiserver-etcd-client</td>
+<td>etcd-ca</td>
+<td>system:masters</td>
+<td>client</td>
+</tr>
+<tr>
+<td>kube-apiserver</td>
+<td>kubernetes-ca</td>
+<td></td>
+<td>server</td>
+</tr>
+<tr>
+<td>kube-apiserver-kubelet-client</td>
+<td>kubernetes-ca</td>
+<td>system:masters</td>
+<td>client</td>
+</tr>
+<tr>
+<td>front-proxy-client</td>
+<td>kubernetes-front-proxy-ca</td>
+<td></td>
+<td>client</td>
+</tr>
+</tbody></table>
+<p>证书路径</p>
+<table>
+<thead>
+<tr>
+<th>Default CN</th>
+<th>recommend key path</th>
+<th>recommended cert path</th>
+<th>command</th>
+<th>key argument</th>
+<th>cert argument</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>etcd-ca</td>
+<td></td>
+<td>etcd/ca.crt</td>
+<td>kube-apiserver</td>
+<td></td>
+<td>–etcd-cafile</td>
+</tr>
+<tr>
+<td>etcd-client</td>
+<td>apiserver-etcd-client.key</td>
+<td>apiserver-etcd-client.crt</td>
+<td>kube-apiserver</td>
+<td>–etcd-keyfile</td>
+<td>–etcd-certfile</td>
+</tr>
+<tr>
+<td>kubernetes-ca</td>
+<td></td>
+<td>ca.crt</td>
+<td>kube-apiserver</td>
+<td></td>
+<td>–client-ca-file</td>
+</tr>
+<tr>
+<td>kube-apiserver</td>
+<td>apiserver.key</td>
+<td>apiserver.crt</td>
+<td>kube-apiserver</td>
+<td>–tls-private-key-file</td>
+<td>–tls-cert-file</td>
+</tr>
+<tr>
+<td>apiserver-kubelet-client</td>
+<td></td>
+<td>apiserver-kubelet-client.crt</td>
+<td>kube-apiserver</td>
+<td></td>
+<td>–kubelet-client-certificate</td>
+</tr>
+<tr>
+<td>front-proxy-ca</td>
+<td></td>
+<td>front-proxy-ca.crt</td>
+<td>kube-apiserver</td>
+<td></td>
+<td>–requestheader-client-ca-file</td>
+</tr>
+<tr>
+<td>front-proxy-client</td>
+<td>front-proxy-client.key</td>
+<td>front-proxy-client.crt</td>
+<td>kube-apiserver</td>
+<td>–proxy-client-key-file</td>
+<td>–proxy-client-cert-file</td>
+</tr>
+<tr>
+<td>etcd-ca</td>
+<td></td>
+<td>etcd/ca.crt</td>
+<td>etcd</td>
+<td></td>
+<td>–trusted-ca-file, –peer-trusted-ca-file</td>
+</tr>
+<tr>
+<td>kube-etcd</td>
+<td>etcd/server.key</td>
+<td>etcd/server.crt</td>
+<td>etcd</td>
+<td>–key-file</td>
+<td>–cert-file</td>
+</tr>
+<tr>
+<td>kube-etcd-peer</td>
+<td>etcd/peer.key</td>
+<td>etcd/peer.crt</td>
+<td>etcd</td>
+<td>–peer-key-file</td>
+<td>–peer-cert-file</td>
+</tr>
+<tr>
+<td>etcd-ca</td>
+<td></td>
+<td>etcd/ca.crt</td>
+<td>etcdctl</td>
+<td></td>
+<td>–cacert</td>
+</tr>
+<tr>
+<td>kube-etcd-healthcheck-client</td>
+<td>etcd/healthcheck-client.key</td>
+<td>etcd/healthcheck-client.crt</td>
+<td>etcdctl</td>
+<td>–key</td>
+<td>–cert</td>
+</tr>
+</tbody></table>
+<p>生成证书</p>
+<p>apiserver-etcd-client</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out apiserver-etcd-client.key 2048</span><br><span class="line">openssl req -new -key apiserver-etcd-client.key -subj &quot;/CN=apiserver-etcd-client/O=system:masters&quot; -out apiserver-etcd-client.csr</span><br><span class="line">openssl x509 -in apiserver-etcd-client.csr -req -CA etcd/ca.crt -CAkey etcd/ca.key -CAcreateserial -extensions v3_req_etcd -extfile openssl.cnf -out apiserver-etcd-client.crt -days 10000</span><br></pre></td></tr></table></figure>
+
+<p>kube-etcd</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out etcd/server.key 2048</span><br><span class="line">openssl req -new -key etcd/server.key -subj &quot;/CN=etcd-server&quot; -out etcd/server.csr</span><br><span class="line">openssl x509 -in etcd/server.csr -req -CA etcd/ca.crt -CAkey etcd/ca.key -CAcreateserial -extensions v3_req_etcd -extfile openssl.cnf -out etcd/server.crt -days 10000</span><br></pre></td></tr></table></figure>
+
+<p>kube-etcd-peer</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out etcd/peer.key 2048</span><br><span class="line">openssl req -new -key etcd/peer.key -subj &quot;/CN=etcd-peer&quot; -out etcd/peer.csr</span><br><span class="line">openssl x509 -in etcd/peer.csr -req -CA etcd/ca.crt -CAkey etcd/ca.key -CAcreateserial -extensions v3_req_etcd -extfile openssl.cnf -out etcd/peer.crt -days 10000</span><br></pre></td></tr></table></figure>
+
+<p>kube-etcd-healthcheck-client</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out etcd/healthcheck-client.key 2048</span><br><span class="line">openssl req -new -key etcd/healthcheck-client.key -subj &quot;/CN=etcd-client&quot; -out etcd/healthcheck-client.csr</span><br><span class="line">openssl x509 -in etcd/healthcheck-client.csr -req -CA etcd/ca.crt -CAkey etcd/ca.key -CAcreateserial -extensions v3_req_etcd -extfile openssl.cnf -out etcd/healthcheck-client.crt -days 10000</span><br></pre></td></tr></table></figure>
+
+<p>kube-apiserver</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out apiserver.key 2048</span><br><span class="line">openssl req -new -key apiserver.key -subj &quot;/CN=kube-apiserver&quot; -config openssl.cnf -out apiserver.csr</span><br><span class="line">openssl x509 -req -in apiserver.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 10000 -extensions v3_req_apiserver -extfile openssl.cnf -out apiserver.crt</span><br></pre></td></tr></table></figure>
+
+<p>apiserver-kubelet-client</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out  apiserver-kubelet-client.key 2048</span><br><span class="line">openssl req -new -key apiserver-kubelet-client.key -subj &quot;/CN=apiserver-kubelet-client/O=system:masters&quot; -out apiserver-kubelet-client.csr</span><br><span class="line">openssl x509 -req -in apiserver-kubelet-client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 10000 -extensions v3_req_client -extfile openssl.cnf -out apiserver-kubelet-client.crt</span><br></pre></td></tr></table></figure>
+
+<p>front-proxy-client</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out  front-proxy-client.key 2048</span><br><span class="line">openssl req -new -key front-proxy-client.key -subj &quot;/CN=front-proxy-client&quot; -out front-proxy-client.csr</span><br><span class="line">openssl x509 -req -in front-proxy-client.csr -CA front-proxy-ca.crt -CAkey front-proxy-ca.key -CAcreateserial -days 10000 -extensions v3_req_client -extfile openssl.cnf -out front-proxy-client.crt</span><br></pre></td></tr></table></figure>
+
+<p>kube-scheduler 证书</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out  kube-scheduler.key 2048</span><br><span class="line">openssl req -new -key kube-scheduler.key -subj &quot;/CN=system:kube-scheduler&quot; -out kube-scheduler.csr</span><br><span class="line">openssl x509 -req -in kube-scheduler.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 10000 -extensions v3_req_client -extfile openssl.cnf -out kube-scheduler.crt</span><br></pre></td></tr></table></figure>
+
+<p>sa.pub sa.key</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out  sa.key 2048</span><br><span class="line">openssl ecparam -name secp521r1 -genkey -noout -out sa.key</span><br><span class="line">openssl ec -in sa.key -outform PEM -pubout -out sa.pub</span><br><span class="line">openssl req -new -sha256 -key sa.key -subj &quot;/CN=system:kube-controller-manager&quot; -out sa.csr</span><br><span class="line">openssl x509 -req -in sa.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 10000 -extensions v3_req_client -extfile openssl.cnf -out sa.crt</span><br></pre></td></tr></table></figure>
+
+<p>admin 证书</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl genrsa -out  admin.key 2048</span><br><span class="line">openssl req -new -key admin.key -subj &quot;/CN=kubernetes-admin/O=system:masters&quot; -out admin.csr</span><br><span class="line">openssl x509 -req -in admin.csr -CA ca.crt -CAkey ca.key -CAcreateserial -days 10000 -extensions v3_req_client -extfile openssl.cnf -out admin.crt</span><br></pre></td></tr></table></figure>
+
+<p>清理 csr srl</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">find . -name &quot;*.csr&quot; -o -name &quot;*.srl&quot;|xargs  rm -f</span><br></pre></td></tr></table></figure>
+
+<h2 id="准备-kubeconfig"><a href="#准备-kubeconfig" class="headerlink" title="准备 kubeconfig"></a>准备 kubeconfig</h2><table>
+<thead>
+<tr>
+<th>filename</th>
+<th>credential name</th>
+<th>Default CN</th>
+<th>O (in Subject)</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>admin.conf</td>
+<td>default-admin</td>
+<td>kubernetes-admin</td>
+<td>system:masters</td>
+</tr>
+<tr>
+<td>controller-manager.conf</td>
+<td>default-controller-manager</td>
+<td>system:kube-controller-manager</td>
+<td></td>
+</tr>
+<tr>
+<td>scheduler.conf</td>
+<td>default-manager</td>
+<td>system:kube-scheduler</td>
+<td></td>
+</tr>
+</tbody></table>
+<p>kube-controller-manager</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">CLUSTER_NAME=&quot;kubernetes&quot;</span><br><span class="line">KUBE_APISERVER=&quot;https://10.0.7.100:8443&quot;</span><br><span class="line">KUBE_USER=&quot;system:kube-controller-manager&quot;</span><br><span class="line">KUBE_CERT=&quot;sa&quot;</span><br><span class="line">KUBE_CONFIG=&quot;controller-manager.conf&quot;</span><br><span class="line"></span><br><span class="line"># 设置集群参数</span><br><span class="line">kubectl config set-cluster $&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --certificate-authority=/etc/kubernetes/pki/ca.crt \</span><br><span class="line">  --embed-certs=true \</span><br><span class="line">  --server=$&#123;KUBE_APISERVER&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置客户端认证参数</span><br><span class="line">kubectl config set-credentials $&#123;KUBE_USER&#125; \</span><br><span class="line">  --client-certificate=/etc/kubernetes/pki/$&#123;KUBE_CERT&#125;.crt \</span><br><span class="line">  --client-key=/etc/kubernetes/pki/$&#123;KUBE_CERT&#125;.key \</span><br><span class="line">  --embed-certs=true \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置上下文参数</span><br><span class="line">kubectl config set-context $&#123;KUBE_USER&#125;@$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --cluster=$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --user=$&#123;KUBE_USER&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置当前使用的上下文</span><br><span class="line">kubectl config use-context $&#123;KUBE_USER&#125;@$&#123;CLUSTER_NAME&#125; --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 查看生成的配置文件</span><br><span class="line">kubectl config view --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br></pre></td></tr></table></figure>
+
+<p>kube-scheduler</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">CLUSTER_NAME=&quot;kubernetes&quot;</span><br><span class="line">KUBE_APISERVER=&quot;https://10.0.7.100:8443&quot;</span><br><span class="line">KUBE_USER=&quot;system:kube-scheduler&quot;</span><br><span class="line">KUBE_CERT=&quot;kube-scheduler&quot;</span><br><span class="line">KUBE_CONFIG=&quot;scheduler.conf&quot;</span><br><span class="line"></span><br><span class="line"># 设置集群参数</span><br><span class="line">kubectl config set-cluster $&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --certificate-authority=/etc/kubernetes/pki/ca.crt \</span><br><span class="line">  --embed-certs=true \</span><br><span class="line">  --server=$&#123;KUBE_APISERVER&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置客户端认证参数</span><br><span class="line">kubectl config set-credentials $&#123;KUBE_USER&#125; \</span><br><span class="line">  --client-certificate=/etc/kubernetes/pki/$&#123;KUBE_CERT&#125;.crt \</span><br><span class="line">  --client-key=/etc/kubernetes/pki/$&#123;KUBE_CERT&#125;.key \</span><br><span class="line">  --embed-certs=true \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置上下文参数</span><br><span class="line">kubectl config set-context $&#123;KUBE_USER&#125;@$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --cluster=$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --user=$&#123;KUBE_USER&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置当前使用的上下文</span><br><span class="line">kubectl config use-context $&#123;KUBE_USER&#125;@$&#123;CLUSTER_NAME&#125; --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 查看生成的配置文件</span><br><span class="line">kubectl config view --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br></pre></td></tr></table></figure>
+
+<p>admin</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line">CLUSTER_NAME=&quot;kubernetes&quot;</span><br><span class="line">KUBE_APISERVER=&quot;https://10.0.7.100:8443&quot;</span><br><span class="line">KUBE_USER=&quot;kubernetes-admin&quot;</span><br><span class="line">KUBE_CERT=&quot;admin&quot;</span><br><span class="line">KUBE_CONFIG=&quot;admin.conf&quot;</span><br><span class="line"></span><br><span class="line"># 设置集群参数</span><br><span class="line">kubectl config set-cluster $&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --certificate-authority=/etc/kubernetes/pki/ca.crt \</span><br><span class="line">  --embed-certs=true \</span><br><span class="line">  --server=$&#123;KUBE_APISERVER&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置客户端认证参数</span><br><span class="line">kubectl config set-credentials $&#123;KUBE_USER&#125; \</span><br><span class="line">  --client-certificate=/etc/kubernetes/pki/$&#123;KUBE_CERT&#125;.crt \</span><br><span class="line">  --client-key=/etc/kubernetes/pki/$&#123;KUBE_CERT&#125;.key \</span><br><span class="line">  --embed-certs=true \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置上下文参数</span><br><span class="line">kubectl config set-context $&#123;KUBE_USER&#125;@$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --cluster=$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --user=$&#123;KUBE_USER&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置当前使用的上下文</span><br><span class="line">kubectl config use-context $&#123;KUBE_USER&#125;@$&#123;CLUSTER_NAME&#125; --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 查看生成的配置文件</span><br><span class="line">kubectl config view --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="分发证书"><a href="#分发证书" class="headerlink" title="分发证书"></a>分发证书</h2><p>分发到 config 及证书其他 master 节点</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">scp  -r /etc/kubernetes root@k8s-master2:/etc</span><br><span class="line">scp  -r /etc/kubernetes root@k8s-master3:/etc</span><br></pre></td></tr></table></figure>
+
+<h2 id="配置-HA"><a href="#配置-HA" class="headerlink" title="配置 HA"></a>配置 HA</h2><p>master 节点，配置 envoy</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /etc/envoy</span><br><span class="line">cat &lt;&lt;EOF&gt; /etc/envoy/envoy.yaml</span><br><span class="line">static_resources:</span><br><span class="line">  listeners:</span><br><span class="line">  - address:</span><br><span class="line">      socket_address:</span><br><span class="line">        address: 0.0.0.0</span><br><span class="line">        port_value: 8443</span><br><span class="line">    filter_chains:</span><br><span class="line">    - filters:</span><br><span class="line">      - name: envoy.tcp_proxy</span><br><span class="line">        config:</span><br><span class="line">          stat_prefix: ingress_tcp</span><br><span class="line">          cluster: kube_apiserver</span><br><span class="line">          access_log:</span><br><span class="line">            - name: envoy.file_access_log</span><br><span class="line">              config:</span><br><span class="line">                path: /dev/stdout</span><br><span class="line">  clusters:</span><br><span class="line">  - name: kube_apiserver</span><br><span class="line">    connect_timeout: 0.25s</span><br><span class="line">    type: strict_dns</span><br><span class="line">    lb_policy: round_robin</span><br><span class="line">    hosts:</span><br><span class="line">    - socket_address:</span><br><span class="line">        address: 10.0.7.101</span><br><span class="line">        port_value: 6443</span><br><span class="line">    - socket_address:</span><br><span class="line">        address: 10.0.7.102</span><br><span class="line">        port_value: 6443</span><br><span class="line">    - socket_address:</span><br><span class="line">        address: 10.0.7.103</span><br><span class="line">        port_value: 6443</span><br><span class="line"></span><br><span class="line">admin:</span><br><span class="line">  access_log_path: &quot;/dev/null&quot;</span><br><span class="line">  address:</span><br><span class="line">    socket_address:</span><br><span class="line">      address: 0.0.0.0</span><br><span class="line">      port_value: 8001</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p>envoy unit file</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">cat&lt;&lt;EOF&gt; /lib/systemd/system/envoy.service</span><br><span class="line">[Unit]</span><br><span class="line">Description=Envoy Container</span><br><span class="line">After=docker.service</span><br><span class="line">Requires=docker.service</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">TimeoutStartSec=0</span><br><span class="line">Restart=always</span><br><span class="line">ExecStartPre=-/usr/bin/docker stop %n</span><br><span class="line">ExecStartPre=-/usr/bin/docker rm %n</span><br><span class="line">ExecStartPre=/usr/bin/docker pull envoyproxy/envoy:latest</span><br><span class="line">ExecStart=/usr/bin/docker run --rm -v /etc/envoy/envoy.yaml:/etc/envoy/envoy.yaml --network host --name %n envoyproxy/envoy:latest</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">systemctl restart envoy.service</span><br><span class="line">systemctl enable envoy.service</span><br><span class="line">systemctl status envoy.service -l</span><br></pre></td></tr></table></figure>
+
+<p>master 配置 keepalived</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">apt-get install keepalived -y</span><br></pre></td></tr></table></figure>
+
+<p>keepalived 健康检查脚本</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;&apos;EOF&apos;&gt; /etc/keepalived/ha_check.sh</span><br><span class="line">#!/bin/sh</span><br><span class="line">VIRTUAL_IP=10.0.7.100</span><br><span class="line"></span><br><span class="line">errorExit() &#123;</span><br><span class="line">    echo &quot;*** $*&quot; 1&gt;&amp;2</span><br><span class="line">    exit 1</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">if ip addr | grep -q $VIRTUAL_IP ; then</span><br><span class="line">    curl -s --max-time 2 --insecure https://$&#123;VIRTUAL_IP&#125;:8443/ -o /dev/null || errorExit &quot;Error GET https://$&#123;VIRTUAL_IP&#125;:8443/&quot;</span><br><span class="line">fi</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p>keepalived 配置文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF&gt; /etc/keepalived/keepalived.conf</span><br><span class="line">vrrp_script ha-check &#123;</span><br><span class="line">    script &quot;/bin/bash /etc/keepalived/ha_check.sh&quot;</span><br><span class="line">    interval 3</span><br><span class="line">    weight -2</span><br><span class="line">    fall 10</span><br><span class="line">    rise 2</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">vrrp_instance k8s-vip &#123;</span><br><span class="line">    state BACKUP</span><br><span class="line">    priority 101</span><br><span class="line">    interface enp0s8</span><br><span class="line">    virtual_router_id 47</span><br><span class="line">    advert_int 3</span><br><span class="line"></span><br><span class="line">    unicast_peer &#123;</span><br><span class="line">        10.0.7.101</span><br><span class="line">        10.0.7.102</span><br><span class="line">        10.0.7.103</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    virtual_ipaddress &#123;</span><br><span class="line">        10.0.7.100</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    track_script &#123;</span><br><span class="line">        ha-check</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">systemctl restart  keepalived.service</span><br><span class="line">systemctl enable  keepalived.service</span><br></pre></td></tr></table></figure>
+
+<h2 id="配置-etcd"><a href="#配置-etcd" class="headerlink" title="配置 etcd"></a>配置 etcd</h2><p>安装 etcd 二进制</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /var/lib/etcd</span><br><span class="line">ETCD_VER=v3.3.10</span><br><span class="line">wget https://storage.googleapis.com/etcd/$&#123;ETCD_VER&#125;/etcd-$&#123;ETCD_VER&#125;-linux-amd64.tar.gz</span><br><span class="line">tar xf etcd-$&#123;ETCD_VER&#125;-linux-amd64.tar.gz  --strip-components=1 -C /usr/local/bin etcd-$&#123;ETCD_VER&#125;-linux-amd64/&#123;etcd,etcdctl&#125;</span><br><span class="line">mkdir -p /usr/lib/systemd/system/</span><br></pre></td></tr></table></figure>
+
+<p>设置 unit file 并启动 etcd,其他节点修改对应 ETCD_NAME 为 etcd1 和 etcd2，ip 改为节点 IP。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line">ETCD_NAME=etcd0</span><br><span class="line">ETCD_IP=&quot;10.0.7.101&quot;</span><br><span class="line">ETCD_IPS=(10.0.7.101 10.0.7.102 10.0.7.103)</span><br><span class="line"></span><br><span class="line">cat&lt;&lt;EOF&gt; /usr/lib/systemd/system/etcd.service </span><br><span class="line">[Unit]</span><br><span class="line">Description=etcd</span><br><span class="line">Documentation=https://coreos.com/etcd/docs/latest/</span><br><span class="line">After=network.target</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">Type=notify</span><br><span class="line">WorkingDirectory=/var/lib/etcd</span><br><span class="line">ExecStart=/usr/local/bin/etcd \\</span><br><span class="line">    --name=$&#123;ETCD_NAME&#125; \\</span><br><span class="line">    --data-dir=/var/lib/etcd \\</span><br><span class="line">    --listen-client-urls=https://127.0.0.1:2379,https://$&#123;ETCD_IP&#125;:2379 \\</span><br><span class="line">    --advertise-client-urls=https://$&#123;ETCD_IP&#125;:2379 \\</span><br><span class="line">    --listen-peer-urls=https://$&#123;ETCD_IP&#125;:2380 \\</span><br><span class="line">    --initial-advertise-peer-urls=https://$&#123;ETCD_IP&#125;:2380 \\</span><br><span class="line">    --cert-file=/etc/kubernetes/pki/etcd/server.crt \\</span><br><span class="line">    --key-file=/etc/kubernetes/pki/etcd/server.key \\</span><br><span class="line">    --client-cert-auth \\</span><br><span class="line">    --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt \\</span><br><span class="line">    --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt \\</span><br><span class="line">    --peer-key-file=/etc/kubernetes/pki/etcd/peer.key \\</span><br><span class="line">    --peer-client-cert-auth \\</span><br><span class="line">    --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt \\</span><br><span class="line">    --initial-cluster=etcd0=https://$&#123;ETCD_IPS[0]&#125;:2380,etcd1=https://$&#123;ETCD_IPS[1]&#125;:2380,etcd2=https://$&#123;ETCD_IPS[2]&#125;:2380 \\</span><br><span class="line">    --initial-cluster-token=my-etcd-token \\</span><br><span class="line">    --initial-cluster-state=new \\</span><br><span class="line">    --heartbeat-interval 1000 \\</span><br><span class="line">    --election-timeout 5000</span><br><span class="line"></span><br><span class="line">Restart=always</span><br><span class="line">RestartSec=10s</span><br><span class="line">LimitNOFILE=65535</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br><span class="line">EOF</span><br><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl restart etcd</span><br><span class="line">systemctl enable etcd</span><br></pre></td></tr></table></figure>
+
+<p>检查 </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">etcdctl \</span><br><span class="line"> --cert-file /etc/kubernetes/pki/etcd/healthcheck-client.crt \</span><br><span class="line"> --key-file /etc/kubernetes/pki/etcd/healthcheck-client.key \</span><br><span class="line"> --ca-file /etc/kubernetes/pki/etcd/ca.crt \</span><br><span class="line"> --endpoints https://10.0.7.101:2379 cluster-health</span><br></pre></td></tr></table></figure>
+
+<h2 id="配置-master-组件"><a href="#配置-master-组件" class="headerlink" title="配置 master 组件"></a>配置 master 组件</h2><p>启动 api-server</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br></pre></td><td class="code"><pre><span class="line">NODE_IP=&quot;10.0.7.101&quot;</span><br><span class="line"></span><br><span class="line">cat &lt;&lt;EOF&gt; /usr/lib/systemd/system/kube-apiserver.service</span><br><span class="line">[Unit]</span><br><span class="line">Description=Kubernetes API Server</span><br><span class="line">Documentation=https://github.com/kubernetes/kubernetes</span><br><span class="line">After=network.target</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">ExecStart=/usr/local/bin/kube-apiserver \\</span><br><span class="line">  --authorization-mode=Node,RBAC \\</span><br><span class="line">  --enable-admission-plugins=Initializers,DefaultStorageClass,DefaultTolerationSeconds,LimitRanger,NamespaceLifecycle,NodeRestriction,PersistentVolumeClaimResize,ResourceQuota,ServiceAccount,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,Priority \\</span><br><span class="line">  --advertise-address=$&#123;NODE_IP&#125; \\</span><br><span class="line">  --bind-address=$&#123;NODE_IP&#125;  \\</span><br><span class="line">  --insecure-port=0 \\</span><br><span class="line">  --secure-port=6443 \\</span><br><span class="line">  --allow-privileged=true \\</span><br><span class="line">  --apiserver-count=3 \\</span><br><span class="line">  --audit-log-maxage=30 \\</span><br><span class="line">  --audit-log-maxbackup=3 \\</span><br><span class="line">  --audit-log-maxsize=100 \\</span><br><span class="line">  --audit-log-path=/var/log/audit.log \\</span><br><span class="line">  --enable-swagger-ui=true \\</span><br><span class="line">  --storage-backend=etcd3 \\</span><br><span class="line">  --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt \\</span><br><span class="line">  --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt \\</span><br><span class="line">  --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key \\</span><br><span class="line">  --etcd-servers=https://10.0.7.101:2379,https://10.0.7.102:2379,https://10.0.7.103:2379 \\</span><br><span class="line">  --event-ttl=1h \\</span><br><span class="line">  --enable-bootstrap-token-auth \\</span><br><span class="line">  --client-ca-file=/etc/kubernetes/pki/ca.crt \\</span><br><span class="line">  --kubelet-https \\</span><br><span class="line">  --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt \\</span><br><span class="line">  --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key \\</span><br><span class="line">  --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname \\</span><br><span class="line">  --runtime-config=api/all \\</span><br><span class="line">  --service-cluster-ip-range=10.96.0.0/12 \\</span><br><span class="line">  --service-node-port-range=30000-32767 \\</span><br><span class="line">  --service-account-key-file=/etc/kubernetes/pki/sa.pub \\</span><br><span class="line">  --tls-cert-file=/etc/kubernetes/pki/apiserver.crt \\</span><br><span class="line">  --tls-private-key-file=/etc/kubernetes/pki/apiserver.key \\</span><br><span class="line">  --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt \\</span><br><span class="line">  --requestheader-username-headers=X-Remote-User \\</span><br><span class="line">  --requestheader-group-headers=X-Remote-Group \\</span><br><span class="line">  --requestheader-allowed-names=front-proxy-client \\</span><br><span class="line">  --requestheader-extra-headers-prefix=X-Remote-Extra- \\</span><br><span class="line">  --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt \\</span><br><span class="line">  --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key \\</span><br><span class="line">  --feature-gates=PodShareProcessNamespace=true \\</span><br><span class="line">  --v=2</span><br><span class="line"></span><br><span class="line">Restart=on-failure</span><br><span class="line">RestartSec=10s</span><br><span class="line">LimitNOFILE=65535</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl enable kube-apiserver</span><br><span class="line">systemctl restart kube-apiserver</span><br><span class="line">systemctl status kube-apiserver -l</span><br></pre></td></tr></table></figure>
+
+<p>启动 controller-manager</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">cat&lt;&lt;EOF&gt; /usr/lib/systemd/system/kube-controller-manager.service </span><br><span class="line">[Unit]</span><br><span class="line">Description=Kubernetes Controller Manager</span><br><span class="line">Documentation=https://github.com/kubernetes/kubernetes</span><br><span class="line">After=network.target</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">ExecStart=/usr/local/bin/kube-controller-manager \\</span><br><span class="line">  --allocate-node-cidrs=true \\</span><br><span class="line">  --kubeconfig=/etc/kubernetes/controller-manager.conf \\</span><br><span class="line">  --authentication-kubeconfig=/etc/kubernetes/controller-manager.conf \\</span><br><span class="line">  --authorization-kubeconfig=/etc/kubernetes/controller-manager.conf \\</span><br><span class="line">  --client-ca-file=/etc/kubernetes/pki/ca.crt \\</span><br><span class="line">  --cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt \\</span><br><span class="line">  --cluster-signing-key-file=/etc/kubernetes/pki/ca.key \\</span><br><span class="line">  --bind-address=127.0.0.1 \\</span><br><span class="line">  --leader-elect=true \\</span><br><span class="line">  --cluster-cidr=10.244.0.0/16 \\</span><br><span class="line">  --service-cluster-ip-range=10.96.0.0/12 \\</span><br><span class="line">  --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt \\</span><br><span class="line">  --service-account-private-key-file=/etc/kubernetes/pki/sa.key \\</span><br><span class="line">  --root-ca-file=/etc/kubernetes/pki/ca.crt \\</span><br><span class="line">  --use-service-account-credentials=true \\</span><br><span class="line">  --controllers=*,bootstrapsigner,tokencleaner \\</span><br><span class="line">  --experimental-cluster-signing-duration=86700h \\</span><br><span class="line">  --feature-gates=RotateKubeletClientCertificate=true \\</span><br><span class="line">  --v=2</span><br><span class="line">Restart=always</span><br><span class="line">RestartSec=10s</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl enable kube-controller-manager</span><br><span class="line">systemctl restart kube-controller-manager</span><br><span class="line">systemctl status kube-controller-manager -l</span><br></pre></td></tr></table></figure>
+
+<p>启动 scheduler</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">cat &gt; /usr/lib/systemd/system/kube-scheduler.service &lt;&lt; EOF</span><br><span class="line">[Unit]</span><br><span class="line">Description=Kubernetes Scheduler</span><br><span class="line">Documentation=https://github.com/kubernetes/kubernetes</span><br><span class="line">After=network.target</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">ExecStart=/usr/local/bin/kube-scheduler \\</span><br><span class="line">  --leader-elect=true \\</span><br><span class="line">  --kubeconfig=/etc/kubernetes/scheduler.conf \\</span><br><span class="line">  --address=127.0.0.1 \\</span><br><span class="line">  --v=2</span><br><span class="line">Restart=always</span><br><span class="line">RestartSec=10s</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl enable kube-scheduler</span><br><span class="line">systemctl restart kube-scheduler</span><br><span class="line">systemctl status kube-scheduler -l</span><br></pre></td></tr></table></figure>
+
+<p>验证组件是否正常</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">export KUBECONFIG=/etc/kubernetes/admin.conf</span><br><span class="line">kubectl get cs</span><br></pre></td></tr></table></figure>
+
+<h2 id="配置-bootstrap"><a href="#配置-bootstrap" class="headerlink" title="配置 bootstrap"></a>配置 bootstrap</h2><p>设置 bootstrap , 创建 bootstrap 令牌</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">TOKEN_PUB=$(openssl rand -hex 3)</span><br><span class="line">TOKEN_SECRET=$(openssl rand -hex 8)</span><br><span class="line">BOOTSTRAP_TOKEN=&quot;$&#123;TOKEN_PUB&#125;.$&#123;TOKEN_SECRET&#125;&quot;</span><br><span class="line"></span><br><span class="line">kubectl -n kube-system create secret generic bootstrap-token-$&#123;TOKEN_PUB&#125; \</span><br><span class="line">        --type &apos;bootstrap.kubernetes.io/token&apos; \</span><br><span class="line">        --from-literal description=&quot;cluster bootstrap token&quot; \</span><br><span class="line">        --from-literal token-id=$&#123;TOKEN_PUB&#125; \</span><br><span class="line">        --from-literal token-secret=$&#123;TOKEN_SECRET&#125; \</span><br><span class="line">        --from-literal usage-bootstrap-authentication=true \</span><br><span class="line">        --from-literal usage-bootstrap-signing=true</span><br></pre></td></tr></table></figure>
+
+<p>创建 bootstrap kubeconfig 文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">CLUSTER_NAME=&quot;kubernetes&quot;</span><br><span class="line">KUBE_APISERVER=&quot;https://10.0.7.101:6443&quot;</span><br><span class="line">KUBE_USER=&quot;kubelet-bootstrap&quot;</span><br><span class="line">KUBE_CONFIG=&quot;bootstrap.conf&quot;</span><br><span class="line"></span><br><span class="line"># 设置集群参数</span><br><span class="line">kubectl config set-cluster $&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --certificate-authority=/etc/kubernetes/pki/ca.crt \</span><br><span class="line">  --embed-certs=true \</span><br><span class="line">  --server=$&#123;KUBE_APISERVER&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置上下文参数</span><br><span class="line">kubectl config set-context $&#123;KUBE_USER&#125;@$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --cluster=$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --user=$&#123;KUBE_USER&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置客户端认证参数</span><br><span class="line">kubectl config set-credentials $&#123;KUBE_USER&#125; \</span><br><span class="line">  --token=$&#123;BOOTSTRAP_TOKEN&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 设置当前使用的上下文</span><br><span class="line">kubectl config use-context $&#123;KUBE_USER&#125;@$&#123;CLUSTER_NAME&#125; --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line"># 查看生成的配置文件</span><br><span class="line">kubectl config view --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br></pre></td></tr></table></figure>
+
+<p>授权 kubelet 可以创建 csr</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kubectl create clusterrolebinding kubeadm:kubelet-bootstrap \</span><br><span class="line">        --clusterrole system:node-bootstrapper --group system:bootstrappers</span><br></pre></td></tr></table></figure>
+
+<p>批准 csr 请求</p>
+<blockquote>
+<p>允许 system:bootstrappers 组的所有 csr</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF | kubectl apply -f -</span><br><span class="line"># Approve all CSRs for the group &quot;system:bootstrappers&quot;</span><br><span class="line">kind: ClusterRoleBinding</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1</span><br><span class="line">metadata:</span><br><span class="line">  name: auto-approve-csrs-for-group</span><br><span class="line">subjects:</span><br><span class="line">- kind: Group</span><br><span class="line">  name: system:bootstrappers</span><br><span class="line">  apiGroup: rbac.authorization.k8s.io</span><br><span class="line">roleRef:</span><br><span class="line">  kind: ClusterRole</span><br><span class="line">  name: system:certificates.k8s.io:certificatesigningrequests:nodeclient</span><br><span class="line">  apiGroup: rbac.authorization.k8s.io</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p>允许 kubelet 能够更新自己的证书</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF | kubectl apply -f -</span><br><span class="line"># Approve renewal CSRs for the group &quot;system:nodes&quot;</span><br><span class="line">kind: ClusterRoleBinding</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1</span><br><span class="line">metadata:</span><br><span class="line">  name: auto-approve-renewals-for-nodes</span><br><span class="line">subjects:</span><br><span class="line">- kind: Group</span><br><span class="line">  name: system:nodes</span><br><span class="line">  apiGroup: rbac.authorization.k8s.io</span><br><span class="line">roleRef:</span><br><span class="line">  kind: ClusterRole</span><br><span class="line">  name: system:certificates.k8s.io:certificatesigningrequests:selfnodeclient</span><br><span class="line">  apiGroup: rbac.authorization.k8s.io</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p>创建所需的 clusterrole</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF | kubectl apply -f -</span><br><span class="line"># A ClusterRole which instructs the CSR approver to approve a user requesting</span><br><span class="line"># node client credentials.</span><br><span class="line">kind: ClusterRole</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1</span><br><span class="line">metadata:</span><br><span class="line">  name: system:certificates.k8s.io:certificatesigningrequests:nodeclient</span><br><span class="line">rules:</span><br><span class="line">- apiGroups: [&quot;certificates.k8s.io&quot;]</span><br><span class="line">  resources: [&quot;certificatesigningrequests/nodeclient&quot;]</span><br><span class="line">  verbs: [&quot;create&quot;]</span><br><span class="line">---</span><br><span class="line"># A ClusterRole which instructs the CSR approver to approve a node renewing its</span><br><span class="line"># own client credentials.</span><br><span class="line">kind: ClusterRole</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1</span><br><span class="line">metadata:</span><br><span class="line">  name: system:certificates.k8s.io:certificatesigningrequests:selfnodeclient</span><br><span class="line">rules:</span><br><span class="line">- apiGroups: [&quot;certificates.k8s.io&quot;]</span><br><span class="line">  resources: [&quot;certificatesigningrequests/selfnodeclient&quot;]</span><br><span class="line">  verbs: [&quot;create&quot;]</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<h2 id="配置-worker-组件"><a href="#配置-worker-组件" class="headerlink" title="配置 worker 组件"></a>配置 worker 组件</h2><p>将 ca.crt 和  bootstrap.conf 发送至需要运行 worker 的节点</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /etc/kubernetes/pki</span><br><span class="line">scp root@k8s-master1:/etc/kubernetes/pki/ca.crt /etc/kubernetes/pki/ca.crt</span><br><span class="line">scp root@k8s-master1:/etc/kubernetes/bootstrap.conf /etc/kubernetes/bootstrap.conf</span><br></pre></td></tr></table></figure>
+
+<p>kubelet 的 yaml 配置文件</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /var/lib/kubelet/</span><br><span class="line">cat &lt;&lt;EOF&gt; /var/lib/kubelet/config.yaml</span><br><span class="line">address: 0.0.0.0</span><br><span class="line">apiVersion: kubelet.config.k8s.io/v1beta1</span><br><span class="line">authentication:</span><br><span class="line">  anonymous:</span><br><span class="line">    enabled: false</span><br><span class="line">  webhook:</span><br><span class="line">    cacheTTL: 2m0s</span><br><span class="line">    enabled: true</span><br><span class="line">  x509:</span><br><span class="line">    clientCAFile: /etc/kubernetes/pki/ca.crt</span><br><span class="line">authorization:</span><br><span class="line">  mode: Webhook</span><br><span class="line">  webhook:</span><br><span class="line">    cacheAuthorizedTTL: 5m0s</span><br><span class="line">    cacheUnauthorizedTTL: 30s</span><br><span class="line">cgroupDriver: systemd</span><br><span class="line">cgroupsPerQOS: true</span><br><span class="line">clusterDNS:</span><br><span class="line">- 10.96.0.10</span><br><span class="line">clusterDomain: cluster.local</span><br><span class="line">configMapAndSecretChangeDetectionStrategy: Watch</span><br><span class="line">containerLogMaxFiles: 5</span><br><span class="line">containerLogMaxSize: 10Mi</span><br><span class="line">contentType: application/vnd.kubernetes.protobuf</span><br><span class="line">cpuCFSQuota: true</span><br><span class="line">cpuCFSQuotaPeriod: 100ms</span><br><span class="line">cpuManagerPolicy: none</span><br><span class="line">cpuManagerReconcilePeriod: 10s</span><br><span class="line">enableControllerAttachDetach: true</span><br><span class="line">enableDebuggingHandlers: true</span><br><span class="line">enforceNodeAllocatable:</span><br><span class="line">- pods</span><br><span class="line">eventBurst: 10</span><br><span class="line">eventRecordQPS: 5</span><br><span class="line">evictionHard:</span><br><span class="line">  imagefs.available: 15%</span><br><span class="line">  memory.available: 100Mi</span><br><span class="line">  nodefs.available: 10%</span><br><span class="line">  nodefs.inodesFree: 5%</span><br><span class="line">evictionPressureTransitionPeriod: 5m0s</span><br><span class="line">failSwapOn: true</span><br><span class="line">fileCheckFrequency: 20s</span><br><span class="line">hairpinMode: promiscuous-bridge</span><br><span class="line">healthzBindAddress: 127.0.0.1</span><br><span class="line">healthzPort: 10248</span><br><span class="line">httpCheckFrequency: 20s</span><br><span class="line">imageGCHighThresholdPercent: 85</span><br><span class="line">imageGCLowThresholdPercent: 80</span><br><span class="line">imageMinimumGCAge: 2m0s</span><br><span class="line">iptablesDropBit: 15</span><br><span class="line">iptablesMasqueradeBit: 14</span><br><span class="line">kind: KubeletConfiguration</span><br><span class="line">kubeAPIBurst: 10</span><br><span class="line">kubeAPIQPS: 5</span><br><span class="line">makeIPTablesUtilChains: true</span><br><span class="line">maxOpenFiles: 1000000</span><br><span class="line">maxPods: 110</span><br><span class="line">nodeLeaseDurationSeconds: 40</span><br><span class="line">nodeStatusReportFrequency: 1m0s</span><br><span class="line">nodeStatusUpdateFrequency: 10s</span><br><span class="line">oomScoreAdj: -999</span><br><span class="line">podPidsLimit: -1</span><br><span class="line">port: 10250</span><br><span class="line">registryBurst: 10</span><br><span class="line">registryPullQPS: 5</span><br><span class="line">resolvConf: /etc/resolv.conf</span><br><span class="line">rotateCertificates: true</span><br><span class="line">runtimeRequestTimeout: 2m0s</span><br><span class="line">serializeImagePulls: true</span><br><span class="line">staticPodPath: /etc/kubernetes/manifests</span><br><span class="line">streamingConnectionIdleTimeout: 4h0m0s</span><br><span class="line">syncFrequency: 1m0s</span><br><span class="line">volumeStatsAggPeriod: 1m0s</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p>启动 kubelet </p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /usr/lib/systemd/system</span><br><span class="line">mkdir -p /etc/kubernetes/manifests</span><br><span class="line">cat &gt; /usr/lib/systemd/system/kubelet.service &lt;&lt; EOF</span><br><span class="line">[Unit]</span><br><span class="line">Description=Kubernetes Kubelet</span><br><span class="line">Documentation=https://github.com/kubernetes/kubernetes</span><br><span class="line">After=docker.service</span><br><span class="line">Requires=docker.service</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">ExecStart=/usr/local/bin/kubelet \\</span><br><span class="line">  --bootstrap-kubeconfig=/etc/kubernetes/bootstrap.conf \\</span><br><span class="line">  --kubeconfig=/etc/kubernetes/kubelet.conf \\</span><br><span class="line">  --config=/var/lib/kubelet/config.yaml \\</span><br><span class="line">  --cgroup-driver=systemd \\</span><br><span class="line">  --pod-infra-container-image=kuops/pause-amd64:3.1 \\</span><br><span class="line">  --allow-privileged=true \\</span><br><span class="line">  --network-plugin=cni \\</span><br><span class="line">  --cni-conf-dir=/etc/cni/net.d \\</span><br><span class="line">  --cni-bin-dir=/opt/cni/bin \\</span><br><span class="line">  --cert-dir=/etc/kubernetes/pki \\</span><br><span class="line">  --v=2</span><br><span class="line"></span><br><span class="line">Restart=always</span><br><span class="line">RestartSec=10s</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl enable kubelet</span><br><span class="line">systemctl restart kubelet</span><br><span class="line">systemctl status kubelet -l</span><br></pre></td></tr></table></figure>
+
+<p>创建 kube-proxy 的 serviceaccount</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl -n kube-system create serviceaccount kube-proxy</span><br></pre></td></tr></table></figure>
+
+<p>创建 kube-proxy 的 cluster rolebinding</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">kubectl create clusterrolebinding kubeadm:node-proxier \</span><br><span class="line">        --clusterrole system:node-proxier \</span><br><span class="line">        --serviceaccount kube-system:kube-proxy</span><br></pre></td></tr></table></figure>
+
+<p>创建 kube-proxy 的 kubeconfig</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">CLUSTER_NAME=&quot;kubernetes&quot;</span><br><span class="line">KUBE_APISERVER=&quot;https://10.0.7.100:8443&quot;</span><br><span class="line">KUBE_CONFIG=&quot;kube-proxy.conf&quot;</span><br><span class="line"></span><br><span class="line">SECRET=$(kubectl -n kube-system get sa/kube-proxy \</span><br><span class="line">                 --output=jsonpath=&apos;&#123;.secrets[0].name&#125;&apos;)</span><br><span class="line"></span><br><span class="line">JWT_TOKEN=$(kubectl -n kube-system get secret/$SECRET \</span><br><span class="line">                    --output=jsonpath=&apos;&#123;.data.token&#125;&apos; | base64 -d)</span><br><span class="line"></span><br><span class="line">kubectl config set-cluster $&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --certificate-authority=/etc/kubernetes/pki/ca.crt \</span><br><span class="line">  --embed-certs=true \</span><br><span class="line">  --server=$&#123;KUBE_APISERVER&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line">kubectl config set-context $&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --cluster=$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --user=$&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line">kubectl config set-credentials $&#123;CLUSTER_NAME&#125; \</span><br><span class="line">  --token=$&#123;JWT_TOKEN&#125; \</span><br><span class="line">  --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line"></span><br><span class="line">kubectl config use-context $&#123;CLUSTER_NAME&#125; --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><span class="line">kubectl config view --kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br></pre></td></tr></table></figure>
+
+<p>其他节点拉取</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">scp root@k8s-master1:/etc/kubernetes/kube-proxy.conf /etc/kubernetes/kube-proxy.conf</span><br></pre></td></tr></table></figure>
+
+<p>kube-proxy 的 yaml 配置</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">mkdir -p /var/lib/kube-proxy</span><br><span class="line">cat &lt;&lt;EOF&gt; /var/lib/kube-proxy/config.conf</span><br><span class="line">apiVersion: kubeproxy.config.k8s.io/v1alpha1</span><br><span class="line">bindAddress: 0.0.0.0</span><br><span class="line">clientConnection:</span><br><span class="line">    acceptContentTypes: &quot;&quot;</span><br><span class="line">    burst: 10</span><br><span class="line">    contentType: application/vnd.kubernetes.protobuf</span><br><span class="line">    kubeconfig: /etc/kubernetes/kube-proxy.conf</span><br><span class="line">    qps: 5</span><br><span class="line">clusterCIDR: &quot;10.244.0.0/16&quot;</span><br><span class="line">configSyncPeriod: 15m0s</span><br><span class="line">conntrack:</span><br><span class="line">    max: null</span><br><span class="line">    maxPerCore: 32768</span><br><span class="line">    min: 131072</span><br><span class="line">    tcpCloseWaitTimeout: 1h0m0s</span><br><span class="line">    tcpEstablishedTimeout: 24h0m0s</span><br><span class="line">enableProfiling: false</span><br><span class="line">healthzBindAddress: 0.0.0.0:10256</span><br><span class="line">hostnameOverride: &quot;&quot;</span><br><span class="line">iptables:</span><br><span class="line">    masqueradeAll: true</span><br><span class="line">    masqueradeBit: 14</span><br><span class="line">    minSyncPeriod: 0s</span><br><span class="line">    syncPeriod: 30s</span><br><span class="line">ipvs:</span><br><span class="line">    excludeCIDRs: null</span><br><span class="line">    minSyncPeriod: 0s</span><br><span class="line">    scheduler: &quot;&quot;</span><br><span class="line">    syncPeriod: 30s</span><br><span class="line">kind: KubeProxyConfiguration</span><br><span class="line">metricsBindAddress: 127.0.0.1:10249</span><br><span class="line">mode: &quot;iptables&quot;</span><br><span class="line">nodePortAddresses: null</span><br><span class="line">oomScoreAdj: -999</span><br><span class="line">portRange: &quot;&quot;</span><br><span class="line">resourceContainer: /kube-proxy</span><br><span class="line">udpIdleTimeout: 250ms</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<p>启动 kube-proxy</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">mkdir /var/lib/kube-proxy</span><br><span class="line"></span><br><span class="line">cat &gt; /usr/lib/systemd/system/kube-proxy.service &lt;&lt; EOF</span><br><span class="line">[Unit]</span><br><span class="line">Description=Kubernetes Kube Proxy</span><br><span class="line">Documentation=https://github.com/kubernetes/kubernetes</span><br><span class="line">After=network.target</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">ExecStart=/usr/local/bin/kube-proxy \\</span><br><span class="line">  --config=/var/lib/kube-proxy/config.conf \\</span><br><span class="line">  --conntrack-max=0 \\</span><br><span class="line">  --conntrack-max-per-core=0 \\</span><br><span class="line">  --v=2</span><br><span class="line">Restart=always</span><br><span class="line">RestartSec=10s</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">systemctl daemon-reload</span><br><span class="line">systemctl enable kube-proxy</span><br><span class="line">systemctl restart kube-proxy</span><br><span class="line">systemctl status kube-proxy -l</span><br></pre></td></tr></table></figure>
+
+<h2 id="节点标签"><a href="#节点标签" class="headerlink" title="节点标签"></a>节点标签</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">kubectl label node k8s-master1 node-role.kubernetes.io/master=&quot;&quot;</span><br><span class="line">kubectl label node k8s-master2 node-role.kubernetes.io/master=&quot;&quot;</span><br><span class="line">kubectl label node k8s-master3 node-role.kubernetes.io/master=&quot;&quot;</span><br><span class="line">kubectl label node k8s-worker1 node-role.kubernetes.io/worker=worker</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装-flannel"><a href="#安装-flannel" class="headerlink" title="安装 flannel"></a>安装 flannel</h2><p>安装 cni</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -LO https://github.com/containernetworking/plugins/releases/download/v0.7.4/cni-plugins-amd64-v0.7.4.tgz</span><br><span class="line">mkdir -p /opt/cni/bin</span><br><span class="line">tar -xf cni-plugins-amd64-v0.7.4.tgz -C /opt/cni/bin</span><br></pre></td></tr></table></figure>
+
+<p>安装 flannel</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br><span class="line">199</span><br><span class="line">200</span><br><span class="line">201</span><br><span class="line">202</span><br><span class="line">203</span><br><span class="line">204</span><br><span class="line">205</span><br><span class="line">206</span><br><span class="line">207</span><br><span class="line">208</span><br><span class="line">209</span><br><span class="line">210</span><br><span class="line">211</span><br><span class="line">212</span><br><span class="line">213</span><br><span class="line">214</span><br><span class="line">215</span><br><span class="line">216</span><br><span class="line">217</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF&gt; kube-flannel.yaml</span><br><span class="line">---</span><br><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: PodSecurityPolicy</span><br><span class="line">metadata:</span><br><span class="line">  name: psp.flannel.unprivileged</span><br><span class="line">  annotations:</span><br><span class="line">    seccomp.security.alpha.kubernetes.io/allowedProfileNames: docker/default</span><br><span class="line">    seccomp.security.alpha.kubernetes.io/defaultProfileName: docker/default</span><br><span class="line">    apparmor.security.beta.kubernetes.io/allowedProfileNames: runtime/default</span><br><span class="line">    apparmor.security.beta.kubernetes.io/defaultProfileName: runtime/default</span><br><span class="line">spec:</span><br><span class="line">  privileged: false</span><br><span class="line">  volumes:</span><br><span class="line">    - configMap</span><br><span class="line">    - secret</span><br><span class="line">    - emptyDir</span><br><span class="line">    - hostPath</span><br><span class="line">  allowedHostPaths:</span><br><span class="line">    - pathPrefix: &quot;/etc/cni/net.d&quot;</span><br><span class="line">    - pathPrefix: &quot;/etc/kube-flannel&quot;</span><br><span class="line">    - pathPrefix: &quot;/run/flannel&quot;</span><br><span class="line">  readOnlyRootFilesystem: false</span><br><span class="line">  # Users and groups</span><br><span class="line">  runAsUser:</span><br><span class="line">    rule: RunAsAny</span><br><span class="line">  supplementalGroups:</span><br><span class="line">    rule: RunAsAny</span><br><span class="line">  fsGroup:</span><br><span class="line">    rule: RunAsAny</span><br><span class="line">  # Privilege Escalation</span><br><span class="line">  allowPrivilegeEscalation: false</span><br><span class="line">  defaultAllowPrivilegeEscalation: false</span><br><span class="line">  # Capabilities</span><br><span class="line">  allowedCapabilities: [&apos;NET_ADMIN&apos;]</span><br><span class="line">  defaultAddCapabilities: []</span><br><span class="line">  requiredDropCapabilities: []</span><br><span class="line">  # Host namespaces</span><br><span class="line">  hostPID: false</span><br><span class="line">  hostIPC: false</span><br><span class="line">  hostNetwork: true</span><br><span class="line">  hostPorts:</span><br><span class="line">  - min: 0</span><br><span class="line">    max: 65535</span><br><span class="line">  # SELinux</span><br><span class="line">  seLinux:</span><br><span class="line">    # SELinux is unsed in CaaSP</span><br><span class="line">    rule: &apos;RunAsAny&apos;</span><br><span class="line">---</span><br><span class="line">kind: ClusterRole</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1beta1</span><br><span class="line">metadata:</span><br><span class="line">  name: flannel</span><br><span class="line">rules:</span><br><span class="line">  - apiGroups: [&apos;extensions&apos;]</span><br><span class="line">    resources: [&apos;podsecuritypolicies&apos;]</span><br><span class="line">    verbs: [&apos;use&apos;]</span><br><span class="line">    resourceNames: [&apos;psp.flannel.unprivileged&apos;]</span><br><span class="line">  - apiGroups:</span><br><span class="line">      - &quot;&quot;</span><br><span class="line">    resources:</span><br><span class="line">      - pods</span><br><span class="line">    verbs:</span><br><span class="line">      - get</span><br><span class="line">  - apiGroups:</span><br><span class="line">      - &quot;&quot;</span><br><span class="line">    resources:</span><br><span class="line">      - nodes</span><br><span class="line">    verbs:</span><br><span class="line">      - list</span><br><span class="line">      - watch</span><br><span class="line">  - apiGroups:</span><br><span class="line">      - &quot;&quot;</span><br><span class="line">    resources:</span><br><span class="line">      - nodes/status</span><br><span class="line">    verbs:</span><br><span class="line">      - patch</span><br><span class="line">---</span><br><span class="line">kind: ClusterRoleBinding</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1beta1</span><br><span class="line">metadata:</span><br><span class="line">  name: flannel</span><br><span class="line">roleRef:</span><br><span class="line">  apiGroup: rbac.authorization.k8s.io</span><br><span class="line">  kind: ClusterRole</span><br><span class="line">  name: flannel</span><br><span class="line">subjects:</span><br><span class="line">- kind: ServiceAccount</span><br><span class="line">  name: flannel</span><br><span class="line">  namespace: kube-system</span><br><span class="line">---</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: ServiceAccount</span><br><span class="line">metadata:</span><br><span class="line">  name: flannel</span><br><span class="line">  namespace: kube-system</span><br><span class="line">---</span><br><span class="line">kind: ConfigMap</span><br><span class="line">apiVersion: v1</span><br><span class="line">metadata:</span><br><span class="line">  name: kube-flannel-cfg</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  labels:</span><br><span class="line">    tier: node</span><br><span class="line">    app: flannel</span><br><span class="line">data:</span><br><span class="line">  cni-conf.json: |</span><br><span class="line">    &#123;</span><br><span class="line">      &quot;name&quot;: &quot;cbr0&quot;,</span><br><span class="line">      &quot;plugins&quot;: [</span><br><span class="line">        &#123;</span><br><span class="line">          &quot;type&quot;: &quot;flannel&quot;,</span><br><span class="line">          &quot;delegate&quot;: &#123;</span><br><span class="line">            &quot;hairpinMode&quot;: true,</span><br><span class="line">            &quot;isDefaultGateway&quot;: true</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;,</span><br><span class="line">        &#123;</span><br><span class="line">          &quot;type&quot;: &quot;portmap&quot;,</span><br><span class="line">          &quot;capabilities&quot;: &#123;</span><br><span class="line">            &quot;portMappings&quot;: true</span><br><span class="line">          &#125;</span><br><span class="line">        &#125;</span><br><span class="line">      ]</span><br><span class="line">    &#125;</span><br><span class="line">  net-conf.json: |</span><br><span class="line">    &#123;</span><br><span class="line">      &quot;Network&quot;: &quot;10.244.0.0/16&quot;,</span><br><span class="line">      &quot;Backend&quot;: &#123;</span><br><span class="line">        &quot;Type&quot;: &quot;vxlan&quot;</span><br><span class="line">      &#125;</span><br><span class="line">    &#125;</span><br><span class="line">---</span><br><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: DaemonSet</span><br><span class="line">metadata:</span><br><span class="line">  name: kube-flannel-ds-amd64</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  labels:</span><br><span class="line">    tier: node</span><br><span class="line">    app: flannel</span><br><span class="line">spec:</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        tier: node</span><br><span class="line">        app: flannel</span><br><span class="line">    spec:</span><br><span class="line">      hostNetwork: true</span><br><span class="line">      nodeSelector:</span><br><span class="line">        beta.kubernetes.io/arch: amd64</span><br><span class="line">      tolerations:</span><br><span class="line">      - operator: Exists</span><br><span class="line">        effect: NoSchedule</span><br><span class="line">      serviceAccountName: flannel</span><br><span class="line">      initContainers:</span><br><span class="line">      - name: install-cni</span><br><span class="line">        image: kuopsquay/coreos.flannel:v0.11.0-amd64</span><br><span class="line">        command:</span><br><span class="line">        - cp</span><br><span class="line">        args:</span><br><span class="line">        - -f</span><br><span class="line">        - /etc/kube-flannel/cni-conf.json</span><br><span class="line">        - /etc/cni/net.d/10-flannel.conflist</span><br><span class="line">        volumeMounts:</span><br><span class="line">        - name: cni</span><br><span class="line">          mountPath: /etc/cni/net.d</span><br><span class="line">        - name: flannel-cfg</span><br><span class="line">          mountPath: /etc/kube-flannel/</span><br><span class="line">      containers:</span><br><span class="line">      - name: kube-flannel</span><br><span class="line">        image: kuopsquay/coreos.flannel:v0.11.0-amd64</span><br><span class="line">        command:</span><br><span class="line">        - /opt/bin/flanneld</span><br><span class="line">        args:</span><br><span class="line">        - --ip-masq</span><br><span class="line">        - --kube-subnet-mgr</span><br><span class="line">        - --iface=enp0s8</span><br><span class="line">        resources:</span><br><span class="line">          requests:</span><br><span class="line">            cpu: &quot;100m&quot;</span><br><span class="line">            memory: &quot;50Mi&quot;</span><br><span class="line">          limits:</span><br><span class="line">            cpu: &quot;100m&quot;</span><br><span class="line">            memory: &quot;50Mi&quot;</span><br><span class="line">        securityContext:</span><br><span class="line">          privileged: false</span><br><span class="line">          capabilities:</span><br><span class="line">             add: [&quot;NET_ADMIN&quot;]</span><br><span class="line">        env:</span><br><span class="line">        - name: POD_NAME</span><br><span class="line">          valueFrom:</span><br><span class="line">            fieldRef:</span><br><span class="line">              fieldPath: metadata.name</span><br><span class="line">        - name: POD_NAMESPACE</span><br><span class="line">          valueFrom:</span><br><span class="line">            fieldRef:</span><br><span class="line">              fieldPath: metadata.namespace</span><br><span class="line">        volumeMounts:</span><br><span class="line">        - name: run</span><br><span class="line">          mountPath: /run/flannel</span><br><span class="line">        - name: flannel-cfg</span><br><span class="line">          mountPath: /etc/kube-flannel/</span><br><span class="line">      volumes:</span><br><span class="line">        - name: run</span><br><span class="line">          hostPath:</span><br><span class="line">            path: /run/flannel</span><br><span class="line">        - name: cni</span><br><span class="line">          hostPath:</span><br><span class="line">            path: /etc/cni/net.d</span><br><span class="line">        - name: flannel-cfg</span><br><span class="line">          configMap:</span><br><span class="line">            name: kube-flannel-cfg</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">kubectl apply -f kube-flannel.yaml</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装-coredns"><a href="#安装-coredns" class="headerlink" title="安装 coredns"></a>安装 coredns</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br><span class="line">149</span><br><span class="line">150</span><br><span class="line">151</span><br><span class="line">152</span><br><span class="line">153</span><br><span class="line">154</span><br><span class="line">155</span><br><span class="line">156</span><br><span class="line">157</span><br><span class="line">158</span><br><span class="line">159</span><br><span class="line">160</span><br><span class="line">161</span><br><span class="line">162</span><br><span class="line">163</span><br><span class="line">164</span><br><span class="line">165</span><br><span class="line">166</span><br><span class="line">167</span><br><span class="line">168</span><br><span class="line">169</span><br><span class="line">170</span><br><span class="line">171</span><br><span class="line">172</span><br><span class="line">173</span><br><span class="line">174</span><br><span class="line">175</span><br><span class="line">176</span><br><span class="line">177</span><br><span class="line">178</span><br><span class="line">179</span><br><span class="line">180</span><br><span class="line">181</span><br><span class="line">182</span><br><span class="line">183</span><br><span class="line">184</span><br><span class="line">185</span><br><span class="line">186</span><br><span class="line">187</span><br><span class="line">188</span><br><span class="line">189</span><br><span class="line">190</span><br><span class="line">191</span><br><span class="line">192</span><br><span class="line">193</span><br><span class="line">194</span><br><span class="line">195</span><br><span class="line">196</span><br><span class="line">197</span><br><span class="line">198</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF&gt; coredns.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: ServiceAccount</span><br><span class="line">metadata:</span><br><span class="line">  name: coredns</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  labels:</span><br><span class="line">      kubernetes.io/cluster-service: &quot;true&quot;</span><br><span class="line">      addonmanager.kubernetes.io/mode: Reconcile</span><br><span class="line">---</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1</span><br><span class="line">kind: ClusterRole</span><br><span class="line">metadata:</span><br><span class="line">  labels:</span><br><span class="line">    kubernetes.io/bootstrapping: rbac-defaults</span><br><span class="line">    addonmanager.kubernetes.io/mode: Reconcile</span><br><span class="line">  name: system:coredns</span><br><span class="line">rules:</span><br><span class="line">- apiGroups:</span><br><span class="line">  - &quot;&quot;</span><br><span class="line">  resources:</span><br><span class="line">  - endpoints</span><br><span class="line">  - services</span><br><span class="line">  - pods</span><br><span class="line">  - namespaces</span><br><span class="line">  verbs:</span><br><span class="line">  - list</span><br><span class="line">  - watch</span><br><span class="line">- apiGroups:</span><br><span class="line">  - &quot;&quot;</span><br><span class="line">  resources:</span><br><span class="line">  - nodes</span><br><span class="line">  verbs:</span><br><span class="line">  - get</span><br><span class="line">---</span><br><span class="line">apiVersion: rbac.authorization.k8s.io/v1</span><br><span class="line">kind: ClusterRoleBinding</span><br><span class="line">metadata:</span><br><span class="line">  annotations:</span><br><span class="line">    rbac.authorization.kubernetes.io/autoupdate: &quot;true&quot;</span><br><span class="line">  labels:</span><br><span class="line">    kubernetes.io/bootstrapping: rbac-defaults</span><br><span class="line">    addonmanager.kubernetes.io/mode: EnsureExists</span><br><span class="line">  name: system:coredns</span><br><span class="line">roleRef:</span><br><span class="line">  apiGroup: rbac.authorization.k8s.io</span><br><span class="line">  kind: ClusterRole</span><br><span class="line">  name: system:coredns</span><br><span class="line">subjects:</span><br><span class="line">- kind: ServiceAccount</span><br><span class="line">  name: coredns</span><br><span class="line">  namespace: kube-system</span><br><span class="line">---</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: ConfigMap</span><br><span class="line">metadata:</span><br><span class="line">  name: coredns</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  labels:</span><br><span class="line">      addonmanager.kubernetes.io/mode: EnsureExists</span><br><span class="line">data:</span><br><span class="line">  Corefile: |</span><br><span class="line">    .:53 &#123;</span><br><span class="line">        errors</span><br><span class="line">        health</span><br><span class="line">        kubernetes cluster.local in-addr.arpa ip6.arpa &#123;</span><br><span class="line">            pods insecure</span><br><span class="line">            upstream</span><br><span class="line">            fallthrough in-addr.arpa ip6.arpa</span><br><span class="line">        &#125;</span><br><span class="line">        prometheus :9153</span><br><span class="line">        forward . /etc/resolv.conf</span><br><span class="line">        cache 30</span><br><span class="line">        loop</span><br><span class="line">        reload</span><br><span class="line">        loadbalance</span><br><span class="line">    &#125;</span><br><span class="line">---</span><br><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: Deployment</span><br><span class="line">metadata:</span><br><span class="line">  name: coredns</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  labels:</span><br><span class="line">    k8s-app: kube-dns</span><br><span class="line">    kubernetes.io/cluster-service: &quot;true&quot;</span><br><span class="line">    addonmanager.kubernetes.io/mode: Reconcile</span><br><span class="line">    kubernetes.io/name: &quot;CoreDNS&quot;</span><br><span class="line">spec:</span><br><span class="line">  # replicas: not specified here:</span><br><span class="line">  # 1. In order to make Addon Manager do not reconcile this replicas parameter.</span><br><span class="line">  # 2. Default is 1.</span><br><span class="line">  # 3. Will be tuned in real time if DNS horizontal auto-scaling is turned on.</span><br><span class="line">  strategy:</span><br><span class="line">    type: RollingUpdate</span><br><span class="line">    rollingUpdate:</span><br><span class="line">      maxUnavailable: 1</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      k8s-app: kube-dns</span><br><span class="line">  template:</span><br><span class="line">    metadata:</span><br><span class="line">      labels:</span><br><span class="line">        k8s-app: kube-dns</span><br><span class="line">      annotations:</span><br><span class="line">        seccomp.security.alpha.kubernetes.io/pod: &apos;docker/default&apos;</span><br><span class="line">    spec:</span><br><span class="line">      priorityClassName: system-cluster-critical</span><br><span class="line">      serviceAccountName: coredns</span><br><span class="line">      tolerations:</span><br><span class="line">        - key: &quot;CriticalAddonsOnly&quot;</span><br><span class="line">          operator: &quot;Exists&quot;</span><br><span class="line">      nodeSelector:</span><br><span class="line">        beta.kubernetes.io/os: linux</span><br><span class="line">      containers:</span><br><span class="line">      - name: coredns</span><br><span class="line">        image: coredns/coredns:1.3.1</span><br><span class="line">        imagePullPolicy: IfNotPresent</span><br><span class="line">        resources:</span><br><span class="line">          limits:</span><br><span class="line">            memory: 170Mi</span><br><span class="line">          requests:</span><br><span class="line">            cpu: 100m</span><br><span class="line">            memory: 70Mi</span><br><span class="line">        args: [ &quot;-conf&quot;, &quot;/etc/coredns/Corefile&quot; ]</span><br><span class="line">        volumeMounts:</span><br><span class="line">        - name: config-volume</span><br><span class="line">          mountPath: /etc/coredns</span><br><span class="line">          readOnly: true</span><br><span class="line">        ports:</span><br><span class="line">        - containerPort: 53</span><br><span class="line">          name: dns</span><br><span class="line">          protocol: UDP</span><br><span class="line">        - containerPort: 53</span><br><span class="line">          name: dns-tcp</span><br><span class="line">          protocol: TCP</span><br><span class="line">        - containerPort: 9153</span><br><span class="line">          name: metrics</span><br><span class="line">          protocol: TCP</span><br><span class="line">        livenessProbe:</span><br><span class="line">          httpGet:</span><br><span class="line">            path: /health</span><br><span class="line">            port: 8080</span><br><span class="line">            scheme: HTTP</span><br><span class="line">          initialDelaySeconds: 60</span><br><span class="line">          timeoutSeconds: 5</span><br><span class="line">          successThreshold: 1</span><br><span class="line">          failureThreshold: 5</span><br><span class="line">        readinessProbe:</span><br><span class="line">          httpGet:</span><br><span class="line">            path: /health</span><br><span class="line">            port: 8080</span><br><span class="line">            scheme: HTTP</span><br><span class="line">        securityContext:</span><br><span class="line">          allowPrivilegeEscalation: false</span><br><span class="line">          capabilities:</span><br><span class="line">            add:</span><br><span class="line">            - NET_BIND_SERVICE</span><br><span class="line">            drop:</span><br><span class="line">            - all</span><br><span class="line">          readOnlyRootFilesystem: true</span><br><span class="line">      dnsPolicy: Default</span><br><span class="line">      volumes:</span><br><span class="line">        - name: config-volume</span><br><span class="line">          configMap:</span><br><span class="line">            name: coredns</span><br><span class="line">            items:</span><br><span class="line">            - key: Corefile</span><br><span class="line">              path: Corefile</span><br><span class="line">---</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Service</span><br><span class="line">metadata:</span><br><span class="line">  name: kube-dns</span><br><span class="line">  namespace: kube-system</span><br><span class="line">  annotations:</span><br><span class="line">    prometheus.io/port: &quot;9153&quot;</span><br><span class="line">    prometheus.io/scrape: &quot;true&quot;</span><br><span class="line">  labels:</span><br><span class="line">    k8s-app: kube-dns</span><br><span class="line">    kubernetes.io/cluster-service: &quot;true&quot;</span><br><span class="line">    addonmanager.kubernetes.io/mode: Reconcile</span><br><span class="line">    kubernetes.io/name: &quot;CoreDNS&quot;</span><br><span class="line">spec:</span><br><span class="line">  selector:</span><br><span class="line">    k8s-app: kube-dns</span><br><span class="line">  clusterIP: 10.96.0.10</span><br><span class="line">  ports:</span><br><span class="line">  - name: dns</span><br><span class="line">    port: 53</span><br><span class="line">    protocol: UDP</span><br><span class="line">  - name: dns-tcp</span><br><span class="line">    port: 53</span><br><span class="line">    protocol: TCP</span><br><span class="line">  - name: metrics</span><br><span class="line">    port: 9153</span><br><span class="line">    protocol: TCP</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+
+<h2 id="kubectl-设置"><a href="#kubectl-设置" class="headerlink" title="kubectl 设置"></a>kubectl 设置</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">echo &quot;source &lt;(kubectl completion bash)&quot; &gt;&gt; /etc/profile.d/kubernetes.sh</span><br><span class="line">source /etc/profile.d/bash_completion.sh</span><br><span class="line">source /etc/profile.d/kubernetes.sh</span><br><span class="line">mkdir -p ~/.kube/</span><br><span class="line">cp -f /etc/kubernetes/admin.conf ~/.kube/config</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装-helm"><a href="#安装-helm" class="headerlink" title="安装 helm"></a>安装 helm</h2><p>安装 helm</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">apt-get install socat -y</span><br><span class="line">curl -LO https://storage.googleapis.com/kubernetes-helm/helm-v2.12.3-linux-amd64.tar.gz</span><br><span class="line">tar xf helm-v2.12.3-linux-amd64.tar.gz</span><br><span class="line">mv linux-amd64/helm  /usr/local/bin/</span><br><span class="line">mv linux-amd64/tiller  /usr/local/bin/</span><br></pre></td></tr></table></figure>
+
+<p>初始化 helm</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">kubectl  create  serviceaccount tiller -n kube-system</span><br><span class="line"></span><br><span class="line">kubectl  create  clusterrolebinding tiller \</span><br><span class="line">    --clusterrole=cluster-admin --serviceaccount=kube-system:tiller</span><br><span class="line"></span><br><span class="line">helm init --upgrade --service-account tiller \</span><br><span class="line">    --skip-refresh -i kuops/tiller:v2.12.3 \</span><br><span class="line">    --stable-repo-url https://kuops.com/helm-charts-mirror</span><br><span class="line"></span><br><span class="line">helm repo update</span><br><span class="line"></span><br><span class="line">echo &quot;source &lt;(helm completion bash)&quot; &gt; /etc/profile.d/helm.sh</span><br><span class="line">source  /etc/profile.d/helm.sh</span><br></pre></td></tr></table></figure>
+
+<h2 id="安装-istio"><a href="#安装-istio" class="headerlink" title="安装 istio"></a>安装 istio</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">curl -LO https://github.com/istio/istio/releases/download/1.0.6/istio-1.0.6-linux.tar.gz</span><br><span class="line">tar xf istio-1.0.6-linux.tar.gz</span><br><span class="line">cp istio-1.0.6/bin/istioctl  /usr/local/bin</span><br><span class="line"></span><br><span class="line">helm template istio-1.0.6/install/kubernetes/helm/istio --name istio \</span><br><span class="line">    --namespace istio-system \</span><br><span class="line">    --set global.mtls.enabled=true \</span><br><span class="line">    --set tracing.enabled=true \</span><br><span class="line">    --set servicegraph.enabled=true \</span><br><span class="line">    --set prometheus.enabled=true \</span><br><span class="line">    --set grafana.enabled=true &gt; istio.yaml</span><br><span class="line"></span><br><span class="line">kubectl create namespace istio-system</span><br><span class="line">kubectl apply -f istio.yaml</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/二进制部署Kubernetes-v1-13-5（一）/" rel="next" title="二进制部署Kubernetes v1.13.5（一）">
+                <i class="fa fa-chevron-left"></i> 二进制部署Kubernetes v1.13.5（一）
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/kubernetes中的local-persistent-volume/" rel="prev" title="kubernetes中的local persistent volume">
+                kubernetes中的local persistent volume <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">42</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点初始化"><span class="nav-number">1.</span> <span class="nav-text">节点初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置每台主机的hosts文件，添加到-etc-hosts文件中"><span class="nav-number">2.</span> <span class="nav-text">配置每台主机的hosts文件，添加到/etc/hosts文件中</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#准备证书"><span class="nav-number">3.</span> <span class="nav-text">准备证书</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#准备-kubeconfig"><span class="nav-number">4.</span> <span class="nav-text">准备 kubeconfig</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分发证书"><span class="nav-number">5.</span> <span class="nav-text">分发证书</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-HA"><span class="nav-number">6.</span> <span class="nav-text">配置 HA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-etcd"><span class="nav-number">7.</span> <span class="nav-text">配置 etcd</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-master-组件"><span class="nav-number">8.</span> <span class="nav-text">配置 master 组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-bootstrap"><span class="nav-number">9.</span> <span class="nav-text">配置 bootstrap</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-worker-组件"><span class="nav-number">10.</span> <span class="nav-text">配置 worker 组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点标签"><span class="nav-number">11.</span> <span class="nav-text">节点标签</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-flannel"><span class="nav-number">12.</span> <span class="nav-text">安装 flannel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-coredns"><span class="nav-number">13.</span> <span class="nav-text">安装 coredns</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#kubectl-设置"><span class="nav-number">14.</span> <span class="nav-text">kubectl 设置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-helm"><span class="nav-number">15.</span> <span class="nav-text">安装 helm</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-istio"><span class="nav-number">16.</span> <span class="nav-text">安装 istio</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
