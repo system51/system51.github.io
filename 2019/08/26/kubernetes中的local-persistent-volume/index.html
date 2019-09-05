@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="什么是Local Persistent Volumes 在kubernetes 1.14版本中， Local Persistent Volumes已变为正式版本（GA），Local PV的概念在1.7中被首次提出（alpha），并在1.10版本中升级到beat版本。现在用户终于可以在生产环境中使用Local PV的功能和API了。首先：Local Persistent Volumes代表了直接绑定">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-08-26T07:13:27.840Z">
+<meta property="og:updated_time" content="2019-09-05T01:23:46.771Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="kubernetes中的local persistent volume">
 <meta name="twitter:description" content="什么是Local Persistent Volumes 在kubernetes 1.14版本中， Local Persistent Volumes已变为正式版本（GA），Local PV的概念在1.7中被首次提出（alpha），并在1.10版本中升级到beat版本。现在用户终于可以在生产环境中使用Local PV的功能和API了。首先：Local Persistent Volumes代表了直接绑定">
@@ -358,10 +358,8 @@
 <ul>
 <li>pv：<code>example-pv</code>满足了pvc的要求；</li>
 <li>node:<code>k8s-n1</code>节点满足了pv:<code>example-pv</code>的nodeAffinity要求。</li>
+<li>于是乎调度器尝试将pv和pvc bind起来，并且对pod进行重新调度。</li>
 </ul>
-</blockquote>
-<blockquote>
-<p>于是乎调度器尝试将pv和pvc bind起来，并且对pod进行重新调度。</p>
 </blockquote>
 <blockquote>
 <p>重新调度pod时调度器发现pod的pvc资源得到了满足（都bound了pv），且bound的pv的nodeAffinity与node：<code>k8s-n1</code>匹配。于是将pod调度到node：<code>k8s-n1</code>上。完成调度。</p>
