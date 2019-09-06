@@ -89,7 +89,7 @@
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/pause-1.png">
 <meta property="og:image" content="https://system51.github.io/images/pause-2.png">
-<meta property="og:updated_time" content="2019-08-26T06:09:23.063Z">
+<meta property="og:updated_time" content="2019-09-06T02:03:02.451Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="K8s集群中pause容器是干嘛的">
 <meta name="twitter:description" content="当我们在检查k8s集群状态的时候会发现有很多 pause 容器运行于服务器上面，然后每次启动一个容器，都会伴随一个pause容器的启动。那它究竟是干啥子的？   Pause容器，又叫Infra容器，下面通过实验来理解它。我们知道在搭建k8s集群的时候，kubelet的配置中有这样一个参数：  1--pod-infra-container-image=registry.cn-hangzhou.al">
@@ -397,6 +397,38 @@
     <div>
         
             
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>K8s集群中pause容器是干嘛的</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月26日 - 14:07:48</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:03:02</p>
+  <p><span>原始链接:</span><a href="/2019/08/26/K8s集群中pause容器是干嘛的/" title="K8s集群中pause容器是干嘛的">https://system51.github.io/2019/08/26/K8s集群中pause容器是干嘛的/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/K8s集群中pause容器是干嘛的/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
         
     </div>
 

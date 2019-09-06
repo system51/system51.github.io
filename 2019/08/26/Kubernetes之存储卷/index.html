@@ -91,7 +91,7 @@
 <meta property="og:image" content="https://system51.github.io/images/volumes-2.png">
 <meta property="og:image" content="https://system51.github.io/images/volumes-3.png">
 <meta property="og:image" content="https://system51.github.io/images/volumes-4.png">
-<meta property="og:updated_time" content="2019-08-26T09:01:47.852Z">
+<meta property="og:updated_time" content="2019-09-06T02:02:43.700Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之存储卷">
 <meta name="twitter:description" content="一、存储卷的概念和类型 为了保证数据的持久性，必须保证数据在外部存储在docker容器中，为了实现数据的持久性存储，在宿主机和容器内做映射，可以保证在容器的生命周期结束，数据依旧可以实现持久性存储。但是在k8s中，由于pod分布在各个不同的节点之上，并不能实现不同节点之间持久性数据的共享，并且，在节点故障时，可能会导致数据的永久性丢失。为此，k8s就引入了外部存储卷的功能。  k8s的存储卷类型：">
@@ -579,6 +579,38 @@
     <div>
         
             
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>Kubernetes之存储卷</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月26日 - 09:54:44</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:02:43</p>
+  <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes之存储卷/" title="Kubernetes之存储卷">https://system51.github.io/2019/08/26/Kubernetes之存储卷/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes之存储卷/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
         
     </div>
 

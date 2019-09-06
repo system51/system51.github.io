@@ -88,7 +88,7 @@
 <meta property="og:description" content="资源类型 CPU 和 memory 都是 资源类型。资源类型具有基本单位。CPU 的单位是 core，memory 的单位是 byte。这些都统称为计算资源。  CPU含义： CPU 资源的限制和请求以cpu为单位。Kubernetes 中的一个 cpu 等于一个core，就是逻辑CPU。1颗逻辑CPU等于1000millicores。500m=0.5颗cpu。  内存含义： 内存的限制和请求以字">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/cpu-requests.png">
-<meta property="og:updated_time" content="2019-08-26T04:01:59.290Z">
+<meta property="og:updated_time" content="2019-09-06T02:03:50.891Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="kubernetes之管理容器的计算资源">
 <meta name="twitter:description" content="资源类型 CPU 和 memory 都是 资源类型。资源类型具有基本单位。CPU 的单位是 core，memory 的单位是 byte。这些都统称为计算资源。  CPU含义： CPU 资源的限制和请求以cpu为单位。Kubernetes 中的一个 cpu 等于一个core，就是逻辑CPU。1颗逻辑CPU等于1000millicores。500m=0.5颗cpu。  内存含义： 内存的限制和请求以字">
@@ -398,6 +398,38 @@
     <div>
         
             
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>kubernetes之管理容器的计算资源</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月26日 - 11:58:50</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:03:50</p>
+  <p><span>原始链接:</span><a href="/2019/08/26/kubernetes之管理容器的计算资源/" title="kubernetes之管理容器的计算资源">https://system51.github.io/2019/08/26/kubernetes之管理容器的计算资源/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/kubernetes之管理容器的计算资源/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
         
     </div>
 
