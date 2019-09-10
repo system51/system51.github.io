@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="Metrics Server 是实现了 Metrics API 的元件,其目标是取代 Heapster 作位 Pod 与 Node 提供资源的 Usage metrics,该元件会从每个 Kubernetes 节点上的 Kubelet 所公开的 Summary API 即10250端口中收集 Metrics。并将收集的信息存储在内存中，所以当通过kubectl top不能查看资源数据的历史情况，">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之资源指标">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-Resource-metrics/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Metrics Server 是实现了 Metrics API 的元件,其目标是取代 Heapster 作位 Pod 与 Node 提供资源的 Usage metrics,该元件会从每个 Kubernetes 节点上的 Kubelet 所公开的 Summary API 即10250端口中收集 Metrics。并将收集的信息存储在内存中，所以当通过kubectl top不能查看资源数据的历史情况，">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-09-06T02:03:44.275Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes之资源指标">
+<meta name="twitter:description" content="Metrics Server 是实现了 Metrics API 的元件,其目标是取代 Heapster 作位 Pod 与 Node 提供资源的 Usage metrics,该元件会从每个 Kubernetes 节点上的 Kubelet 所公开的 Summary API 即10250端口中收集 Metrics。并将收集的信息存储在内存中，所以当通过kubectl top不能查看资源数据的历史情况，">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/08/26/Kubernetes-Resource-metrics/">
+
+
+
+
+
+  <title>Kubernetes之资源指标 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/26/Kubernetes-Resource-metrics/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes之资源指标</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T13:30:16+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/08/26/Kubernetes-Resource-metrics/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/26/Kubernetes-Resource-metrics/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>Metrics Server 是实现了 Metrics API 的元件,其目标是取代 Heapster 作位 Pod 与 Node 提供资源的 Usage metrics,该元件会从每个 Kubernetes 节点上的 Kubelet 所公开的 Summary API 即10250端口中收集 Metrics。并将收集的信息存储在内存中，所以当通过kubectl top不能查看资源数据的历史情况，其它资源指标数据则通过prometheus采集了。</p>
+<ul>
+<li>Horizontal Pod Autoscaler（HPA）控制器用于实现基于CPU使用率进行自动Pod伸缩的功能。</li>
+<li>HPA控制器基于Master的kube-controller-manager服务启动参数–horizontal-pod-autoscaler-sync-period定义是时长（默认30秒）,周期性监控目标Pod的CPU使用率,并在满足条件时对ReplicationController或Deployment中的Pod副本数进行调整,以符合用户定义的平均Pod CPU使用率。</li>
+<li>在新版本的kubernetes中 Pod CPU使用率不在来源于heapster,而是来自于metrics-server</li>
+<li>官网原话是 The –horizontal-pod-autoscaler-use-rest-clients is true or unset. Setting this to false switches to Heapster-based autoscaling, which is deprecated.</li>
+<li>yml 文件来自于github <a href="https://github.com/kubernetes-incubator/metrics-server/tree/master/deploy/1.8+" target="_blank" rel="noopener">https://github.com/kubernetes-incubator/metrics-server/tree/master/deploy/1.8+</a></li>
+<li>/etc/kubernetes/pki/front-proxy-ca.pem 文件来自于部署kubernetes集群</li>
+<li>需要对yml文件进行修改才可使用 改动自行见文件</li>
+</ul>
+</blockquote>
+<h3 id="开启聚合层-Aggregation-Layer"><a href="#开启聚合层-Aggregation-Layer" class="headerlink" title="开启聚合层(Aggregation Layer)"></a>开启聚合层(Aggregation Layer)</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">设置apiserver相关参数</span><br><span class="line">      --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.pem  \</span><br><span class="line">      --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.pem  \</span><br><span class="line">      --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client-key.pem  \</span><br><span class="line">      --requestheader-allowed-names=aggregator  \</span><br><span class="line">      --requestheader-group-headers=X-Remote-Group  \</span><br><span class="line">      --requestheader-extra-headers-prefix=X-Remote-Extra-  \</span><br><span class="line">      --requestheader-username-headers=X-Remote-User  \</span><br></pre></td></tr></table></figure>
+
+<h3 id="关于聚合层的一些知识"><a href="#关于聚合层的一些知识" class="headerlink" title="关于聚合层的一些知识"></a>关于聚合层的一些知识</h3><blockquote>
+<p>聚合层运行在apiserver进程内部，允许用户为集群安装额外的Kubernetes风格的API，扩展core API的功能。聚合层需要启动apiserver的时候开启方可使用。<br>在用户注册扩展资源之前，聚合层什么也不做。用户要注册API，必需向系统中添加一个APIService对象，用来声明API的URL路径以及处理请求的后端APIService。此后，聚合层会将发往那个路径的所有请求(e.g. /apis/metrics.k8s.io/v1beta1/nodes)都转发给注册的APIService。</p>
+</blockquote>
+<blockquote>
+<p>metrics-server： 它也是一种API Server，提供了核心的Metrics API，就像k8s组件kube-apiserver提供了很多API群组一样，但它不是k8s组成部分，而是托管运行在k8s之上的Pod。为了让用户无缝的使用metrics-server当中的API，还需要把这类自定义的API，通过聚合器聚合到核心API组里，然后可以把此API当作是核心API的一部分，通过kubectl api-versions可直接查看。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: apiregistration.k8s.io/v1beta1</span><br><span class="line">kind: APIService</span><br><span class="line">metadata:</span><br><span class="line">  name: v1beta1.metrics.k8s.io</span><br><span class="line">spec:</span><br><span class="line">  service:</span><br><span class="line">    name: metrics-server</span><br><span class="line">    namespace: kube-system</span><br><span class="line">  group: metrics.k8s.io</span><br><span class="line">  version: v1beta1</span><br><span class="line">  insecureSkipTLSVerify: true</span><br><span class="line">  groupPriorityMinimum: 100</span><br><span class="line">  versionPriority: 10</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>如果APIService里指定了svc，那么请求kube-apiserver的web路径的时候kube-apiserver会把请求转发到你选中的svc上，这里可以看官方文件里一部分内容。当我们使用kubectl top node的时候实际是请求kube-apiserver的url路径/apis/metrics.k8s.io/v1beta1/nodes,由于创建了metrics-server的APIService，请求会被转发到svc的pod，pod工作流程是获取node列表，然后去请求node上的kubelet的metrics端口获取metrics信息收集起来，信息包括了node的基本cpu和内存以及上面跑的pod的cpu和内存。这之前流量是kube-apiserver到pod上中间经过svc的ip，如果没有kube-proxy和网络组件就无法通信。</p>
+</blockquote>
+<h4 id="利用nginx反向代理来理解："><a href="#利用nginx反向代理来理解：" class="headerlink" title="利用nginx反向代理来理解："></a>利用nginx反向代理来理解：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">location /apis/metrics.k8s.io/ &#123;</span><br><span class="line">    to svc pod;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="小细节：（使用如下命令可查看详细的请求）"><a href="#小细节：（使用如下命令可查看详细的请求）" class="headerlink" title="小细节：（使用如下命令可查看详细的请求）"></a>小细节：（使用如下命令可查看详细的请求）</h3><blockquote>
+<p>[root@master-1 1.8+]# kubectl -v=8 top node</p>
+</blockquote>
+<h3 id="首先在k8s-m1测试一下-kubectl-top-指令："><a href="#首先在k8s-m1测试一下-kubectl-top-指令：" class="headerlink" title="首先在k8s-m1测试一下 kubectl top 指令："></a>首先在k8s-m1测试一下 kubectl top 指令：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 ~]#  kubectl top node</span><br><span class="line">Error from server (NotFound): the server could not find the requested resource (get services http:heapster:)</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>发现 top 命令无法取得 Metrics,这表示 Kubernetes 集群没有安装 Heapster 或着 Metrics Server 来提供 Metrics API 给 top 指令取得资源使用量。</p>
+</blockquote>
+<h3 id="由于上述问题-我们要在k8s-m1部署-Metrics-Server来解决："><a href="#由于上述问题-我们要在k8s-m1部署-Metrics-Server来解决：" class="headerlink" title="由于上述问题,我们要在k8s-m1部署 Metrics Server来解决："></a>由于上述问题,我们要在k8s-m1部署 Metrics Server来解决：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 1.8+]# ll</span><br><span class="line">total 28</span><br><span class="line">-rw-r----- 1 root root 384 Mar 15 16:42 aggregated-metrics-reader.yaml</span><br><span class="line">-rw-r----- 1 root root 308 Mar 15 16:42 auth-delegator.yaml</span><br><span class="line">-rw-r----- 1 root root 329 Mar 15 16:42 auth-reader.yaml</span><br><span class="line">-rw-r----- 1 root root 298 Mar 15 16:42 metrics-apiservice.yaml</span><br><span class="line">-rw-r----- 1 root root 947 Mar 20 11:59 metrics-server-deployment.yaml</span><br><span class="line">-rw-r----- 1 root root 249 Mar 15 16:42 metrics-server-service.yaml</span><br><span class="line">-rw-r----- 1 root root 502 Mar 15 16:42 resource-reader.yaml</span><br></pre></td></tr></table></figure>
+
+<h3 id="修改metrics-server-deployment-yaml文件"><a href="#修改metrics-server-deployment-yaml文件" class="headerlink" title="修改metrics-server-deployment.yaml文件"></a>修改metrics-server-deployment.yaml文件</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">...</span><br><span class="line">        image: zhangguanzhang/gcr.io.google_containers.metrics-server-amd64:v0.3.1</span><br><span class="line">        args:</span><br><span class="line">        - --kubelet-preferred-address-types=InternalIP</span><br><span class="line">        - --kubelet-insecure-tls</span><br><span class="line">....</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li>metrics-server这个容器不能通过CoreDNS 10.96.0.10:53 解析各Node的主机名，metrics-server连节点时默认是连接节点的主机名，需要加个参数，让它连接节点的IP：“–kubelet-preferred-address-types=InternalIP”</li>
+<li>因为10250是https端口，连接它时需要提供证书，所以加上–kubelet-insecure-tls，表示不验证客户端证书。</li>
+</ul>
+</blockquote>
+<h3 id="应用当前目录下的所有yml文件"><a href="#应用当前目录下的所有yml文件" class="headerlink" title="应用当前目录下的所有yml文件"></a>应用当前目录下的所有yml文件</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 1.8+]# kubectl apply -f .</span><br><span class="line">clusterrole.rbac.authorization.k8s.io/system:aggregated-metrics-reader unchanged</span><br><span class="line">clusterrolebinding.rbac.authorization.k8s.io/metrics-server:system:auth-delegator unchanged</span><br><span class="line">rolebinding.rbac.authorization.k8s.io/metrics-server-auth-reader unchanged</span><br><span class="line">apiservice.apiregistration.k8s.io/v1beta1.metrics.k8s.io unchanged</span><br><span class="line">serviceaccount/metrics-server unchanged</span><br><span class="line">deployment.extensions/metrics-server unchanged</span><br><span class="line">service/metrics-server unchanged</span><br><span class="line">clusterrole.rbac.authorization.k8s.io/system:metrics-server unchanged</span><br><span class="line">clusterrolebinding.rbac.authorization.k8s.io/system:metrics-server unchanged</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看pod状态"><a href="#查看pod状态" class="headerlink" title="查看pod状态"></a>查看pod状态</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 1.8+]# kubectl get pod -n kube-system -l  k8s-app=metrics-server</span><br><span class="line">NAME                              READY   STATUS    RESTARTS   AGE</span><br><span class="line">metrics-server-7b5c5864ff-zr2k7   1/1     Running   0          4h1m</span><br></pre></td></tr></table></figure>
+
+<h3 id="完成后-等待一段时间-约-30s-1m-收集-Metrics-再次执行-kubectl-top-指令查看："><a href="#完成后-等待一段时间-约-30s-1m-收集-Metrics-再次执行-kubectl-top-指令查看：" class="headerlink" title="完成后,等待一段时间(约 30s - 1m)收集 Metrics,再次执行 kubectl top 指令查看："></a>完成后,等待一段时间(约 30s - 1m)收集 Metrics,再次执行 kubectl top 指令查看：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 1.8+]# kubectl top node</span><br><span class="line">NAME       CPU(cores)   CPU%   MEMORY(bytes)   MEMORY%   </span><br><span class="line">master-1   389m         4%     3908Mi          3%        </span><br><span class="line">node-0     129m         1%     2582Mi          2%        </span><br><span class="line">node-1     193m         2%     19716Mi         17%</span><br></pre></td></tr></table></figure>
+
+<h3 id="使用HTTP代理访问Kubernetes-API"><a href="#使用HTTP代理访问Kubernetes-API" class="headerlink" title="使用HTTP代理访问Kubernetes API"></a>使用HTTP代理访问Kubernetes API</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">此命令启动Kubernetes API服务器的代理：</span><br><span class="line">kubectl proxy --port=8080</span><br></pre></td></tr></table></figure>
+
+<h3 id="访问Kubernetes-API"><a href="#访问Kubernetes-API" class="headerlink" title="访问Kubernetes API"></a>访问Kubernetes API</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">当代理服务器正在运行，则可以使用curl或wget访问API。</span><br><span class="line"></span><br><span class="line">获取API版本：</span><br><span class="line"></span><br><span class="line">curl http://localhost:8080/api/</span><br><span class="line"></span><br><span class="line">&#123;</span><br><span class="line">  &quot;kind&quot;: &quot;APIVersions&quot;,</span><br><span class="line">  &quot;versions&quot;: [</span><br><span class="line">    &quot;v1&quot;</span><br><span class="line">  ],</span><br><span class="line">  &quot;serverAddressByClientCIDRs&quot;: [</span><br><span class="line">    &#123;</span><br><span class="line">      &quot;clientCIDR&quot;: &quot;0.0.0.0/0&quot;,</span><br><span class="line">      &quot;serverAddress&quot;: &quot;10.0.2.15:8443&quot;</span><br><span class="line">    &#125;</span><br><span class="line">  ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="Horizontal-Pod-Autoscaler（HPA）"><a href="#Horizontal-Pod-Autoscaler（HPA）" class="headerlink" title="Horizontal Pod Autoscaler（HPA）"></a>Horizontal Pod Autoscaler（HPA）</h3><blockquote>
+<p>Horizontal Pod Autoscaling，简称HPA，是Kubernetes中实现POD水平自动伸缩的功能。为什么要水平而不叫垂直, 那是因为自动扩展主要分为两种:</p>
+<ul>
+<li>水平扩展(scale out)，针对于实例数目的增减</li>
+<li>垂直扩展(scal up)，即单个实例可以使用的资源的增减, 比如增加cpu和增大内存而HPA属于前者。它可以根据CPU使用率或应用自定义metrics自动扩展Pod数量(支持 replication controller、deployment 和 replica set)</li>
+</ul>
+</blockquote>
+<h3 id="HPA的检测周期由kube-controller-manager的参数控制："><a href="#HPA的检测周期由kube-controller-manager的参数控制：" class="headerlink" title="HPA的检测周期由kube-controller-manager的参数控制："></a>HPA的检测周期由kube-controller-manager的参数控制：</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>默认值</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>–horizontal-pod-autoscaler-sync-period</td>
+<td>30s</td>
+<td>HPA控制管理器每隔30s查询metrics的资源使用情况。</td>
+</tr>
+<tr>
+<td>–horizontal-pod-autoscaler-downscale-delay</td>
+<td>5m</td>
+<td>完成缩减操作后，HPA必须等待多长时间才能启动另一个缩减操作。</td>
+</tr>
+<tr>
+<td>–horizontal-pod-autoscaler-upscale-delay</td>
+<td>3m</td>
+<td>完成扩容操作后，HPA必须等待多长时间才能启动另一个扩容操作。</td>
+</tr>
+</tbody></table>
+<h3 id="Horizontal-Pod-Autoscaler-API对象"><a href="#Horizontal-Pod-Autoscaler-API对象" class="headerlink" title="Horizontal Pod Autoscaler API对象"></a>Horizontal Pod Autoscaler API对象</h3><blockquote>
+<p>HPA是Kubernetes autoscalingAPI组中的API资源。当前的稳定版本autoscaling/v1，仅包括对CPU自动缩放的支持。要获得基于内存和自定义指标进行扩展的额外支持，请改用测试版：autoscaling/v2beta1。</p>
+</blockquote>
+<h3 id="HPA清单定义示例"><a href="#HPA清单定义示例" class="headerlink" title="HPA清单定义示例"></a>HPA清单定义示例</h3><blockquote>
+<p>以下代码段演示了在HPA清单中使用不同的指令。请参阅示例下面的列表以了解每个指令的用途。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: autoscaling/v2beta1</span><br><span class="line">kind: HorizontalPodAutoscaler</span><br><span class="line">metadata:</span><br><span class="line">  name: hello-world</span><br><span class="line">spec:</span><br><span class="line">  scaleTargetRef:</span><br><span class="line">    apiVersion: extensions/v1beta1</span><br><span class="line">    kind: Deployment</span><br><span class="line">    name: hello-world</span><br><span class="line">  minReplicas: 1</span><br><span class="line">  maxReplicas: 10</span><br><span class="line">  metrics:</span><br><span class="line">  - type: Resource</span><br><span class="line">    resource:</span><br><span class="line">      name: cpu</span><br><span class="line">      targetAverageUtilization: 50</span><br><span class="line">  - type: Resource</span><br><span class="line">    resource:</span><br><span class="line">      name: memory</span><br><span class="line">      targetAverageValue: 100Mi</span><br></pre></td></tr></table></figure>
+
+<table>
+<thead>
+<tr>
+<th>指令</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>apiVersion: autoscaling/v2beta1</td>
+<td>autoscaling正在使用的Kubernetes API组的版本。此示例清单使用autoscaling/v2beta1版本，因此启用了按CPU和内存进行扩展。</td>
+</tr>
+<tr>
+<td>name: hello-world</td>
+<td>表示HPA正在为deployment中的hello-word执行自动扩展。</td>
+</tr>
+<tr>
+<td>minReplicas: 1</td>
+<td>表示运行的最小副本数不能低于1。</td>
+</tr>
+<tr>
+<td>maxReplicas: 10</td>
+<td>表示deployment中最大副本数不能超过10。</td>
+</tr>
+<tr>
+<td>targetAverageUtilization: 50</td>
+<td>表示当平均运行pod使用超过其请求CPU的50％时，deployment将扩展pod。</td>
+</tr>
+<tr>
+<td>targetAverageValue: 100Mi</td>
+<td>表示当平均运行pod使用超过100Mi的内存时，deployment将扩展pod。</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>需要注意的是explain命令可能会显示旧的group/version，我们可以通过–api-version参数显式的方式制定我们需要获取的版本，例如：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 serviceMonitor]# kubectl explain hpa.spec --api-version autoscaling/v2beta1</span><br><span class="line">KIND:     HorizontalPodAutoscaler</span><br><span class="line">VERSION:  autoscaling/v2beta1</span><br><span class="line"></span><br><span class="line">RESOURCE: spec &lt;Object&gt;</span><br><span class="line"></span><br><span class="line">DESCRIPTION:</span><br><span class="line">     spec is the specification for the behaviour of the autoscaler. More info:</span><br><span class="line">     https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status.</span><br><span class="line"></span><br><span class="line">     HorizontalPodAutoscalerSpec describes the desired functionality of the</span><br><span class="line">     HorizontalPodAutoscaler.</span><br><span class="line"></span><br><span class="line">FIELDS:</span><br><span class="line">   maxReplicas	&lt;integer&gt; -required-</span><br><span class="line">     maxReplicas is the upper limit for the number of replicas to which the</span><br><span class="line">     autoscaler can scale up. It cannot be less that minReplicas.</span><br><span class="line"></span><br><span class="line">   metrics	&lt;[]Object&gt;</span><br><span class="line">     metrics contains the specifications for which to use to calculate the</span><br><span class="line">     desired replica count (the maximum replica count across all metrics will be</span><br><span class="line">     used). The desired replica count is calculated multiplying the ratio</span><br><span class="line">     between the target value and the current value by the current number of</span><br><span class="line">     pods. Ergo, metrics used must decrease as the pod count is increased, and</span><br><span class="line">     vice-versa. See the individual metric source types for more information</span><br><span class="line">     about how each type of metric must respond.</span><br><span class="line"></span><br><span class="line">   minReplicas	&lt;integer&gt;</span><br><span class="line">     minReplicas is the lower limit for the number of replicas to which the</span><br><span class="line">     autoscaler can scale down. It defaults to 1 pod.</span><br><span class="line"></span><br><span class="line">   scaleTargetRef	&lt;Object&gt; -required-</span><br><span class="line">     scaleTargetRef points to the target resource to scale, and is used to the</span><br><span class="line">     pods for which metrics should be collected, as well as to actually change</span><br><span class="line">     the replica count.</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>Kubernetes之资源指标</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月26日 - 13:30:16</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:03:44</p>
+  <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-Resource-metrics/" title="Kubernetes之资源指标">https://system51.github.io/2019/08/26/Kubernetes-Resource-metrics/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-Resource-metrics/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/kubernetes-Resource-constraints/" rel="next" title="kubernetes之管理容器的计算资源">
+                <i class="fa fa-chevron-left"></i> kubernetes之管理容器的计算资源
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes-Weave-Scope/" rel="prev" title="Kubernetes之Weave Scope集群监控">
+                Kubernetes之Weave Scope集群监控 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">42</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#开启聚合层-Aggregation-Layer"><span class="nav-number">1.</span> <span class="nav-text">开启聚合层(Aggregation Layer)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#关于聚合层的一些知识"><span class="nav-number">2.</span> <span class="nav-text">关于聚合层的一些知识</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#利用nginx反向代理来理解："><span class="nav-number">2.1.</span> <span class="nav-text">利用nginx反向代理来理解：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#小细节：（使用如下命令可查看详细的请求）"><span class="nav-number">3.</span> <span class="nav-text">小细节：（使用如下命令可查看详细的请求）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#首先在k8s-m1测试一下-kubectl-top-指令："><span class="nav-number">4.</span> <span class="nav-text">首先在k8s-m1测试一下 kubectl top 指令：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#由于上述问题-我们要在k8s-m1部署-Metrics-Server来解决："><span class="nav-number">5.</span> <span class="nav-text">由于上述问题,我们要在k8s-m1部署 Metrics Server来解决：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#修改metrics-server-deployment-yaml文件"><span class="nav-number">6.</span> <span class="nav-text">修改metrics-server-deployment.yaml文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#应用当前目录下的所有yml文件"><span class="nav-number">7.</span> <span class="nav-text">应用当前目录下的所有yml文件</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查看pod状态"><span class="nav-number">8.</span> <span class="nav-text">查看pod状态</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#完成后-等待一段时间-约-30s-1m-收集-Metrics-再次执行-kubectl-top-指令查看："><span class="nav-number">9.</span> <span class="nav-text">完成后,等待一段时间(约 30s - 1m)收集 Metrics,再次执行 kubectl top 指令查看：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用HTTP代理访问Kubernetes-API"><span class="nav-number">10.</span> <span class="nav-text">使用HTTP代理访问Kubernetes API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#访问Kubernetes-API"><span class="nav-number">11.</span> <span class="nav-text">访问Kubernetes API</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Horizontal-Pod-Autoscaler（HPA）"><span class="nav-number">12.</span> <span class="nav-text">Horizontal Pod Autoscaler（HPA）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HPA的检测周期由kube-controller-manager的参数控制："><span class="nav-number">13.</span> <span class="nav-text">HPA的检测周期由kube-controller-manager的参数控制：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Horizontal-Pod-Autoscaler-API对象"><span class="nav-number">14.</span> <span class="nav-text">Horizontal Pod Autoscaler API对象</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#HPA清单定义示例"><span class="nav-number">15.</span> <span class="nav-text">HPA清单定义示例</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="kubectl describe命令：输出指定的一个或多个资源的详细信息 语法：1kubectl describe (-f FILENAME | TYPE [NAME_PREFIX | -l label] | TYPE/NAME) [options]  示例：1234567891011121314151617181920# 查看一个nodekubectl describe nodes master">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubectl 命令详解">
+<meta property="og:url" content="https://system51.github.io/2019/08/23/Kubectl-Command-details/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="kubectl describe命令：输出指定的一个或多个资源的详细信息 语法：1kubectl describe (-f FILENAME | TYPE [NAME_PREFIX | -l label] | TYPE/NAME) [options]  示例：1234567891011121314151617181920# 查看一个nodekubectl describe nodes master">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-09-06T02:05:58.429Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubectl 命令详解">
+<meta name="twitter:description" content="kubectl describe命令：输出指定的一个或多个资源的详细信息 语法：1kubectl describe (-f FILENAME | TYPE [NAME_PREFIX | -l label] | TYPE/NAME) [options]  示例：1234567891011121314151617181920# 查看一个nodekubectl describe nodes master">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/08/23/Kubectl-Command-details/">
+
+
+
+
+
+  <title>Kubectl 命令详解 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/23/Kubectl-Command-details/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubectl 命令详解</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T09:18:30+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/08/23/Kubectl-Command-details/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/23/Kubectl-Command-details/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="kubectl-describe命令："><a href="#kubectl-describe命令：" class="headerlink" title="kubectl describe命令："></a>kubectl describe命令：</h3><p>输出指定的一个或多个资源的详细信息</p>
+<h4 id="语法："><a href="#语法：" class="headerlink" title="语法："></a>语法：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl describe (-f FILENAME | TYPE [NAME_PREFIX | -l label] | TYPE/NAME) [options]</span><br></pre></td></tr></table></figure>
+
+<h4 id="示例："><a href="#示例：" class="headerlink" title="示例："></a>示例：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"># 查看一个node</span><br><span class="line">kubectl describe nodes master</span><br><span class="line"></span><br><span class="line"># 查看一个pod</span><br><span class="line">kubectl describe pods/nginx</span><br><span class="line"></span><br><span class="line"># 查看pod.json中的资源类型和名称指定的pod</span><br><span class="line">kubectl describe -f pod.json</span><br><span class="line"></span><br><span class="line"># 查看所有的pod</span><br><span class="line">kubectl describe pods</span><br><span class="line"></span><br><span class="line"># 查看所有包含label name=myLabel的pod</span><br><span class="line">kubectl describe po -l name=myLabel</span><br><span class="line"></span><br><span class="line"># 查看deployments副本控制中被名为nginx管理的pod</span><br><span class="line">kubectl describe pods nginx -n kube-system</span><br><span class="line"></span><br><span class="line"># 查看kube-system名称空间service中名称为ye-nginx-service的详细信息</span><br><span class="line">kubectl describe svc/ye-nginx-service -n kube-system</span><br></pre></td></tr></table></figure>
+
+<h3 id="kubectl-run-命令："><a href="#kubectl-run-命令：" class="headerlink" title="kubectl run 命令："></a>kubectl run 命令：</h3><ul>
+<li>创建并运行一个或多个容器镜像。</li>
+<li>创建一个deployment 或job 来管理容器。</li>
+</ul>
+<h4 id="语法：-1"><a href="#语法：-1" class="headerlink" title="语法："></a>语法：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kubectl run NAME --image=image [--env=&quot;key=value&quot;] [--port=port] [--replicas=replicas] [--dry-run=bool]</span><br><span class="line">[--overrides=inline-json] [--command] -- [COMMAND] [args...] [options]</span><br></pre></td></tr></table></figure>
+
+<h4 id="示例：-1"><a href="#示例：-1" class="headerlink" title="示例："></a>示例：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">启动nginx实例，默认是创建在default名称空间</span><br><span class="line">kubectl run nginx --image=nginx</span><br><span class="line"></span><br><span class="line">创建到指定的kube-system空间中</span><br><span class="line">kubectl run nginx --image=nginx:1.8 --replicas=5 -l name=nginx -n kube-system</span><br><span class="line"></span><br><span class="line">启动hazelcast实例，暴露容器端口 5701。</span><br><span class="line">kubectl run hazelcast --image=hazelcast --port=5701</span><br><span class="line"></span><br><span class="line">启动nginx实例，设置副本数5。</span><br><span class="line">kubectl run nginx --image=nginx --replicas=5</span><br><span class="line"></span><br><span class="line">启动一个名为busybox的实例，镜像busybox，并且进入容器内。</span><br><span class="line">kubectl run -i -t busybox --image=busybox --restart=Never</span><br></pre></td></tr></table></figure>
+
+<h3 id="kubectl-delete-命令："><a href="#kubectl-delete-命令：" class="headerlink" title="kubectl delete 命令："></a>kubectl delete 命令：</h3><p>通过文件名、控制台输入、资源名或者label selector删除资源。接受JSON和YAML格式的描述文件。</p>
+<p>只能指定以下参数类型中的一种：文件名、资源类型和名称、资源类型和label selector。 注意：delete命令不检查资源版本，如果有人在你进行删除操作的同时进行更新操作，他所做的更新将随资源同时被删除。</p>
+<h4 id="语法"><a href="#语法" class="headerlink" title="语法:"></a>语法:</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl delete ([-f FILENAME] | TYPE [(NAME | -l label | --all)]) [options]</span><br></pre></td></tr></table></figure>
+
+<h4 id="示例：-2"><a href="#示例：-2" class="headerlink" title="示例："></a>示例：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">使用 pod.json中指定的资源类型和名称删除pod。</span><br><span class="line">kubectl delete -f ./pod.json</span><br><span class="line"></span><br><span class="line">根据传入stdin的JSON所指定的类型和名称删除pod。</span><br><span class="line">cat pod.json | kubectl delete -f -</span><br><span class="line"></span><br><span class="line">删除名为“baz”和“foo”的Pod和Service。</span><br><span class="line">kubectl delete pod,service baz foo</span><br><span class="line"></span><br><span class="line">删除 Label name = myLabel的pod和Service。</span><br><span class="line">kubectl delete pods,services -l name=myLabel</span><br><span class="line"></span><br><span class="line">强制删除dead node上的pod</span><br><span class="line">kubectl delete pod foo --grace-period=0 --force</span><br><span class="line"></span><br><span class="line">删除所有pod</span><br><span class="line">kubectl delete pods --all</span><br><span class="line"></span><br><span class="line">删除deployments控制器中名字为nginx</span><br><span class="line">kubectl delete deployments nginx</span><br><span class="line"></span><br><span class="line">删除kube-system名称空间中的nginx</span><br><span class="line">kubectl delete deployments nginx -n kube-system</span><br></pre></td></tr></table></figure>
+
+<p>默认情况下，所有删除在30秒内都是正常的。<br><code>kubectl delete</code>命令支持<code>-grace-period = &lt;seconds&gt;</code> 选项，该选项允许用户覆盖默认值并指定自己的值。值<code>0</code>强制删除<code>pod</code>.<br>在<code>kubectl version&gt; = 1.5</code>中，必须指定一个附加标志<code>--force</code>以及<code>--grace-period = 0</code>才能执行强制删除。</p>
+<h3 id="kubectl-expose命令"><a href="#kubectl-expose命令" class="headerlink" title="kubectl expose命令:"></a>kubectl expose命令:</h3><p>将资源暴露为新的Kubernetes Service。</p>
+<h4 id="语法-1"><a href="#语法-1" class="headerlink" title="语法:"></a>语法:</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">kubectl expose (-f FILENAME | TYPE NAME) [--port=port] [--protocol=TCP|UDP] [--target-port=number-or-name]</span><br><span class="line">[--name=name] [--external-ip=external-ip-of-service] [--type=type] [options]</span><br></pre></td></tr></table></figure>
+
+<h4 id="示例"><a href="#示例" class="headerlink" title="示例:"></a>示例:</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">为deployments的nginx创建service，并通过Service的80端口转发至容器的8000端口上。</span><br><span class="line">kubectl expose rc nginx --port=80 --target-port=8000</span><br><span class="line"></span><br><span class="line">由“nginx-controller.yaml”中指定的type和name标识的RC创建Service，并通过Service的80端口转发至容器的8000端口上。</span><br><span class="line">kubectl expose -f nginx-controller.yaml --port=80 --target-port=8000</span><br><span class="line"></span><br><span class="line">暴露指定空间中的资源，例如下面指定暴露kube-system中的nginx资源暴露service名称为ye-nginx-service暴露的端口是80，容器的端口也是80（target-port）。</span><br><span class="line">kubectl expose deployments nginx  --port=80 --protocol=TCP --target-port=80  --name=ye-nginx-service -n kube-system</span><br></pre></td></tr></table></figure>
+
+<h3 id="kubectl-get-命令："><a href="#kubectl-get-命令：" class="headerlink" title="kubectl get 命令："></a>kubectl get 命令：</h3><p>获取列出一个或多个资源的信息。</p>
+<h4 id="可以使用的资源包括："><a href="#可以使用的资源包括：" class="headerlink" title="可以使用的资源包括："></a>可以使用的资源包括：</h4><ul>
+<li>componentstatuses (缩写 cs)</li>
+<li>deployments (缩写 deploy)</li>
+<li>namespaces (缩写 ns)</li>
+<li>nodes (缩写 no)</li>
+<li>pods (缩写 po)</li>
+<li>replicasets (缩写 rs)</li>
+<li>services (缩写 svc)</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl get [(-o|--output=)json|yaml|wide|custom-columns=...|custom-columns-file=...|go-template=...|go-template-file=...|jsonpath=...|jsonpath-file=...] (TYPE[.VERSION][.GROUP] [NAME | -l label] | TYPE[.VERSION][.GROUP]/NAME ...) [flags] [options]</span><br></pre></td></tr></table></figure>
+
+<h4 id="示例-1"><a href="#示例-1" class="headerlink" title="示例"></a>示例</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">列出所有运行的Pod信息。</span><br><span class="line">kubectl get pods</span><br><span class="line"></span><br><span class="line">列出Pod以及运行Pod节点信息。</span><br><span class="line">kubectl get pods -o wide</span><br><span class="line"></span><br><span class="line">列出Pod以及运行Pod节点信息以及labels信息。</span><br><span class="line">kubectl get pods -o wide --show-labels</span><br><span class="line"></span><br><span class="line">查看指定名称空间的详细信息</span><br><span class="line">kubectl get pods -n kube-system -o wide</span><br><span class="line"></span><br><span class="line">列出指定NAME的信息。</span><br><span class="line">kubectl get deployments nginx -n kube-system</span><br><span class="line"></span><br><span class="line">列出组件的状态信息</span><br><span class="line">kubectl get cs</span><br><span class="line"></span><br><span class="line">列出kubernetes名称空间</span><br><span class="line">kubectl get ns</span><br><span class="line"></span><br><span class="line">查看kubenetes节点信息</span><br><span class="line">kubectl get nodes</span><br><span class="line"></span><br><span class="line">查看default中的service服务</span><br><span class="line">kubectl get svc</span><br><span class="line"></span><br><span class="line">查看kube-system中的service服务</span><br><span class="line">kubectl get svc -n kube-system</span><br><span class="line"></span><br><span class="line">查看kubu-system中service服务的详细信息和label标签</span><br><span class="line">kubectl get svc -n kube-system --show-labels -o wide</span><br></pre></td></tr></table></figure>
+
+<h3 id="kubectl-scale-命令："><a href="#kubectl-scale-命令：" class="headerlink" title="kubectl scale 命令："></a>kubectl scale 命令：</h3><p>扩容或缩容 Deployment、ReplicaSet、Replication Controller或 Job 中Pod数量。<br>scale也可以指定多个前提条件，如：当前副本数量或 –resource-version ，进行伸缩比例设置前，系统会先验证前提条件是否成立。</p>
+<h4 id="语法：-2"><a href="#语法：-2" class="headerlink" title="语法："></a>语法：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubectl scale [--resource-version=version] [--current-replicas=count] --replicas=COUNT (-f FILENAME | TYPE NAME) [options]</span><br></pre></td></tr></table></figure>
+
+<h4 id="示例：-3"><a href="#示例：-3" class="headerlink" title="示例："></a>示例：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">将deployments副本控制器中名为nginx的pod副本数设置为3。</span><br><span class="line">kubectl scale --replicas=3 deployments nginx -n kube-system</span><br><span class="line"></span><br><span class="line">将由“foo.yaml”配置文件中指定的资源对象和名称标识的Pod资源副本设为3。</span><br><span class="line">kubectl scale --replicas=3 -f foo.yaml</span><br><span class="line"></span><br><span class="line">如果当前副本数为2，则将其扩展至3。</span><br><span class="line">kubectl scale --current-replicas=2 --replicas=3 deployment/mysql</span><br></pre></td></tr></table></figure>
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>Kubectl 命令详解</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月23日 - 09:18:30</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:05:58</p>
+  <p><span>原始链接:</span><a href="/2019/08/23/Kubectl-Command-details/" title="Kubectl 命令详解">https://system51.github.io/2019/08/23/Kubectl-Command-details/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/23/Kubectl-Command-details/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/23/Kubernetes-command/" rel="next" title="Kubernetes 命令大全">
+                <i class="fa fa-chevron-left"></i> Kubernetes 命令大全
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/23/Kubenetes-Resource/" rel="prev" title="Kubenetes 资源清单定义入门">
+                Kubenetes 资源清单定义入门 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">42</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#kubectl-describe命令："><span class="nav-number">1.</span> <span class="nav-text">kubectl describe命令：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#语法："><span class="nav-number">1.1.</span> <span class="nav-text">语法：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#示例："><span class="nav-number">1.2.</span> <span class="nav-text">示例：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubectl-run-命令："><span class="nav-number">2.</span> <span class="nav-text">kubectl run 命令：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#语法：-1"><span class="nav-number">2.1.</span> <span class="nav-text">语法：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#示例：-1"><span class="nav-number">2.2.</span> <span class="nav-text">示例：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubectl-delete-命令："><span class="nav-number">3.</span> <span class="nav-text">kubectl delete 命令：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#语法"><span class="nav-number">3.1.</span> <span class="nav-text">语法:</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#示例：-2"><span class="nav-number">3.2.</span> <span class="nav-text">示例：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubectl-expose命令"><span class="nav-number">4.</span> <span class="nav-text">kubectl expose命令:</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#语法-1"><span class="nav-number">4.1.</span> <span class="nav-text">语法:</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#示例"><span class="nav-number">4.2.</span> <span class="nav-text">示例:</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubectl-get-命令："><span class="nav-number">5.</span> <span class="nav-text">kubectl get 命令：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#可以使用的资源包括："><span class="nav-number">5.1.</span> <span class="nav-text">可以使用的资源包括：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#示例-1"><span class="nav-number">5.2.</span> <span class="nav-text">示例</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubectl-scale-命令："><span class="nav-number">6.</span> <span class="nav-text">kubectl scale 命令：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#语法：-2"><span class="nav-number">6.1.</span> <span class="nav-text">语法：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#示例：-3"><span class="nav-number">6.2.</span> <span class="nav-text">示例：</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

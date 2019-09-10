@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="当我们在检查k8s集群状态的时候会发现有很多 pause 容器运行于服务器上面，然后每次启动一个容器，都会伴随一个pause容器的启动。那它究竟是干啥子的？   Pause容器，又叫Infra容器，下面通过实验来理解它。我们知道在搭建k8s集群的时候，kubelet的配置中有这样一个参数：  1--pod-infra-container-image=registry.cn-hangzhou.al">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="K8s集群中pause容器是干嘛的">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/pause/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="当我们在检查k8s集群状态的时候会发现有很多 pause 容器运行于服务器上面，然后每次启动一个容器，都会伴随一个pause容器的启动。那它究竟是干啥子的？   Pause容器，又叫Infra容器，下面通过实验来理解它。我们知道在搭建k8s集群的时候，kubelet的配置中有这样一个参数：  1--pod-infra-container-image=registry.cn-hangzhou.al">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://system51.github.io/images/pause-1.png">
+<meta property="og:image" content="https://system51.github.io/images/pause-2.png">
+<meta property="og:updated_time" content="2019-09-06T02:03:02.451Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="K8s集群中pause容器是干嘛的">
+<meta name="twitter:description" content="当我们在检查k8s集群状态的时候会发现有很多 pause 容器运行于服务器上面，然后每次启动一个容器，都会伴随一个pause容器的启动。那它究竟是干啥子的？   Pause容器，又叫Infra容器，下面通过实验来理解它。我们知道在搭建k8s集群的时候，kubelet的配置中有这样一个参数：  1--pod-infra-container-image=registry.cn-hangzhou.al">
+<meta name="twitter:image" content="https://system51.github.io/images/pause-1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/08/26/pause/">
+
+
+
+
+
+  <title>K8s集群中pause容器是干嘛的 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/26/pause/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">K8s集群中pause容器是干嘛的</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T14:07:48+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/08/26/pause/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/26/pause/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>当我们在检查k8s集群状态的时候会发现有很多 <code>pause</code> 容器运行于服务器上面，然后每次启动一个容器，都会伴随一个pause容器的启动。那它究竟是干啥子的？</p>
+</blockquote>
+<blockquote>
+<p>Pause容器，又叫Infra容器，下面通过实验来理解它。我们知道在搭建k8s集群的时候，kubelet的配置中有这样一个参数：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">--pod-infra-container-image=registry.cn-hangzhou.aliyuncs.com/google_containers/pause-amd64:3.1</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Pause容器，是可以自己来定义，官方使用的gcr.io/google_containers/pause-amd64:3.0容器的代码见Github，使用C语言编写。</p>
+</blockquote>
+<h3 id="Pause容器的作用："><a href="#Pause容器的作用：" class="headerlink" title="Pause容器的作用："></a>Pause容器的作用：</h3><blockquote>
+<p>我们检查nod节点的时候会发现每个node上都运行了很多的pause容器，例如如下。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">[root@linux-node1 cfg]# docker ps</span><br><span class="line">······</span><br><span class="line">······</span><br><span class="line">CONTAINER ID        IMAGE                                    COMMAND                  CREATED             STATUS              PORTS               NAMES</span><br><span class="line">a007c18b8dc0        568c4670fa80                             &quot;nginx -g &apos;daemon of…&quot;   42 hours ago        Up 42 hours                             k8s_nginx_nginx-pod-7d9f9876cc-75sf7_default_a688bb46-f872-11e8-ae6b-000c29c6d12b_1</span><br><span class="line">9866c08d1f4b        568c4670fa80                             &quot;nginx -g &apos;daemon of…&quot;   42 hours ago        Up 42 hours                             k8s_nginx_nginx-pod-7d9f9876cc-wpv4h_default_a6a899c0-f872-11e8-ae6b-000c29c6d12b_1</span><br><span class="line">aafef6727026        mirrorgooglecontainers/pause-amd64:3.0   &quot;/pause&quot;                 42 hours ago        Up 42 hours                             k8s_POD_flask-app-6f5b6cc447-kbxks_flask-app-extions-stage_374b8aa0-f873-11e8-ae6b-000c29c6d12b_1</span><br><span class="line">c4f48f90b27f        mirrorgooglecontainers/pause-amd64:3.0   &quot;/pause&quot;                 42 hours ago        Up 42 hours                             k8s_POD_flask-app-6f5b6cc447-f9wjn_flask-app-extions-stage_373be9db-f873-11e8-ae6b-000c29c6d12b_1</span><br><span class="line">9f452e6961f6        mirrorgooglecontainers/pause-amd64:3.0   &quot;/pause&quot;                 42 hours ago        Up 42 hours                             k8s_POD_nginx-pod-7d9f9876cc-ccx94_default_a6a8c440-f872-11e8-ae6b-000c29c6d12b_1</span><br><span class="line">7e68043469d1        mirrorgooglecontainers/pause-amd64:3.0   &quot;/pause&quot;                 42 hours ago        Up 42 hours                             k8s_POD_nginx-pod-7d9f9876cc-sskpk_default_a6ac43bd-f872-11e8-ae6b-000c29c6d12b_1</span><br><span class="line">······</span><br><span class="line">······</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>每个Pod都有一个特殊的被称为“根容器”的Pause 容器。 Pause容器对应的镜像属于Kubernetes平台的一部分，除了Pause容器，每个Pod还包含一个或者多个紧密相关的用户业务容器。</p>
+</blockquote>
+<p><img src="/images/pause-1.png" alt="pause-1"></p>
+<h3 id="Kubernetes设计这样的Pod概念和特殊组成结构有什么用意"><a href="#Kubernetes设计这样的Pod概念和特殊组成结构有什么用意" class="headerlink" title="Kubernetes设计这样的Pod概念和特殊组成结构有什么用意"></a>Kubernetes设计这样的Pod概念和特殊组成结构有什么用意</h3><blockquote>
+<ul>
+<li>原因一：在多个Container作为一个Pod的情况下，难以对整体的容器简单地进行判断及有效地进行行动。比如，一个容器死亡了，此时是算整体挂了么？那么引入与业务无关的Pause容器作为Pod的根容器，以它的状态代表着整个容器组的状态，这样就可以解决该问题。</li>
+<li>原因二：Pod里的多个业务容器共享Pause容器的IP，共享Pause容器挂载的Volume，这样简化了业务容器之间的通信问题，也解决了容器之间的文件共享问题。</li>
+</ul>
+</blockquote>
+<h3 id="kubernetes中的pause容器主要为每个业务容器提供以下功能："><a href="#kubernetes中的pause容器主要为每个业务容器提供以下功能：" class="headerlink" title="kubernetes中的pause容器主要为每个业务容器提供以下功能："></a>kubernetes中的pause容器主要为每个业务容器提供以下功能：</h3><blockquote>
+<ul>
+<li>在pod里担任与其他容器<code>namespace</code>共享的基础；</li>
+<li>启用pid命名空间，开启init进程，负责处理僵尸进程。<br>（注意：这里虽然开启了PID名称空间共享，但是在Kubelet中<code>--docker-disable-shared-pid=true</code>关闭了PID共享，所以Pod中的每个容器都将具有自己的PID 1，并且每个容器将需要自己处理僵尸进程）</li>
+</ul>
+</blockquote>
+<h3 id="1-我们首先在节点上运行一个pause容器。"><a href="#1-我们首先在节点上运行一个pause容器。" class="headerlink" title="1.我们首先在节点上运行一个pause容器。"></a>1.我们首先在节点上运行一个pause容器。</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-node1 ~]# docker run -d --name pause -p 8880:80 registry.cn-hangzhou.aliyuncs.com/google_containers/pause-amd64:3.1</span><br><span class="line">38d2aa8366d5aa6fe4c57aa0d879de4b5259c67c83d17428dd4d9f8937205c02</span><br><span class="line"></span><br><span class="line">[root@k8s-node1 ~]# docker ps | grep pause</span><br><span class="line">38d2aa8366d5        registry.cn-hangzhou.aliyuncs.com/google_containers/pause-amd64:3.1   &quot;/pause&quot;                 14 seconds ago      Up 13 seconds       0.0.0.0:8880-&gt;80/tcp   pause</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-然后再运行一个nginx容器，nginx将为localhost-2368创建一个代理。"><a href="#2-然后再运行一个nginx容器，nginx将为localhost-2368创建一个代理。" class="headerlink" title="2.然后再运行一个nginx容器，nginx将为localhost:2368创建一个代理。"></a>2.然后再运行一个nginx容器，nginx将为localhost:2368创建一个代理。</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-node1 ~]# cat &lt;&lt;EOF &gt;&gt; nginx.conf</span><br><span class="line">error_log stderr;</span><br><span class="line">events &#123; worker_connections  1024; &#125;</span><br><span class="line">http &#123;</span><br><span class="line">    access_log /dev/stdout combined;</span><br><span class="line">    server &#123;</span><br><span class="line">        listen 80 default_server;</span><br><span class="line">        server_name example.com www.example.com;</span><br><span class="line">        location / &#123;</span><br><span class="line">            proxy_pass http://127.0.0.1:2368;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">[root@k8s-node1 ~]# docker run -d --name nginx -v `pwd`/nginx.conf:/etc/nginx/nginx.conf --net=container:pause --ipc=container:pause --pid=container:pause nginx</span><br><span class="line">fa078473c01e040db795004ad16db525dea8a113893d3052cc6ab1c5e117ba10</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-然后再为ghost创建一个应用容器，这是一款博客软件。"><a href="#3-然后再为ghost创建一个应用容器，这是一款博客软件。" class="headerlink" title="3.然后再为ghost创建一个应用容器，这是一款博客软件。"></a>3.然后再为ghost创建一个应用容器，这是一款博客软件。</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line">[root@linux-node2 ~]# docker run -d --name ghost --net=container:pause --ipc=container:pause --pid=container:pause ghost</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"># 查看结果：</span><br><span class="line">[root@k8s-node1 ~]# docker ps | grep -E &quot;pause|nginx|ghost&quot;</span><br><span class="line">9b796efd95a5        ghost                                                                 &quot;docker-entrypoint...&quot;   47 seconds ago       Up 46 seconds                              ghost</span><br><span class="line">fa078473c01e        nginx                                                                 &quot;nginx -g &apos;daemon ...&quot;   About a minute ago   Up About a minute                          nginx</span><br><span class="line">38d2aa8366d5        registry.cn-hangzhou.aliyuncs.com/google_containers/pause-amd64:3.1   &quot;/pause&quot;                 3 minutes ago        Up 3 minutes        0.0.0.0:8880-&gt;80/tcp   pause</span><br><span class="line">[root@k8s-node1 ~]#</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"># 现在访问http://119.3.198.128:8880/就可以看到ghost博客的界面了吗</span><br><span class="line"># 这里我直接curl 然后浏览器访问也是正常的</span><br><span class="line">[root@k8s-node1 ~]# curl -I http://119.3.198.128:8880/</span><br><span class="line">HTTP/1.1 200 OK</span><br><span class="line">Server: nginx/1.15.5</span><br><span class="line">Date: Fri, 07 Dec 2018 08:35:49 GMT</span><br><span class="line">Content-Type: text/html; charset=utf-8</span><br><span class="line">Content-Length: 17381</span><br><span class="line">Connection: keep-alive</span><br><span class="line">X-Powered-By: Express</span><br><span class="line">Cache-Control: public, max-age=0</span><br><span class="line">ETag: W/&quot;43e5-ELHSnbaoapp3YOyz+PU502oJo5E&quot;</span><br><span class="line">Vary: Accept-Encoding</span><br><span class="line"></span><br><span class="line">[root@k8s-node1 ~]#</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/pause-2.png" alt="pause-2"></p>
+<h3 id="解析"><a href="#解析" class="headerlink" title="解析:"></a>解析:</h3><blockquote>
+<ul>
+<li>pause 容器将内部的80端口映射到了宿主机的8880端口;</li>
+<li>pause容器在宿主机上设置好了网络namespace后，nginx容器加入到该网络namespace中;</li>
+<li>nginx容器启动的时候指定了–net=container:pause;</li>
+<li>ghost容器启动的时候同样加入到了该网络namespace中;</li>
+<li>这样三个容器就共享了网络，互相之间就可以使用localhost直接通信，</li>
+<li>–ipc=contianer:pause –pid=container:pause就是三个容器的ipc和pid处于同一个namespace中，init进程为pause;</li>
+</ul>
+</blockquote>
+<h3 id="我们到ghost容器中查看一下"><a href="#我们到ghost容器中查看一下" class="headerlink" title="我们到ghost容器中查看一下:"></a>我们到ghost容器中查看一下:</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-node1 ~]# docker exec -it ghost /bin/bash</span><br><span class="line">root@38d2aa8366d5:/var/lib/ghost# ps aux</span><br><span class="line">USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND</span><br><span class="line">root         1  0.0  0.0   1012     4 ?        Ss   08:27   0:00 /pause</span><br><span class="line">root         5  0.0  0.0  32472  3168 ?        Ss   08:29   0:00 nginx: master process nginx -g daemon off;</span><br><span class="line">systemd+     9  0.0  0.0  32932  1812 ?        S    08:29   0:00 nginx: worker process</span><br><span class="line">node        10  0.5  2.1 1262748 84688 ?       Ssl  08:30   0:03 node current/index.js</span><br><span class="line">root        83  0.2  0.0  20240  1912 pts/0    Ss   08:41   0:00 /bin/bash</span><br><span class="line">root        87  0.0  0.0  17496  1148 pts/0    R+   08:41   0:00 ps aux</span><br><span class="line">root@38d2aa8366d5:/var/lib/ghost#</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>在ghost容器中同时可以看到pause和nginx容器的进程，并且pause容器的PID是1。而在kubernetes中容器的PID=1的进程即为容器本身的业务进程。</p>
+</blockquote>
+<h3 id="Pod中共享的名称空间："><a href="#Pod中共享的名称空间：" class="headerlink" title="Pod中共享的名称空间："></a>Pod中共享的名称空间：</h3><blockquote>
+<ul>
+<li>PID命名空间：Pod中的不同应用程序可以看到其他应用程序的进程ID；</li>
+<li>网络命名空间：Pod中的多个容器能够访问同一个IP和端口范围；</li>
+<li>IPC命名空间：Pod中的多个容器能够使用SystemV IPC或POSIX消息队列进行通信；</li>
+<li>UTS命名空间：Pod中的多个容器共享一个主机名；Volumes（共享存储卷）：</li>
+<li>Pod中的各个容器可以访问在Pod级别定义的Volumes；</li>
+</ul>
+</blockquote>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>K8s集群中pause容器是干嘛的</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月26日 - 14:07:48</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:03:02</p>
+  <p><span>原始链接:</span><a href="/2019/08/26/pause/" title="K8s集群中pause容器是干嘛的">https://system51.github.io/2019/08/26/pause/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/pause/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/ingress-nginx-Multi-instance/" rel="next" title="ingress-nginx多实例部署">
+                <i class="fa fa-chevron-left"></i> ingress-nginx多实例部署
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/kube-proxy/" rel="prev" title="kube-proxy 工作模式分析">
+                kube-proxy 工作模式分析 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">42</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Pause容器的作用："><span class="nav-number">1.</span> <span class="nav-text">Pause容器的作用：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Kubernetes设计这样的Pod概念和特殊组成结构有什么用意"><span class="nav-number">2.</span> <span class="nav-text">Kubernetes设计这样的Pod概念和特殊组成结构有什么用意</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubernetes中的pause容器主要为每个业务容器提供以下功能："><span class="nav-number">3.</span> <span class="nav-text">kubernetes中的pause容器主要为每个业务容器提供以下功能：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#1-我们首先在节点上运行一个pause容器。"><span class="nav-number">4.</span> <span class="nav-text">1.我们首先在节点上运行一个pause容器。</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#2-然后再运行一个nginx容器，nginx将为localhost-2368创建一个代理。"><span class="nav-number">5.</span> <span class="nav-text">2.然后再运行一个nginx容器，nginx将为localhost:2368创建一个代理。</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#3-然后再为ghost创建一个应用容器，这是一款博客软件。"><span class="nav-number">6.</span> <span class="nav-text">3.然后再为ghost创建一个应用容器，这是一款博客软件。</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#解析"><span class="nav-number">7.</span> <span class="nav-text">解析:</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#我们到ghost容器中查看一下"><span class="nav-number">8.</span> <span class="nav-text">我们到ghost容器中查看一下:</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pod中共享的名称空间："><span class="nav-number">9.</span> <span class="nav-text">Pod中共享的名称空间：</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

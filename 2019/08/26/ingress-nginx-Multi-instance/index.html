@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="由于业务需求希望一个项目一个ingress-nginx以方便后期管理。为此我把ingress-nginx的所有Yaml文件读了一遍了解了其中的创建过程以及权限设置。想要实现多实例我们需要对如下几个地方做出适当的修改。   此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ingress-nginx多实例部署">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/ingress-nginx-Multi-instance/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="由于业务需求希望一个项目一个ingress-nginx以方便后期管理。为此我把ingress-nginx的所有Yaml文件读了一遍了解了其中的创建过程以及权限设置。想要实现多实例我们需要对如下几个地方做出适当的修改。   此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-09-06T02:03:09.924Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="ingress-nginx多实例部署">
+<meta name="twitter:description" content="由于业务需求希望一个项目一个ingress-nginx以方便后期管理。为此我把ingress-nginx的所有Yaml文件读了一遍了解了其中的创建过程以及权限设置。想要实现多实例我们需要对如下几个地方做出适当的修改。   此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/08/26/ingress-nginx-Multi-instance/">
+
+
+
+
+
+  <title>ingress-nginx多实例部署 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/26/ingress-nginx-Multi-instance/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">ingress-nginx多实例部署</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T14:05:08+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/08/26/ingress-nginx-Multi-instance/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/26/ingress-nginx-Multi-instance/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>由于业务需求希望一个项目一个ingress-nginx以方便后期管理。为此我把ingress-nginx的所有Yaml文件读了一遍了解了其中的创建过程以及权限设置。想要实现多实例我们需要对如下几个地方做出适当的修改。</p>
+</blockquote>
+<blockquote>
+<h4 id="此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）"><a href="#此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）" class="headerlink" title="此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）"></a>此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）</h4></blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">  - apiGroups:</span><br><span class="line">      - &quot;&quot;</span><br><span class="line">    resources:</span><br><span class="line">      - configmaps</span><br><span class="line">    resourceNames:</span><br><span class="line">      # Defaults to &quot;&lt;election-id&gt;-&lt;ingress-class&gt;&quot;</span><br><span class="line">      # Here: &quot;&lt;ingress-controller-leader&gt;-&lt;nginx&gt;&quot;</span><br><span class="line">      # This has to be adapted if you change either parameter</span><br><span class="line">      # when launching the nginx-ingress-controller.</span><br><span class="line">      - &quot;ingress-controller-leader-iov-iov&quot;</span><br><span class="line">    verbs:</span><br><span class="line">      - get</span><br><span class="line">      - update</span><br><span class="line"></span><br><span class="line">#注意：这里的名称是&lt;election-id&gt;-&lt;ingress-class&gt;拼接而成</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<h4 id="在如下args段中我们新增了几个参数："><a href="#在如下args段中我们新增了几个参数：" class="headerlink" title="在如下args段中我们新增了几个参数："></a>在如下args段中我们新增了几个参数：</h4><ul>
+<li><code>--ingress-class=iov</code>          当设置这个参数后只会Watch Ingress class为 iov的</li>
+<li><code>--election-id=ingress-controller-leader-iov</code>  用于Ingress状态更新的选举ID。（默认<code>ingress-controller-leader</code>）</li>
+<li><code>--report-node-internal-ip-address</code>    默认情况下是–publish-service但是在裸机部署的时候要使用<code>kubectl get ingress</code>无法显示<code>ADDRESS</code>，所以我们需要使用–report-node-internal-ip-address参数</li>
+</ul>
+</blockquote>
+<blockquote>
+<h4 id="删除删除："><a href="#删除删除：" class="headerlink" title="删除删除："></a>删除删除：</h4><ul>
+<li><code>--publish-service=$(POD_NAMESPACE)/ingress-nginx</code>   非公有云情况下使用<code>kubectl get ingress</code>无法显示<code>ADDRESS</code></li>
+</ul>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">serviceAccountName: nginx-ingress-serviceaccount</span><br><span class="line">nodeSelector:</span><br><span class="line">  node: IOV</span><br><span class="line">containers:</span><br><span class="line">  - name: nginx-ingress-iov-controller</span><br><span class="line">    image: quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.24.1</span><br><span class="line">    args:</span><br><span class="line">      - /nginx-ingress-controller</span><br><span class="line">      - --configmap=$(POD_NAMESPACE)/nginx-configuration</span><br><span class="line">      - --tcp-services-configmap=$(POD_NAMESPACE)/tcp-services</span><br><span class="line">      - --udp-services-configmap=$(POD_NAMESPACE)/udp-services</span><br><span class="line">     # - --publish-service=$(POD_NAMESPACE)/ingress-nginx</span><br><span class="line">      - --report-node-internal-ip-address</span><br><span class="line">      - --annotations-prefix=nginx.ingress.kubernetes.io</span><br><span class="line">      - --ingress-class=iov</span><br><span class="line">      - --election-id=ingress-controller-leader-iov</span><br><span class="line">      - --v=2</span><br></pre></td></tr></table></figure>
+
+<h3 id="在创建ingress时我们需要注意"><a href="#在创建ingress时我们需要注意" class="headerlink" title="在创建ingress时我们需要注意"></a>在创建ingress时我们需要注意</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: Ingress</span><br><span class="line">metadata:</span><br><span class="line">  name: ingress-myapp</span><br><span class="line">  namespace: default</span><br><span class="line">  annotations:</span><br><span class="line">    kubernetes.io/ingress.class: &quot;iov&quot;                    # 指定class类不然无法被ingress所选取到</span><br><span class="line">spec:</span><br><span class="line">  rules:</span><br><span class="line">  - host: nginx.testdomain.com</span><br><span class="line">    http:</span><br><span class="line">      paths:</span><br><span class="line">      - path:</span><br><span class="line">        backend:</span><br><span class="line">          serviceName: nginx-service</span><br><span class="line">          servicePort: 8080</span><br></pre></td></tr></table></figure>
+
+<h3 id="Ingress-nginx使用："><a href="#Ingress-nginx使用：" class="headerlink" title="Ingress-nginx使用："></a>Ingress-nginx使用：</h3><blockquote>
+<h4 id="有三种方法可以自定义NGINX："><a href="#有三种方法可以自定义NGINX：" class="headerlink" title="有三种方法可以自定义NGINX："></a>有三种方法可以自定义NGINX：</h4><ul>
+<li>ConfigMap：使用Configmap在NGINX中设置全局配置。</li>
+<li>Annotations: 如果需要特定Ingress规则的特定配置，请使用此选项。</li>
+<li>自定义模板：当需要更具体的设置时，比如open_file_cache，将listen选项调整为rcvbuf，或者当无法通过ConfigMap更改配置时。</li>
+</ul>
+</blockquote>
+<h4 id="Annotations："><a href="#Annotations：" class="headerlink" title="Annotations："></a>Annotations：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">将配置添加到server作用域中：</span><br><span class="line">nginx.ingress.kubernetes.io/server-snippet:</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">将配置添加到location作用域：</span><br><span class="line">nginx.ingress.kubernetes.io/configuration-snippet:</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">指示Ingress上定义的路径是否使用正则表达式：</span><br><span class="line">nginx.ingress.kubernetes.io/use-regex:</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">必须重定向流量的目标URI：</span><br><span class="line">nginx.ingress.kubernetes.io/rewrite-target:</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">设置upstream server  proxy_set_header Host $host：</span><br><span class="line">nginx.ingress.kubernetes.io/upstream-vhost:</span><br></pre></td></tr></table></figure>
+
+<h4 id="ConfigMaps："><a href="#ConfigMaps：" class="headerlink" title="ConfigMaps："></a>ConfigMaps：</h4><blockquote>
+<p>使用ConfigMap配置NGINX将是对整个Nginx进行全局配置</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-m-19201680111034 overlord]# kubectl get configmap -n ingress-nginx</span><br><span class="line">NAME                              DATA   AGE</span><br><span class="line">ingress-controller-leader-nginx   0      22d</span><br><span class="line">nginx-configuration               0      22d</span><br><span class="line">tcp-services                      0      22d</span><br><span class="line">udp-services                      0      22d</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>例如，如果我们想改变超时，我们需要创建一个ConfigMap:</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-m-19201680111034 overlord]# cat configmap.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">data:</span><br><span class="line">  proxy-connect-timeout: &quot;10&quot;</span><br><span class="line">  proxy-read-timeout: &quot;120&quot;</span><br><span class="line">  proxy-send-timeout: &quot;120&quot;</span><br><span class="line">kind: ConfigMap</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-configuration</span><br><span class="line">	</span><br><span class="line">[root@k8s-m-19201680111034 overlord]# kubectl apply -f configmap.yaml</span><br></pre></td></tr></table></figure>
+
+<h3 id="自定义标题"><a href="#自定义标题" class="headerlink" title="自定义标题"></a>自定义标题</h3><blockquote>
+<p>本例演示了通过ConfigMap配置nginx ingress控制器，以便将自定义头列表传递给上游服务器。</p>
+</blockquote>
+<blockquote>
+<p>首先我们在ingress-nginx名称空间创建一个ConfigMap其中包含几个自定义的 X-prefixed HTTP头部。内容如下：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">data:</span><br><span class="line">  X-Different-Name: &quot;true&quot;</span><br><span class="line">  X-Request-Start: t=$&#123;msec&#125;</span><br><span class="line">  X-Using-Nginx-Controller: &quot;true&quot;</span><br><span class="line">kind: ConfigMap</span><br><span class="line">metadata:</span><br><span class="line">  name: custom-headers</span><br><span class="line">  namespace: ingress-nginx</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>第二步我们修改ingres-nginx名称空间中一个名为nginx-configuration的ConfigMap。它控制ingress-controller的全局配置。nginx-ingress控制器将读取ingres-nginx/nginx-configuration ConfigMap，找到proxy-set-headers键，然后从ingres-nginx/custom-headers ConfigMap读取HTTP头部，并将这些HTTP头部包含在从nginx流到后端所有请求中。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">data:</span><br><span class="line">  proxy-set-headers: &quot;ingress-nginx/custom-headers&quot;</span><br><span class="line">kind: ConfigMap</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-configuration</span><br><span class="line">  namespace: ingress-nginx</span><br><span class="line">  labels:</span><br><span class="line">    app.kubernetes.io/name: ingress-nginx</span><br><span class="line">    app.kubernetes.io/part-of: ingress-nginx</span><br></pre></td></tr></table></figure>
+
+<h3 id="设置日志格式："><a href="#设置日志格式：" class="headerlink" title="设置日志格式："></a>设置日志格式：</h3><blockquote>
+<p>设置nginx日志格式，以json格式输出:</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-m1 ~]# cat log.yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">data:</span><br><span class="line">  log-format-upstream: &apos;&#123; &quot;time&quot;: &quot;$time_iso8601&quot;, &quot;remote_addr&quot;: &quot;$proxy_protocol_addr&quot;,&quot;x-forward-for&quot;: &quot;$proxy_add_x_forwarded_for&quot;, &quot;request_id&quot;: &quot;$req_id&quot;, &quot;remote_user&quot;:&quot;$remote_user&quot;, &quot;bytes_sent&quot;: $bytes_sent, &quot;request_time&quot;: $request_time, &quot;status&quot;:$status, &quot;vhost&quot;: &quot;$host&quot;, &quot;request_proto&quot;: &quot;$server_protocol&quot;, &quot;path&quot;: &quot;$uri&quot;,&quot;request_query&quot;: &quot;$args&quot;, &quot;request_length&quot;: $request_length, &quot;duration&quot;: $request_time,&quot;method&quot;: &quot;$request_method&quot;, &quot;http_referrer&quot;: &quot;$http_referer&quot;, &quot;http_user_agent&quot;:&quot;$http_user_agent&quot; &#125;&apos;</span><br><span class="line">kind: ConfigMap</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-configuration</span><br><span class="line">  namespace: ingress-nginx</span><br></pre></td></tr></table></figure>
+
+<h3 id="调整工作进程和内存设置："><a href="#调整工作进程和内存设置：" class="headerlink" title="调整工作进程和内存设置："></a>调整工作进程和内存设置：</h3><blockquote>
+<p>Nginx 具有默认设置worker_processes auto，这意味着工作进程号与宿主机上的 CPU 核心数相同。 请注意，这里提到的是物理主机而不是容器资源！这是因为 Nginx 不是 cgroup-aware，而 Ingress 控制器将忽略以下 2 个约束：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">resources.limits.cpu</span><br><span class="line">resources.requests.cpu</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>当技术人员将集群中的宿主机节点从 4 个 vCPU 核心升级到 16 个 vCPU 核心时，Ingress 控制器的 Pod 在 Ingress 的更改期间会出现故障。这时，登录 Pod 并检查/etc/nginx/nginx.conf后，你会发现每个 Ingress 控制器中的 Pod 有 16 个工作进程而不是 4 个。<br>当频繁的进行 Ingress 更改时，Nginx 将继续为这 16 个工作进程重新加载配置并消耗 Pod 中的所有内存，让他们死于 OOM。</p>
+</blockquote>
+<h4 id="注意：当node节点既有ingress-nginx-Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem"><a href="#注意：当node节点既有ingress-nginx-Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem" class="headerlink" title="注意：当node节点既有ingress-nginx Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem"></a>注意：当node节点既有ingress-nginx Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem</h4>
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>ingress-nginx多实例部署</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月26日 - 14:05:08</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:03:09</p>
+  <p><span>原始链接:</span><a href="/2019/08/26/ingress-nginx-Multi-instance/" title="ingress-nginx多实例部署">https://system51.github.io/2019/08/26/ingress-nginx-Multi-instance/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/ingress-nginx-Multi-instance/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/Kubelet-Status/" rel="next" title="Kubelet 状态更新机制">
+                <i class="fa fa-chevron-left"></i> Kubelet 状态更新机制
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/pause/" rel="prev" title="K8s集群中pause容器是干嘛的">
+                K8s集群中pause容器是干嘛的 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">42</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）"><span class="nav-number">1.</span> <span class="nav-text">此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#在如下args段中我们新增了几个参数："><span class="nav-number">2.</span> <span class="nav-text">在如下args段中我们新增了几个参数：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#删除删除："><span class="nav-number">3.</span> <span class="nav-text">删除删除：</span></a></li></ol><li class="nav-item nav-level-3"><a class="nav-link" href="#在创建ingress时我们需要注意"><span class="nav-number"></span> <span class="nav-text">在创建ingress时我们需要注意</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Ingress-nginx使用："><span class="nav-number"></span> <span class="nav-text">Ingress-nginx使用：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#有三种方法可以自定义NGINX："><span class="nav-number">1.</span> <span class="nav-text">有三种方法可以自定义NGINX：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Annotations："><span class="nav-number">2.</span> <span class="nav-text">Annotations：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#ConfigMaps："><span class="nav-number">3.</span> <span class="nav-text">ConfigMaps：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#自定义标题"><span class="nav-number"></span> <span class="nav-text">自定义标题</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#设置日志格式："><span class="nav-number"></span> <span class="nav-text">设置日志格式：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#调整工作进程和内存设置："><span class="nav-number"></span> <span class="nav-text">调整工作进程和内存设置：</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#注意：当node节点既有ingress-nginx-Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem"><span class="nav-number">1.</span> <span class="nav-text">注意：当node节点既有ingress-nginx Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem</span></a></li></ol></li></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

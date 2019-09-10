@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="当 Kubernetes 中 Node 节点出现状态异常的情况下，节点上的 Pod 会被重新调度到其他节点上去，但是有的时候我们会发现节点 Down 掉以后，Pod 并不会立即触发重新调度，这实际上就是和 Kubelet 的状态更新机制密切相关的，Kubernetes 提供了一些参数配置来触发重新调度到node时间，下面我们来分析下 Kubelet 状态更新的基本流程。   默认情况下,正常的行">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubelet 状态更新机制">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubelet-Status/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="当 Kubernetes 中 Node 节点出现状态异常的情况下，节点上的 Pod 会被重新调度到其他节点上去，但是有的时候我们会发现节点 Down 掉以后，Pod 并不会立即触发重新调度，这实际上就是和 Kubelet 的状态更新机制密切相关的，Kubernetes 提供了一些参数配置来触发重新调度到node时间，下面我们来分析下 Kubelet 状态更新的基本流程。   默认情况下,正常的行">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-09-06T02:02:18.187Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubelet 状态更新机制">
+<meta name="twitter:description" content="当 Kubernetes 中 Node 节点出现状态异常的情况下，节点上的 Pod 会被重新调度到其他节点上去，但是有的时候我们会发现节点 Down 掉以后，Pod 并不会立即触发重新调度，这实际上就是和 Kubelet 的状态更新机制密切相关的，Kubernetes 提供了一些参数配置来触发重新调度到node时间，下面我们来分析下 Kubelet 状态更新的基本流程。   默认情况下,正常的行">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/08/26/Kubelet-Status/">
+
+
+
+
+
+  <title>Kubelet 状态更新机制 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/26/Kubelet-Status/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubelet 状态更新机制</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T14:03:18+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/08/26/Kubelet-Status/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/26/Kubelet-Status/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>当 Kubernetes 中 Node 节点出现状态异常的情况下，节点上的 Pod 会被重新调度到其他节点上去，但是有的时候我们会发现节点 Down 掉以后，Pod 并不会立即触发重新调度，这实际上就是和 Kubelet 的状态更新机制密切相关的，Kubernetes 提供了一些参数配置来触发重新调度到node时间，下面我们来分析下 Kubelet 状态更新的基本流程。</p>
+</blockquote>
+<blockquote>
+<h4 id="默认情况下-正常的行为如下"><a href="#默认情况下-正常的行为如下" class="headerlink" title="默认情况下,正常的行为如下:"></a>默认情况下,正常的行为如下:</h4><ul>
+<li><code>kubelet</code>定期向<code>apiserver</code>发送其状态,发送周期由<code>--node-status-update-frequency</code>参数指定,默认值是10s</li>
+<li><code>Kubernetes Controller Manager</code>定期的检查<code>kubelet</code>状态,该参数由<code>--node-monitor-period</code>参数指定,默认值5秒s</li>
+<li><code>Kubernetes Controller Manager</code>对<code>kubelet</code>状态更新有一个容忍值,如果<code>kubelet</code>在这个容忍值内更新状态,那么<code>Kubernetes Controller Manager</code>认为<code>kubelet</code>状态有效.容忍值参数由<code>--node-monitor-grace-period</code>指定,默认值为40s</li>
+<li><code>Kubernetes Controller Manager</code>认为<code>kubelet</code>无响应后多久删除该<code>node</code>上的pod,通过<code>--pod-eviction-timeout</code>参数指定，默认 5m0s<br><code>Kubernetes Controller Manager</code>和<code>kubelet</code>异步工作,这意味着延迟可能包含网络延迟,API Server延迟,etcd延迟,节点负载等引起的延迟,所以如果设置<code>--node-status-update-frequency</code>参数为5秒时,那么当etcd无法将数据提交到仲裁节点时,它可能会在etcd中等待6-7秒甚至更长才能被呈现</li>
+</ul>
+</blockquote>
+<h3 id="失败"><a href="#失败" class="headerlink" title="失败"></a>失败</h3><blockquote>
+<ul>
+<li><code>kubelet</code>将尝试发送<code>nodeStatusUpdateRetry</code> ,当前<code>nodeStatusUpdateRetry</code>在kubelet.go.中设置为5</li>
+<li><code>kubelet</code>将使用 <code>tryUpdateNodeStatus</code>方法发送状态.<code>kubelet</code>使用golang的http.Client()方法,但是没指定超时时长,因此当在<code>apiserver</code>过载时TCP连接会造成一些问题.</li>
+<li>因此,这里尝试使用<code>nodeStatusUpdateRetry</code> 乘以 <code>--node-status-update-frequency</code>的值设置node状态.</li>
+<li>在同时<code>Kubernetes Controller Manager</code>每隔<code>--node-monitor-period</code>设置的时间检查<code>nodeStatusUpdateRetry</code>设置的次数,经过<code>--node-monitor-grace-period</code>设定的时间将认为node不健康,<code>Kubernetes Controller Manager</code>通过<code>--pod-eviction-timeout</code>设置pod移除的容忍值.</li>
+<li>同时<code>Kube-Proxy</code> watch <code>API server</code>,一旦pod被删除,那么集群中所有<code>kube-proxy</code>将更新其节点上的iptables规则,移除相应的<code>endpoint</code>,这使得请求无法被发送到故障节点的pod</li>
+</ul>
+</blockquote>
+<h3 id="针对不同案例的建议"><a href="#针对不同案例的建议" class="headerlink" title="针对不同案例的建议"></a>针对不同案例的建议</h3><h4 id="社区默认的配置（参数所属组件）"><a href="#社区默认的配置（参数所属组件）" class="headerlink" title="社区默认的配置（参数所属组件）"></a>社区默认的配置（参数所属组件）</h4><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+<th>组件</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--node-status-update-frequency</code></td>
+<td>10s</td>
+<td><code>kubelet</code></td>
+</tr>
+<tr>
+<td><code>--node-monitor-period</code></td>
+<td>5s</td>
+<td><code>controller manager</code></td>
+</tr>
+<tr>
+<td><code>--node-monitor-grace-period</code></td>
+<td>40s</td>
+<td><code>controller manager</code></td>
+</tr>
+<tr>
+<td><code>--pod-eviction-timeout</code></td>
+<td>5m</td>
+<td><code>controller manager</code></td>
+</tr>
+</tbody></table>
+<h4 id="快速更新和快速响应"><a href="#快速更新和快速响应" class="headerlink" title="快速更新和快速响应"></a>快速更新和快速响应</h4><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--node-status-update-frequency</code></td>
+<td>4s</td>
+</tr>
+<tr>
+<td><code>--node-monitor-period</code></td>
+<td>2s</td>
+</tr>
+<tr>
+<td><code>--node-monitor-grace-period</code></td>
+<td>20s</td>
+</tr>
+<tr>
+<td><code>--pod-eviction-timeout</code></td>
+<td>30s</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>在这种情况下，Pod 将在 50s 后被驱逐，因为该节点在 20s 后被视为Down掉了，–pod-eviction-timeout在 30s 之后开始删除pod，但是，这种情况会给 etcd 产生很大的开销，因为每个节点都会尝试每 2s 更新一次状态。（–node-monitor-grace-period +  –pod-eviction-timeout  =多久后开始驱逐Pod）</p>
+</blockquote>
+<blockquote>
+<p>如果环境有1000个节点，那么每分钟将有15000次节点更新操作，这可能需要大型 etcd 容器甚至是 etcd 的专用节点。</p>
+</blockquote>
+<blockquote>
+<p>如果我们计算尝试次数，则除法将给出5，但实际上每次尝试的 nodeStatusUpdateRetry 尝试将从3到5。 由于所有组件的延迟，尝试总次数将在15到25之间变化。</p>
+</blockquote>
+<h4 id="中等更新和平均响应"><a href="#中等更新和平均响应" class="headerlink" title="中等更新和平均响应"></a>中等更新和平均响应</h4><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--node-status-update-frequency</code></td>
+<td>20s</td>
+</tr>
+<tr>
+<td><code>--node-monitor-period</code></td>
+<td>5s</td>
+</tr>
+<tr>
+<td><code>--node-monitor-grace-period</code></td>
+<td>2m</td>
+</tr>
+<tr>
+<td><code>--pod-eviction-timeout</code></td>
+<td>1m</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>这种场景下会 20s 更新一次 node 状态，<code>Kubernetes Controller Manager</code> 检测到<code>kubelet</code>在2分钟内没有更新节点状态，那么将在一分钟后驱逐所有pod总共耗时3分钟。（–node-monitor-grace-period +  –pod-eviction-timeout  =多久后开始驱逐Pod）</p>
+</blockquote>
+<blockquote>
+<p>此处情况适用于中等环境,因为1000个节点每分钟需要对etcd进行3000次更新。</p>
+</blockquote>
+<h4 id="低更新和慢响应"><a href="#低更新和慢响应" class="headerlink" title="低更新和慢响应"></a>低更新和慢响应</h4><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--node-status-update-frequency</code></td>
+<td>1m</td>
+</tr>
+<tr>
+<td><code>--node-monitor-period</code></td>
+<td>5s</td>
+</tr>
+<tr>
+<td><code>--node-monitor-grace-period</code></td>
+<td>5m</td>
+</tr>
+<tr>
+<td><code>--pod-eviction-timeout</code></td>
+<td>1m</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>在该建议参数中,<code>kubelet</code>将在每分钟上报状态,5分钟内<code>kubelet</code>没有更新节点状态<code>Kubernetes Controller Manager</code>将节点设置为不健康,在一分钟后开始驱逐所有pod总共耗时6分钟（–node-monitor-grace-period +  –pod-eviction-timeout  =多久后开始驱逐Pod）</p>
+</blockquote>
+<blockquote>
+<p>可以有不同的组合，例如快速更新和慢反应以满足特定情况。<br>原文链接: <a href="https://github.com/kubernetes-sigs/kubespray/blob/master/docs/kubernetes-reliability.md" target="_blank" rel="noopener">https://github.com/kubernetes-sigs/kubespray/blob/master/docs/kubernetes-reliability.md</a></p>
+</blockquote>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>Kubelet 状态更新机制</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月26日 - 14:03:18</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:02:18</p>
+  <p><span>原始链接:</span><a href="/2019/08/26/Kubelet-Status/" title="Kubelet 状态更新机制">https://system51.github.io/2019/08/26/Kubelet-Status/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubelet-Status/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes-kube-apiserver-ha/" rel="next" title="kube-apiserver 高可用方案">
+                <i class="fa fa-chevron-left"></i> kube-apiserver 高可用方案
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/ingress-nginx-Multi-instance/" rel="prev" title="ingress-nginx多实例部署">
+                ingress-nginx多实例部署 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">42</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-4"><a class="nav-link" href="#默认情况下-正常的行为如下"><span class="nav-number">1.</span> <span class="nav-text">默认情况下,正常的行为如下:</span></a></li></ol><li class="nav-item nav-level-3"><a class="nav-link" href="#失败"><span class="nav-number"></span> <span class="nav-text">失败</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#针对不同案例的建议"><span class="nav-number"></span> <span class="nav-text">针对不同案例的建议</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#社区默认的配置（参数所属组件）"><span class="nav-number">1.</span> <span class="nav-text">社区默认的配置（参数所属组件）</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#快速更新和快速响应"><span class="nav-number">2.</span> <span class="nav-text">快速更新和快速响应</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#中等更新和平均响应"><span class="nav-number">3.</span> <span class="nav-text">中等更新和平均响应</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#低更新和慢响应"><span class="nav-number">4.</span> <span class="nav-text">低更新和慢响应</span></a></li></ol></li></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

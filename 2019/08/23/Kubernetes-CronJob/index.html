@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="类似于Linux的Cron模块，CronJob用来运行定时性任务，或者周期性、重复性任务。注意CronJob启动的是kubernetes中的Job，不是ReplicaSet、DaemonSet等其它控制器类型。  示例： 以下CronJob每分钟运行一次，打印出当前时间与hello消息。  123456789101112131415161718apiVersion: batch/v1beta1k">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之CronJob">
+<meta property="og:url" content="https://system51.github.io/2019/08/23/Kubernetes-CronJob/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="类似于Linux的Cron模块，CronJob用来运行定时性任务，或者周期性、重复性任务。注意CronJob启动的是kubernetes中的Job，不是ReplicaSet、DaemonSet等其它控制器类型。  示例： 以下CronJob每分钟运行一次，打印出当前时间与hello消息。  123456789101112131415161718apiVersion: batch/v1beta1k">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-09-06T02:05:03.851Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes之CronJob">
+<meta name="twitter:description" content="类似于Linux的Cron模块，CronJob用来运行定时性任务，或者周期性、重复性任务。注意CronJob启动的是kubernetes中的Job，不是ReplicaSet、DaemonSet等其它控制器类型。  示例： 以下CronJob每分钟运行一次，打印出当前时间与hello消息。  123456789101112131415161718apiVersion: batch/v1beta1k">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/08/23/Kubernetes-CronJob/">
+
+
+
+
+
+  <title>Kubernetes之CronJob | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/23/Kubernetes-CronJob/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes之CronJob</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-23T15:19:11+08:00">
+                2019-08-23
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/08/23/Kubernetes-CronJob/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/23/Kubernetes-CronJob/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <blockquote>
+<p>类似于Linux的Cron模块，CronJob用来运行定时性任务，或者周期性、重复性任务。注意CronJob启动的是kubernetes中的Job，不是ReplicaSet、DaemonSet等其它控制器类型。</p>
+</blockquote>
+<h3 id="示例："><a href="#示例：" class="headerlink" title="示例："></a>示例：</h3><blockquote>
+<p>以下CronJob每分钟运行一次，打印出当前时间与hello消息。</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: batch/v1beta1</span><br><span class="line">kind: CronJob</span><br><span class="line">metadata:</span><br><span class="line">  name: hello</span><br><span class="line">spec:</span><br><span class="line">  schedule: &quot;*/1 * * * *&quot;</span><br><span class="line">  jobTemplate:</span><br><span class="line">    spec:</span><br><span class="line">      template:</span><br><span class="line">        spec:</span><br><span class="line">          containers:</span><br><span class="line">          - name: hello</span><br><span class="line">            image: busybox</span><br><span class="line">            args:</span><br><span class="line">            - /bin/sh</span><br><span class="line">            - -c</span><br><span class="line">            - date; echo Hello from the Kubernetes cluster</span><br><span class="line">          restartPolicy: OnFailure</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>以上内容，<code>schedule: &quot;*/1 * * * *&quot;</code>与Linux Cron意义相同，表示每分钟启动一次。</p>
+</blockquote>
+<h3 id="运行CronJob"><a href="#运行CronJob" class="headerlink" title="运行CronJob"></a>运行CronJob</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create -f ./cronjob.yaml</span><br><span class="line">cronjob &quot;hello&quot; created</span><br></pre></td></tr></table></figure>
+
+<h3 id="或者通过命令行方式："><a href="#或者通过命令行方式：" class="headerlink" title="或者通过命令行方式："></a>或者通过命令行方式：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl run hello --schedule=&quot;*/1 * * * *&quot; --restart=OnFailure --image=busybox -- /bin/sh -c &quot;date; echo Hello from the Kubernetes cluster&quot;</span><br><span class="line">cronjob &quot;hello&quot; created</span><br></pre></td></tr></table></figure>
+
+<h3 id="查看CronJob状态："><a href="#查看CronJob状态：" class="headerlink" title="查看CronJob状态："></a>查看CronJob状态：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get cronjob hello</span><br><span class="line">NAME      SCHEDULE      SUSPEND   ACTIVE    LAST-SCHEDULE</span><br><span class="line">hello     */1 * * * *   False     0         &lt;none&gt;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li>NAME：CronJob名称。</li>
+<li>SCHEDULE：基于时间的调度规则。</li>
+<li>SUSPEND：如果其值为True表示此CronJob暂时失效，不变成False之前不再创建新任务。对于已经创建的任务没有影响。</li>
+<li>ACTIVE：表示当前活动的任务数，0表示当前没有活动任务。1表示有一个活动任务。此值可能大于1，原因如下：<ul>
+<li>任务允许重复启动，如前一次启动后还没有退出，下一次已经启动。</li>
+<li>允许延后启动，当CronJob Controller发现因为某种原因错误启动，并且任务允许延后启动，则会启动任务。</li>
+</ul>
+</li>
+<li>LAST-SCHEDULE：表示最后一次调度时间，<none>表示未曾调度过任务。</none></li>
+</ul>
+</blockquote>
+<blockquote>
+<p>从CronJob状态可以看出，其输出中并没有相关字段指示其所创建的JOB是否运行成功，运行如上命令查看JOB的详细信息：</p>
+</blockquote>
+<h3 id="查看CronJob创建的Job："><a href="#查看CronJob创建的Job：" class="headerlink" title="查看CronJob创建的Job："></a>查看CronJob创建的Job：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get jobs --watch</span><br><span class="line">NAME               DESIRED   SUCCESSFUL   AGE</span><br><span class="line">hello-4111706356   1         1         2s</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>NAME：表示CronJob创建的Job名称，后边的数字由系统自动生成，保证不重复。</li>
+<li>DESIRED：表示CronJob只创建的是最简单的一次Job，只创建一个pod。</li>
+<li>SUCCESSFUL：表示pod成功个数。</li>
+<li>AGE：表示上JOB生存时间。</li>
+</ul>
+<h3 id="再次查看CronJob"><a href="#再次查看CronJob" class="headerlink" title="再次查看CronJob:"></a>再次查看CronJob:</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get cronjob hello</span><br><span class="line">NAME      SCHEDULE      SUSPEND   ACTIVE    LAST-SCHEDULE</span><br><span class="line">hello     */1 * * * *   False     0         Mon, 29 Aug 2016 14:34:00 -0700</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>LAST-SCHEDULE表示最近一次调度时间，ACTIVE为０表示实例已经运行结束。</p>
+</blockquote>
+<blockquote>
+<p>CronJob创建Job，Job创建pod，已经获知CronJob创建的Job名称：hello-4111706356，查看pod方法如下：</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"># Replace &quot;hello-4111706356&quot; with the job name in your system</span><br><span class="line">$ pods=$(kubectl get pods --show-all --selector=job-name=hello-4111706356 --output=jsonpath=&#123;.items..metadata.name&#125;)</span><br><span class="line"> </span><br><span class="line">$ echo $pods</span><br><span class="line">hello-4111706356-o9qcm</span><br><span class="line"> </span><br><span class="line">$ kubectl logs $pods</span><br><span class="line">Mon Aug 29 21:34:09 UTC 2016</span><br><span class="line">Hello from the Kubernetes cluster</span><br></pre></td></tr></table></figure>
+
+<h3 id="删除CronJob："><a href="#删除CronJob：" class="headerlink" title="删除CronJob："></a>删除CronJob：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl delete cronjob hello</span><br><span class="line">cronjob &quot;hello&quot; deleted</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>删除CronJob会导致其创建的Job、pod一起被删除。</p>
+</blockquote>
+<blockquote>
+<p>简单起见，以上示例控制CronJob行为的字段没有设置或者也可以说是采用了默认值，下面解释CronJob中的重要字段。</p>
+<ul>
+<li>.spec.startingDeadlineSeconds：单位是秒，表示如果Job因为某种原因无法按调度准时启动，在spec.startingDeadlineSeconds时间段之内，CronJob仍然试图重新启动Job，如果在.spec.startingDeadlineSeconds时间之内没有启动成功，则不再试图重新启动。如果spec.startingDeadlineSeconds的值没有设置，则没有按时启动的任务不会被尝试重新启动。spec.startingDeadlineSeconds同时也影响到CronJob计算任务损失率。如果指定，那么CronJob计算有多少Job没有按时启动时是从当前时间向后推spec.startingDeadlineSeconds秒数，如果没有指定，那么是从当前时间向后推到最后一次成功调度的时间。无论那种算法，如果损失的按时任务超过一定个数，那么CronJob会报错并停止运行。</li>
+<li>.spec.concurrencyPolicy：是否允许Job并发，可能的聚会有３个。<br>Allow：上一次Job没有完成，本次Job可以启动。<br>Forbid：上一次Job没有完成，本次Job不可以启动。<br>Replace：上一次Job没有完成，本次Job取而代之，将上一次Job杀死。</li>
+<li>.spec.suspend：true或者false，表示是否临时阻塞CronJob。</li>
+<li>.spec.successfulJobsHistoryLimit：保存成功历史Job的数量，默认３，如果为０则CronJob在Job成功后立即删除。</li>
+<li>.spec.failedJobsHistoryLimit：保存失败历史Job的数量，默认１，如果为0则CronJob在Job失败后立即删除。</li>
+</ul>
+</blockquote>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>Kubernetes之CronJob</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月23日 - 15:19:11</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:05:03</p>
+  <p><span>原始链接:</span><a href="/2019/08/23/Kubernetes-CronJob/" title="Kubernetes之CronJob">https://system51.github.io/2019/08/23/Kubernetes-CronJob/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/23/Kubernetes-CronJob/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/23/Kubernetes-Job/" rel="next" title="Kubernetes之Job">
+                <i class="fa fa-chevron-left"></i> Kubernetes之Job
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/23/Kubernetes-Service/" rel="prev" title="Kubernetes之Service">
+                Kubernetes之Service <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">42</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#示例："><span class="nav-number">1.</span> <span class="nav-text">示例：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#运行CronJob"><span class="nav-number">2.</span> <span class="nav-text">运行CronJob</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#或者通过命令行方式："><span class="nav-number">3.</span> <span class="nav-text">或者通过命令行方式：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查看CronJob状态："><span class="nav-number">4.</span> <span class="nav-text">查看CronJob状态：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#查看CronJob创建的Job："><span class="nav-number">5.</span> <span class="nav-text">查看CronJob创建的Job：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#再次查看CronJob"><span class="nav-number">6.</span> <span class="nav-text">再次查看CronJob:</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#删除CronJob："><span class="nav-number">7.</span> <span class="nav-text">删除CronJob：</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

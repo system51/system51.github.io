@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="使用CFSSL创建证书 CFSSL是CloudFlare开源的一款PKI/TLS工具。 CFSSL 包含一个命令行工具 和一个用于 签名，验证并且捆绑TLS证书的 HTTP API 服务。 使用Go语言编写。Github 地址： https://github.com/cloudflare/cfssl官网地址： https://pkg.cfssl.org/  1234curl -s -L -o /b">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes证书相关(CFSSL)">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-CFSSL/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="使用CFSSL创建证书 CFSSL是CloudFlare开源的一款PKI/TLS工具。 CFSSL 包含一个命令行工具 和一个用于 签名，验证并且捆绑TLS证书的 HTTP API 服务。 使用Go语言编写。Github 地址： https://github.com/cloudflare/cfssl官网地址： https://pkg.cfssl.org/  1234curl -s -L -o /b">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-09-06T02:04:21.499Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Kubernetes证书相关(CFSSL)">
+<meta name="twitter:description" content="使用CFSSL创建证书 CFSSL是CloudFlare开源的一款PKI/TLS工具。 CFSSL 包含一个命令行工具 和一个用于 签名，验证并且捆绑TLS证书的 HTTP API 服务。 使用Go语言编写。Github 地址： https://github.com/cloudflare/cfssl官网地址： https://pkg.cfssl.org/  1234curl -s -L -o /b">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/08/26/Kubernetes-CFSSL/">
+
+
+
+
+
+  <title>Kubernetes证书相关(CFSSL) | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/26/Kubernetes-CFSSL/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Kubernetes证书相关(CFSSL)</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T10:58:47+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/08/26/Kubernetes-CFSSL/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/26/Kubernetes-CFSSL/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="使用CFSSL创建证书"><a href="#使用CFSSL创建证书" class="headerlink" title="使用CFSSL创建证书"></a>使用CFSSL创建证书</h3><blockquote>
+<p>CFSSL是CloudFlare开源的一款PKI/TLS工具。 CFSSL 包含一个命令行工具 和一个用于 签名，验证并且捆绑TLS证书的 HTTP API 服务。 使用Go语言编写。<br>Github 地址： <a href="https://github.com/cloudflare/cfssl" target="_blank" rel="noopener">https://github.com/cloudflare/cfssl</a><br>官网地址： <a href="https://pkg.cfssl.org/" target="_blank" rel="noopener">https://pkg.cfssl.org/</a></p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">curl -s -L -o /bin/cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64</span><br><span class="line">curl -s -L -o /bin/cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64</span><br><span class="line">curl -s -L -o /bin/cfssl-certinfo https://pkg.cfssl.org/R1.2/cfssl-certinfo_linux-amd64</span><br><span class="line">chmod +x /bin/cfssl*</span><br></pre></td></tr></table></figure>
+
+<h3 id="容器相关证书类型"><a href="#容器相关证书类型" class="headerlink" title="容器相关证书类型"></a>容器相关证书类型</h3><blockquote>
+<p>client certificate： 用于服务端认证客户端,例如etcdctl、etcd proxy、fleetctl、docker客户端<br>server certificate: 服务端使用，客户端以此验证服务端身份,例如docker服务端、kube-apiserver<br>peer certificate: 双向证书，用于etcd集群成员间通信</p>
+</blockquote>
+<h3 id="创建CA证书"><a href="#创建CA证书" class="headerlink" title="创建CA证书"></a>创建CA证书</h3><blockquote>
+<p>生成默认CA配置</p>
+<ul>
+<li>mkdir /opt/ssl</li>
+<li>cd /opt/ssl</li>
+<li>cfssl print-defaults config &gt; ca-config.json</li>
+<li>cfssl print-defaults csr &gt; ca-csr.json</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>修改ca-config.json,分别配置针对三种不同证书类型的profile,其中有效期43800h为5年</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">&quot;signing&quot;: &#123;</span><br><span class="line">    &quot;default&quot;: &#123;</span><br><span class="line">        &quot;expiry&quot;: &quot;43800h&quot;</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;profiles&quot;: &#123;</span><br><span class="line">        &quot;server&quot;: &#123;</span><br><span class="line">            &quot;expiry&quot;: &quot;43800h&quot;,</span><br><span class="line">            &quot;usages&quot;: [</span><br><span class="line">                &quot;signing&quot;,</span><br><span class="line">                &quot;key encipherment&quot;,</span><br><span class="line">                &quot;server auth&quot;</span><br><span class="line">            ]</span><br><span class="line">        &#125;,</span><br><span class="line">        &quot;client&quot;: &#123;</span><br><span class="line">            &quot;expiry&quot;: &quot;43800h&quot;,</span><br><span class="line">            &quot;usages&quot;: [</span><br><span class="line">                &quot;signing&quot;,</span><br><span class="line">                &quot;key encipherment&quot;,</span><br><span class="line">                &quot;client auth&quot;</span><br><span class="line">            ]</span><br><span class="line">        &#125;,</span><br><span class="line">        &quot;peer&quot;: &#123;</span><br><span class="line">            &quot;expiry&quot;: &quot;43800h&quot;,</span><br><span class="line">            &quot;usages&quot;: [</span><br><span class="line">                &quot;signing&quot;,</span><br><span class="line">                &quot;key encipherment&quot;,</span><br><span class="line">                &quot;server auth&quot;,</span><br><span class="line">                &quot;client auth&quot;</span><br><span class="line">            ]</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<h3 id="字段说明"><a href="#字段说明" class="headerlink" title="字段说明"></a>字段说明</h3><ul>
+<li>ca-config.json：可以定义多个 profiles，分别指定不同的过期时间、使用场景等参数；后续在签名证书时使用某个 profile；</li>
+<li>signing：表示该证书可用于签名其它证书；生成的 ca.pem 证书中 CA:TRUE；</li>
+<li>server auth：表示client可以用该 CA 对server提供的证书进行验证；</li>
+<li>client auth：表示server可以用该CA对client提供的证书进行验证；</li>
+</ul>
+</blockquote>
+<h3 id="修改ca-csr-json"><a href="#修改ca-csr-json" class="headerlink" title="修改ca-csr.json"></a>修改ca-csr.json</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">&quot;CN&quot;: &quot;Self Signed Ca&quot;,</span><br><span class="line">&quot;key&quot;: &#123;</span><br><span class="line">    &quot;algo&quot;: &quot;rsa&quot;,</span><br><span class="line">    &quot;size&quot;: 2048</span><br><span class="line">&#125;,</span><br><span class="line">&quot;names&quot;: [</span><br><span class="line">    &#123;</span><br><span class="line">        &quot;C&quot;: &quot;CN&quot;,</span><br><span class="line">        &quot;L&quot;: &quot;SH&quot;,</span><br><span class="line">        &quot;O&quot;: &quot;Netease&quot;,</span><br><span class="line">        &quot;ST&quot;: &quot;SH&quot;,            </span><br><span class="line">        &quot;OU&quot;: &quot;OT&quot;</span><br><span class="line">    &#125;    ]</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li>“CN”：Common Name，kube-apiserver 从证书中提取该字段作为请求的用户名 (User Name)；</li>
+<li>“O”：Organization，kube-apiserver 从证书中提取该字段作为请求用户所属的组 (Group)；</li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>“C”: Country， 国家<ul>
+<li>“L”: Locality，地区，城市</li>
+<li>“O”: Organization Name，组织名称，公司名称</li>
+<li>“OU”: Organization Unit Name，组织单位名称，公司部门</li>
+<li>“ST”: State，州，省</li>
+</ul>
+</li>
+</ul>
+</blockquote>
+<h3 id="生成CA证书和私钥"><a href="#生成CA证书和私钥" class="headerlink" title="生成CA证书和私钥"></a>生成CA证书和私钥</h3><blockquote>
+<p>[root@master-1 ssl]# cfssl gencert -initca ca-csr.json | cfssljson -bare ca<br>生成ca.pem、ca.csr、ca-key.pem(CA私钥,需妥善保管)</p>
+</blockquote>
+<h3 id="签发Server-Certificate"><a href="#签发Server-Certificate" class="headerlink" title="签发Server Certificate"></a>签发Server Certificate</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">cfssl print-defaults csr &gt; server.json</span><br><span class="line">vim server.json</span><br><span class="line">&#123;</span><br><span class="line">    &quot;CN&quot;: &quot;Server&quot;,</span><br><span class="line">    &quot;hosts&quot;: [</span><br><span class="line">        &quot;192.168.1.1&quot;</span><br><span class="line">       ],</span><br><span class="line">    &quot;key&quot;: &#123;</span><br><span class="line">        &quot;algo&quot;: &quot;rsa&quot;,</span><br><span class="line">        &quot;size&quot;: 2048</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;names&quot;: [</span><br><span class="line">        &#123;</span><br><span class="line">            &quot;C&quot;: &quot;CN&quot;,</span><br><span class="line">            &quot;L&quot;: &quot;SH&quot;,</span><br><span class="line">            &quot;ST&quot;: &quot;SH&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#生成服务端证书和私钥</span><br><span class="line">cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server server.json | cfssljson -bare server</span><br></pre></td></tr></table></figure>
+
+<h3 id="签发Client-Certificate"><a href="#签发Client-Certificate" class="headerlink" title="签发Client Certificate"></a>签发Client Certificate</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">cfssl print-defaults csr &gt; client.json</span><br><span class="line">vim client.json</span><br><span class="line">&#123;</span><br><span class="line">    &quot;CN&quot;: &quot;Client&quot;,</span><br><span class="line">    &quot;hosts&quot;: [],</span><br><span class="line">    &quot;key&quot;: &#123;</span><br><span class="line">        &quot;algo&quot;: &quot;rsa&quot;,</span><br><span class="line">        &quot;size&quot;: 2048</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;names&quot;: [</span><br><span class="line">        &#123;</span><br><span class="line">            &quot;C&quot;: &quot;CN&quot;,</span><br><span class="line">            &quot;L&quot;: &quot;SH&quot;,</span><br><span class="line">            &quot;ST&quot;: &quot;SH&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#生成客户端证书和私钥</span><br><span class="line">cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=client client.json | cfssljson -bare client</span><br></pre></td></tr></table></figure>
+
+<h3 id="签发peer-certificate"><a href="#签发peer-certificate" class="headerlink" title="签发peer certificate"></a>签发peer certificate</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">cfssl print-defaults csr &gt; member1.json</span><br><span class="line">vim member1.json</span><br><span class="line">&#123;</span><br><span class="line">    &quot;CN&quot;: &quot;member1&quot;,</span><br><span class="line">    &quot;hosts&quot;: [</span><br><span class="line">        &quot;192.168.1.1&quot;</span><br><span class="line">    ],</span><br><span class="line">    &quot;key&quot;: &#123;</span><br><span class="line">        &quot;algo&quot;: &quot;ecdsa&quot;,</span><br><span class="line">        &quot;size&quot;: 256</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;names&quot;: [</span><br><span class="line">        &#123;</span><br><span class="line">            &quot;C&quot;: &quot;CN&quot;,</span><br><span class="line">            &quot;L&quot;: &quot;SH&quot;,</span><br><span class="line">            &quot;ST&quot;: &quot;SH&quot;</span><br><span class="line">        &#125;</span><br><span class="line">    ]</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">#为节点member1生成证书和私钥:</span><br><span class="line">cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=peer member1.json | cfssljson -bare member1</span><br></pre></td></tr></table></figure>
+
+<h3 id="校验生成的证书是否和配置相符"><a href="#校验生成的证书是否和配置相符" class="headerlink" title="校验生成的证书是否和配置相符"></a>校验生成的证书是否和配置相符</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">openssl x509 -in ca.pem -text -noout</span><br><span class="line">openssl x509 -in server.pem -text -noout</span><br><span class="line">openssl x509 -in client.pem -text -noout</span><br></pre></td></tr></table></figure>
+
+<h3 id="cfssl常用命令："><a href="#cfssl常用命令：" class="headerlink" title="cfssl常用命令："></a>cfssl常用命令：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cfssl gencert -initca ca-csr.json | cfssljson -bare ca           #初始化ca</span><br><span class="line">cfssl gencert -initca -ca-key key.pem ca-csr.json | cfssljson -bare ca       #使用现有私钥, 重新生成</span><br><span class="line">cfssl certinfo -cert ca.pem</span><br><span class="line">cfssl certinfo -csr ca.csr</span><br></pre></td></tr></table></figure>
+
+<h3 id="识别证书类型："><a href="#识别证书类型：" class="headerlink" title="识别证书类型："></a>识别证书类型：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br></pre></td><td class="code"><pre><span class="line">[root@master-1 ssl]# openssl x509 -in server.pem -text -noout</span><br><span class="line">Certificate:</span><br><span class="line">    Data:</span><br><span class="line">        Version: 3 (0x2)</span><br><span class="line">        Serial Number:</span><br><span class="line">            6f:25:cf:8d:42:1e:c8:2d:b8:78:95:d1:f4:0a:25:8e:bb:48:53:9d</span><br><span class="line">    Signature Algorithm: sha256WithRSAEncryption</span><br><span class="line">        Issuer: C=CN, ST=San Francisco, L=Chongqing, CN=test</span><br><span class="line">        Validity</span><br><span class="line">            Not Before: Feb 13 11:35:00 2019 GMT</span><br><span class="line">            Not After : Feb 13 11:35:00 2020 GMT</span><br><span class="line">        Subject: C=US, ST=San Francisco, L=CA, CN=etcd</span><br><span class="line">        Subject Public Key Info:</span><br><span class="line">            Public Key Algorithm: rsaEncryption</span><br><span class="line">                Public-Key: (2048 bit)</span><br><span class="line">                Modulus:</span><br><span class="line">                    00:b6:79:4d:af:27:a0:c9:0e:8a:d0:8c:25:d4:12:</span><br><span class="line">                    f7:22:21:45:ce:80:25:e5:c6:0b:47:fe:ba:79:c7:</span><br><span class="line">                    aa:14:d6:51:be:45:2d:92:49:a5:07:37:36:66:9b:</span><br><span class="line">                    38:a9:9c:9c:0b:cf:91:45:55:7a:20:43:ad:64:09:</span><br><span class="line">                    31:bb:25:30:ba:50:20:fe:3b:4e:cf:8c:21:bc:43:</span><br><span class="line">                    d8:cf:f4:1b:d6:ed:3b:3e:9d:53:74:89:db:17:4b:</span><br><span class="line">                    a7:a2:01:bb:00:36:74:95:a7:cf:0a:24:a1:0d:62:</span><br><span class="line">                    6d:47:d3:f4:3a:93:e4:15:df:20:af:59:fb:5f:77:</span><br><span class="line">                    9b:76:45:ad:68:24:69:d3:1a:cf:75:ef:3f:6d:19:</span><br><span class="line">                    d6:3c:54:76:ec:1b:a3:98:bf:e3:d6:d7:a5:f8:ec:</span><br><span class="line">                    12:47:ee:06:ab:ae:31:8b:83:be:43:6e:b9:41:2d:</span><br><span class="line">                    82:ff:c6:20:e6:2c:69:d5:81:d4:9a:07:b2:e4:9a:</span><br><span class="line">                    40:af:e9:ed:98:4e:c0:27:ef:7c:14:86:cf:6e:6e:</span><br><span class="line">                    18:98:1c:d1:d9:dd:4e:a3:10:d3:63:f9:00:d6:3b:</span><br><span class="line">                    04:e9:47:54:af:87:db:83:d5:8a:8a:05:f4:e8:38:</span><br><span class="line">                    4d:64:e7:ae:b4:5f:3f:6a:18:c8:87:32:7d:24:46:</span><br><span class="line">                    72:a8:4a:7f:dd:5c:5b:cf:6a:2f:af:88:bb:b2:d8:</span><br><span class="line">                    02:af</span><br><span class="line">                Exponent: 65537 (0x10001)</span><br><span class="line">        X509v3 extensions:</span><br><span class="line">            X509v3 Key Usage: critical</span><br><span class="line">                Digital Signature, Key Encipherment</span><br><span class="line">            X509v3 Extended Key Usage: </span><br><span class="line">                TLS Web Server Authentication</span><br><span class="line">            X509v3 Basic Constraints: critical</span><br><span class="line">                CA:FALSE</span><br><span class="line">            X509v3 Subject Key Identifier: </span><br><span class="line">                B7:EF:2C:02:18:05:D0:7E:30:63:BB:F9:8F:52:B4:1E:1F:57:4A:C8</span><br><span class="line">            X509v3 Authority Key Identifier: </span><br><span class="line">                keyid:3C:58:00:7D:E0:2B:C1:AE:81:88:58:F1:FB:95:45:88:33:28:F7:00</span><br><span class="line"></span><br><span class="line">            X509v3 Subject Alternative Name: </span><br><span class="line">                IP Address:172.19.0.203, IP Address:172.19.0.204, IP Address:172.19.0.205</span><br><span class="line">    Signature Algorithm: sha256WithRSAEncryption</span><br><span class="line">         35:8f:af:a7:03:c3:8f:5e:42:ec:10:af:33:c8:4e:b1:0e:d5:</span><br><span class="line">         f7:3e:b2:5f:5d:cf:b4:49:15:94:b1:6b:78:3a:b5:fb:95:68:</span><br><span class="line">         ab:ff:ff:45:74:f9:5f:17:a7:be:16:c8:92:66:28:d0:7c:6d:</span><br><span class="line">         60:0d:82:26:65:01:71:f1:93:0d:0b:44:f3:08:59:9e:d5:89:</span><br><span class="line">         d5:8c:83:d1:dc:b2:a5:8f:b6:be:e8:9e:79:3c:62:02:6b:0e:</span><br><span class="line">         b0:1e:82:b6:2c:4c:b0:f8:eb:93:20:84:8c:c6:32:69:b3:88:</span><br><span class="line">         27:bb:e8:7f:1c:37:01:26:35:0b:9a:61:bf:cc:00:c7:17:80:</span><br><span class="line">         61:11:cb:b7:4d:66:85:e6:13:3e:8c:8e:be:ec:47:d1:00:85:</span><br><span class="line">         cb:b1:aa:69:6a:49:35:44:43:d9:cf:67:fd:ec:63:50:96:4a:</span><br><span class="line">         26:5b:36:c8:72:15:d7:5f:49:e5:30:98:0e:13:58:70:d2:72:</span><br><span class="line">         03:02:45:c1:9c:81:dc:e0:e1:1c:f0:a4:e3:13:e1:b8:d4:01:</span><br><span class="line">         f7:83:d6:cf:72:ba:46:aa:84:55:57:64:e6:93:bb:bc:68:55:</span><br><span class="line">         32:cd:a4:d1:d6:db:e7:e6:9f:4f:1e:8a:24:44:76:42:ec:9d:</span><br><span class="line">         4e:d2:5a:7f:74:7b:9a:66:ed:c3:1d:e4:5d:1a:07:ed:c6:fe:</span><br><span class="line">         bf:8e:d2:80</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>表示服务器端证书</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">X509v3 Extended Key Usage: </span><br><span class="line">    TLS Web Server Authentication</span><br><span class="line">X509v3 Basic Constraints: critical</span><br><span class="line">    CA:FALSE</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>表示客户端证书</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">X509v3 Extended Key Usage: </span><br><span class="line">		TLS Web Client Authentication</span><br><span class="line">X509v3 Basic Constraints: critical</span><br><span class="line">		CA:FALSE</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>表示双向证书</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">X509v3 Extended Key Usage: </span><br><span class="line">    TLS Web Server Authentication, TLS Web Client Authentication</span><br><span class="line">X509v3 Basic Constraints: critical</span><br><span class="line">    CA:FALSE</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>表示CA证书</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">X509v3 Key Usage: critical</span><br><span class="line">    Certificate Sign, CRL Sign</span><br><span class="line">X509v3 Basic Constraints: critical</span><br><span class="line">    CA:TRUE, pathlen:2</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>颁发机构信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Issuer: C=CN, ST=Chongqing, L=Chongqing, CN=yedong-test</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>使用者信息：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Subject: C=CN, ST=Chongqing, L=Chongqing, CN=Server</span><br></pre></td></tr></table></figure></li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>Kubernetes证书相关(CFSSL)</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月26日 - 10:58:47</p>
+  <p><span>最后更新:</span>2019年09月06日 - 10:04:21</p>
+  <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-CFSSL/" title="Kubernetes证书相关(CFSSL)">https://system51.github.io/2019/08/26/Kubernetes-CFSSL/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-CFSSL/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes-ServiceAccount/" rel="next" title="Kubernetes之ServiceAccount">
+                <i class="fa fa-chevron-left"></i> Kubernetes之ServiceAccount
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes-RBAC/" rel="prev" title="Kubernetes之RBAC（基于角色的访问控制）">
+                Kubernetes之RBAC（基于角色的访问控制） <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">42</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用CFSSL创建证书"><span class="nav-number">1.</span> <span class="nav-text">使用CFSSL创建证书</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容器相关证书类型"><span class="nav-number">2.</span> <span class="nav-text">容器相关证书类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#创建CA证书"><span class="nav-number">3.</span> <span class="nav-text">创建CA证书</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#字段说明"><span class="nav-number">4.</span> <span class="nav-text">字段说明</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#修改ca-csr-json"><span class="nav-number">5.</span> <span class="nav-text">修改ca-csr.json</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#生成CA证书和私钥"><span class="nav-number">6.</span> <span class="nav-text">生成CA证书和私钥</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#签发Server-Certificate"><span class="nav-number">7.</span> <span class="nav-text">签发Server Certificate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#签发Client-Certificate"><span class="nav-number">8.</span> <span class="nav-text">签发Client Certificate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#签发peer-certificate"><span class="nav-number">9.</span> <span class="nav-text">签发peer certificate</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#校验生成的证书是否和配置相符"><span class="nav-number">10.</span> <span class="nav-text">校验生成的证书是否和配置相符</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cfssl常用命令："><span class="nav-number">11.</span> <span class="nav-text">cfssl常用命令：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#识别证书类型："><span class="nav-number">12.</span> <span class="nav-text">识别证书类型：</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
