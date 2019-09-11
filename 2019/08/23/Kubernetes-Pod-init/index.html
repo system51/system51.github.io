@@ -87,12 +87,12 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="概念Init Container就是用来做初始化工作的容器，可以是一个或者多个，如果有多个的话，这些容器会按定义的顺序依次执行，只有所有的Init Container执行完后，主容器才会被启动。我们知道一个Pod里面的所有容器是共享数据卷和网络命名空间的，所以Init Container里面产生的数据可以被主容器使用到的。 是不是感觉Init Container和之前的钩子函数有点类似啊，只是是在">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="https://system51.github.io/images/pod%E5%88%9D%E5%A7%8B%E5%8C%96.png">
-<meta property="og:updated_time" content="2019-09-06T02:05:33.235Z">
+<meta property="og:image" content="https://system51.github.io/images/pod-init-1.png">
+<meta property="og:updated_time" content="2019-09-11T02:02:55.654Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes Pod 初始化容器">
 <meta name="twitter:description" content="概念Init Container就是用来做初始化工作的容器，可以是一个或者多个，如果有多个的话，这些容器会按定义的顺序依次执行，只有所有的Init Container执行完后，主容器才会被启动。我们知道一个Pod里面的所有容器是共享数据卷和网络命名空间的，所以Init Container里面产生的数据可以被主容器使用到的。 是不是感觉Init Container和之前的钩子函数有点类似啊，只是是在">
-<meta name="twitter:image" content="https://system51.github.io/images/pod%E5%88%9D%E5%A7%8B%E5%8C%96.png">
+<meta name="twitter:image" content="https://system51.github.io/images/pod-init-1.png">
 
 
 
@@ -324,7 +324,7 @@
       
         <h3 id="概念"><a href="#概念" class="headerlink" title="概念"></a>概念</h3><p>Init Container就是用来做初始化工作的容器，可以是一个或者多个，如果有多个的话，这些容器会按定义的顺序依次执行，只有所有的Init Container执行完后，主容器才会被启动。我们知道一个Pod里面的所有容器是共享数据卷和网络命名空间的，所以Init Container里面产生的数据可以被主容器使用到的。</p>
 <p>是不是感觉Init Container和之前的钩子函数有点类似啊，只是是在容器执行前来做一些工作，是吧？从直观的角度看上去的话，初始化容器的确有点像PreStart，但是钩子函数和我们的Init Container是处在不同的阶段的，我们可以通过下面的图来了解下：</p>
-<p><img src="/images/pod%E5%88%9D%E5%A7%8B%E5%8C%96.png" alt="pod初始化"></p>
+<p><img src="/images/pod-init-1.png" alt="pod-init-1"></p>
 <p>从上面这张图我们可以直观的看到PostStart和PreStop包括liveness和readiness是属于主容器的生命周期范围内的，而Init Container是独立于主容器之外的，当然他们都属于Pod的生命周期范畴之内的，现在我们应该明白Init Container和钩子函数之类的区别了吧。</p>
 <p>另外我们可以看到上面我们的Pod右边还有一个infra的容器，这是一个什么容器呢？我们可以在集群环境中去查看下人任意一个Pod对应的运行的Docker容器，我们可以发现每一个Pod下面都包含了一个pause-amd64的镜像，这个就是我们的infra镜像，我们知道Pod下面的所有容器是共享同一个网络命名空间的，这个镜像就是来做这个事情的，所以每一个Pod当中都会包含一个这个镜像。</p>
 <p>很多同学最开始 Pod 启动不起来就是因为这个 infra 镜像没有被拉下来，因为默认该镜像是需要到谷歌服务器上拉取的，所以需要提前拉取到节点上面。</p>
@@ -388,7 +388,7 @@
   <p><span>本文标题:</span>Kubernetes Pod 初始化容器</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月23日 - 11:20:59</p>
-  <p><span>最后更新:</span>2019年09月06日 - 10:05:33</p>
+  <p><span>最后更新:</span>2019年09月11日 - 10:02:55</p>
   <p><span>原始链接:</span><a href="/2019/08/23/Kubernetes-Pod-init/" title="Kubernetes Pod 初始化容器">https://system51.github.io/2019/08/23/Kubernetes-Pod-init/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/23/Kubernetes-Pod-init/" aria-label="复制成功！"></i></span>
   </p>

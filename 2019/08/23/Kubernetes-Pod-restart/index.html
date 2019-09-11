@@ -87,16 +87,16 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="我们在调度、管理 Pod 时，需要熟悉 Pod 在整个生命周期的各个状态，而设置 Pod 的重启策略也是基于对 Pod 的各种状态的了解。 Pod 生命周期：  说明：  初始化容器阶段初始化pod中每一个容器,他们是串行执行的，执行完成后就退出了 启动主容器main container 在main container刚刚启动之后可以执行post start命令 在整个main container">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:image" content="https://system51.github.io/images/pod%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F.png">
-<meta property="og:image" content="https://system51.github.io/images/pod%E7%8A%B6%E6%80%81.png">
-<meta property="og:image" content="https://system51.github.io/images/%E5%AE%B9%E5%99%A8%E7%8A%B6%E6%80%81.png">
-<meta property="og:image" content="https://system51.github.io/images/%E6%9D%A1%E4%BB%B6%E7%8A%B6%E6%80%81.png">
+<meta property="og:image" content="https://system51.github.io/images/pod-restart-1.png">
+<meta property="og:image" content="https://system51.github.io/images/pod-restart-2.png">
+<meta property="og:image" content="https://system51.github.io/images/pod-restart-3.png">
+<meta property="og:image" content="https://system51.github.io/images/pod-restart-4.png">
 <meta property="og:image" content="https://system51.github.io/images/ReadinessProbe.png">
-<meta property="og:updated_time" content="2019-09-06T02:05:39.843Z">
+<meta property="og:updated_time" content="2019-09-11T02:11:04.460Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes Pod 生命周期和重启策略">
 <meta name="twitter:description" content="我们在调度、管理 Pod 时，需要熟悉 Pod 在整个生命周期的各个状态，而设置 Pod 的重启策略也是基于对 Pod 的各种状态的了解。 Pod 生命周期：  说明：  初始化容器阶段初始化pod中每一个容器,他们是串行执行的，执行完成后就退出了 启动主容器main container 在main container刚刚启动之后可以执行post start命令 在整个main container">
-<meta name="twitter:image" content="https://system51.github.io/images/pod%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F.png">
+<meta name="twitter:image" content="https://system51.github.io/images/pod-restart-1.png">
 
 
 
@@ -327,7 +327,7 @@
 
       
         <p>我们在调度、管理 Pod 时，需要熟悉 Pod 在整个生命周期的各个状态，而设置 Pod 的重启策略也是基于对 Pod 的各种状态的了解。</p>
-<h3 id="Pod-生命周期："><a href="#Pod-生命周期：" class="headerlink" title="Pod 生命周期："></a>Pod 生命周期：</h3><p><img src="/images/pod%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F.png" alt="pod生命周期"></p>
+<h3 id="Pod-生命周期："><a href="#Pod-生命周期：" class="headerlink" title="Pod 生命周期："></a>Pod 生命周期：</h3><p><img src="/images/pod-restart-1.png" alt="pod-restart-1"></p>
 <ul>
 <li><p>说明：</p>
 <ul>
@@ -361,9 +361,9 @@
 </ul>
 <h3 id="使用命令查看："><a href="#使用命令查看：" class="headerlink" title="使用命令查看："></a>使用命令查看：</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[root@master app]# kubectl describe pods test1 -n kube-system</span><br></pre></td></tr></table></figure>
 
-<h4 id="pod状态（phase）："><a href="#pod状态（phase）：" class="headerlink" title="pod状态（phase）："></a>pod状态（phase）：</h4><p><img src="/images/pod%E7%8A%B6%E6%80%81.png" alt="pod状态"></p>
-<h4 id="容器状态："><a href="#容器状态：" class="headerlink" title="容器状态："></a>容器状态：</h4><p><img src="/images/%E5%AE%B9%E5%99%A8%E7%8A%B6%E6%80%81.png" alt="容器状态"></p>
-<h4 id="条件状态："><a href="#条件状态：" class="headerlink" title="条件状态："></a>条件状态：</h4><p><img src="/images/%E6%9D%A1%E4%BB%B6%E7%8A%B6%E6%80%81.png" alt="条件状态"></p>
+<h4 id="pod状态（phase）："><a href="#pod状态（phase）：" class="headerlink" title="pod状态（phase）："></a>pod状态（phase）：</h4><p><img src="/images/pod-restart-2.png" alt="pod-restart-2"></p>
+<h4 id="容器状态："><a href="#容器状态：" class="headerlink" title="容器状态："></a>容器状态：</h4><p><img src="/images/pod-restart-3.png" alt="pod-restart-3"></p>
+<h4 id="条件状态："><a href="#条件状态：" class="headerlink" title="条件状态："></a>条件状态：</h4><p><img src="/images/pod-restart-4.png" alt="pod-restart-4"></p>
 <h3 id="容器探针："><a href="#容器探针：" class="headerlink" title="容器探针："></a>容器探针：</h3><p>探针 是由 kubelet 对容器执行的定期诊断。要执行诊断，kubelet 调用由容器实现的 Handler。有三种类型的处理程序：</p>
 <ul>
 <li>ExecAction：在容器内执行指定命令。如果命令退出时返回码为 0 则认为诊断成功。</li>
@@ -493,7 +493,7 @@
   <p><span>本文标题:</span>Kubernetes Pod 生命周期和重启策略</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月23日 - 10:24:44</p>
-  <p><span>最后更新:</span>2019年09月06日 - 10:05:39</p>
+  <p><span>最后更新:</span>2019年09月11日 - 10:11:04</p>
   <p><span>原始链接:</span><a href="/2019/08/23/Kubernetes-Pod-restart/" title="Kubernetes Pod 生命周期和重启策略">https://system51.github.io/2019/08/23/Kubernetes-Pod-restart/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/23/Kubernetes-Pod-restart/" aria-label="复制成功！"></i></span>
   </p>
