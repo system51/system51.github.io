@@ -83,7 +83,7 @@
 <meta name="keywords" content="kubernetes,devops">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Kubernetes Pod 生命周期和重启策略">
-<meta property="og:url" content="https://system51.github.io/2019/08/23/Kubernetes-Pod-restart/index.html">
+<meta property="og:url" content="https://system51.github.io/2019/08/23/Kubernetes-Pod-Lifecycle/index.html">
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="我们在调度、管理 Pod 时，需要熟悉 Pod 在整个生命周期的各个状态，而设置 Pod 的重启策略也是基于对 Pod 的各种状态的了解。 Pod 生命周期：  说明：  初始化容器阶段初始化pod中每一个容器,他们是串行执行的，执行完成后就退出了 启动主容器main container 在main container刚刚启动之后可以执行post start命令 在整个main container">
 <meta property="og:locale" content="zh-Hans">
@@ -126,7 +126,7 @@
 
 
 
-  <link rel="canonical" href="https://system51.github.io/2019/08/23/Kubernetes-Pod-restart/">
+  <link rel="canonical" href="https://system51.github.io/2019/08/23/Kubernetes-Pod-Lifecycle/">
 
 
 
@@ -249,7 +249,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/23/Kubernetes-Pod-restart/">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/23/Kubernetes-Pod-Lifecycle/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Mr.Ye">
@@ -297,8 +297,8 @@
                 <span class="post-meta-item-icon">
                   <i class="fa fa-comment-o"></i>
                 </span>
-                <a href="/2019/08/23/Kubernetes-Pod-restart/#comments" itemprop="discussionUrl">
-                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/23/Kubernetes-Pod-restart/" itemprop="commentCount"></span>
+                <a href="/2019/08/23/Kubernetes-Pod-Lifecycle/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/23/Kubernetes-Pod-Lifecycle/" itemprop="commentCount"></span>
                 </a>
               </span>
             
@@ -494,8 +494,8 @@
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月23日 - 10:24:44</p>
   <p><span>最后更新:</span>2019年09月11日 - 10:11:04</p>
-  <p><span>原始链接:</span><a href="/2019/08/23/Kubernetes-Pod-restart/" title="Kubernetes Pod 生命周期和重启策略">https://system51.github.io/2019/08/23/Kubernetes-Pod-restart/</a>
-    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/23/Kubernetes-Pod-restart/" aria-label="复制成功！"></i></span>
+  <p><span>原始链接:</span><a href="/2019/08/23/Kubernetes-Pod-Lifecycle/" title="Kubernetes Pod 生命周期和重启策略">https://system51.github.io/2019/08/23/Kubernetes-Pod-Lifecycle/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/23/Kubernetes-Pod-Lifecycle/" aria-label="复制成功！"></i></span>
   </p>
   <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
 </div>
