@@ -79,21 +79,21 @@
 
 
 
-<meta name="description" content="kubernetes网络通信  容器间的通信   pod内的容器通信（lo） Pod之间的通信   pod IP &amp;lt;—–&amp;gt; pod IP（flannel、calico） Pod与Service之间的通信 podIP &amp;lt;—–&amp;gt; ClusterIP（iptables、ipvs） Service与集群外部的通信 ClusterIP &amp;lt;—–&amp;gt; 集群内部   CNI插件：">
+<meta name="description" content="kubernetes网络通信  容器间的通信   pod内的容器通信（lo） Pod之间的通信   pod IP &amp;lt;—–&amp;gt; pod IP（flannel、calico） Pod与Service之间的通信 podIP &amp;lt;—–&amp;gt; ClusterIP（iptables、ipvs） Service与集群外部的通信 ClusterIP &amp;lt;—–&amp;gt; 集群外部   CNI插件：">
 <meta name="keywords" content="kubernetes,devops">
 <meta property="og:type" content="article">
 <meta property="og:title" content="kubernetes flannel之Vxlan原理">
 <meta property="og:url" content="https://system51.github.io/2019/08/26/kubernetes-flannel-Vxlan/index.html">
 <meta property="og:site_name" content="Mr.Ye Blogs">
-<meta property="og:description" content="kubernetes网络通信  容器间的通信   pod内的容器通信（lo） Pod之间的通信   pod IP &amp;lt;—–&amp;gt; pod IP（flannel、calico） Pod与Service之间的通信 podIP &amp;lt;—–&amp;gt; ClusterIP（iptables、ipvs） Service与集群外部的通信 ClusterIP &amp;lt;—–&amp;gt; 集群内部   CNI插件：">
+<meta property="og:description" content="kubernetes网络通信  容器间的通信   pod内的容器通信（lo） Pod之间的通信   pod IP &amp;lt;—–&amp;gt; pod IP（flannel、calico） Pod与Service之间的通信 podIP &amp;lt;—–&amp;gt; ClusterIP（iptables、ipvs） Service与集群外部的通信 ClusterIP &amp;lt;—–&amp;gt; 集群外部   CNI插件：">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/flannel-1.png">
 <meta property="og:image" content="https://system51.github.io/images/flannel-2.png">
 <meta property="og:image" content="https://system51.github.io/images/flannel-3.png">
-<meta property="og:updated_time" content="2019-09-11T06:30:08.349Z">
+<meta property="og:updated_time" content="2019-09-11T06:36:12.707Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="kubernetes flannel之Vxlan原理">
-<meta name="twitter:description" content="kubernetes网络通信  容器间的通信   pod内的容器通信（lo） Pod之间的通信   pod IP &amp;lt;—–&amp;gt; pod IP（flannel、calico） Pod与Service之间的通信 podIP &amp;lt;—–&amp;gt; ClusterIP（iptables、ipvs） Service与集群外部的通信 ClusterIP &amp;lt;—–&amp;gt; 集群内部   CNI插件：">
+<meta name="twitter:description" content="kubernetes网络通信  容器间的通信   pod内的容器通信（lo） Pod之间的通信   pod IP &amp;lt;—–&amp;gt; pod IP（flannel、calico） Pod与Service之间的通信 podIP &amp;lt;—–&amp;gt; ClusterIP（iptables、ipvs） Service与集群外部的通信 ClusterIP &amp;lt;—–&amp;gt; 集群外部   CNI插件：">
 <meta name="twitter:image" content="https://system51.github.io/images/flannel-1.png">
 
 
@@ -329,7 +329,7 @@
 <li>容器间的通信   pod内的容器通信（lo）</li>
 <li>Pod之间的通信   pod IP &lt;—–&gt; pod IP（flannel、calico）</li>
 <li>Pod与Service之间的通信 podIP &lt;—–&gt; ClusterIP（iptables、ipvs）</li>
-<li>Service与集群外部的通信 ClusterIP &lt;—–&gt; 集群内部</li>
+<li>Service与集群外部的通信 ClusterIP &lt;—–&gt; 集群外部</li>
 </ul>
 </blockquote>
 <h3 id="CNI插件："><a href="#CNI插件：" class="headerlink" title="CNI插件："></a>CNI插件：</h3><blockquote>
@@ -435,7 +435,7 @@
   <p><span>本文标题:</span>kubernetes flannel之Vxlan原理</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 11:26:08</p>
-  <p><span>最后更新:</span>2019年09月11日 - 14:30:08</p>
+  <p><span>最后更新:</span>2019年09月11日 - 14:36:12</p>
   <p><span>原始链接:</span><a href="/2019/08/26/kubernetes-flannel-Vxlan/" title="kubernetes flannel之Vxlan原理">https://system51.github.io/2019/08/26/kubernetes-flannel-Vxlan/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/kubernetes-flannel-Vxlan/" aria-label="复制成功！"></i></span>
   </p>
