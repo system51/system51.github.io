@@ -91,7 +91,7 @@
 <meta property="og:image" content="https://system51.github.io/images/etcd-2.png">
 <meta property="og:image" content="https://system51.github.io/images/etcd-3.png">
 <meta property="og:image" content="https://system51.github.io/images/etcd-4.png">
-<meta property="og:updated_time" content="2019-09-16T06:19:26.093Z">
+<meta property="og:updated_time" content="2019-09-16T07:15:01.318Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Etcd 备份恢复">
 <meta name="twitter:description" content="配置Etcd环境变量在/etc/profile.d目录下创建etcd.sh文件将如下内容写入。 1234567891011alias etcd_v2=&amp;apos;etcdctl --cert-file /etc/kubernetes/pki/etcd/healthcheck-client.crt \              --key-file /etc/kubernetes/pki/etcd/">
@@ -368,7 +368,7 @@
 <p><img src="/images/etcd-1.png" alt="etcd-1"></p>
 <p>通过查看<code>describe pod</code>看到<code>Events</code>并没有任何事件。<br><img src="/images/etcd-2.png" alt="etcd-2"></p>
 <p>查看scheduler日志信息发现连接api server报错<br><img src="/images/etcd-3.png" alt="etcd-3"></p>
-<p>查看api server日志发现报如下错误<code>the object has been modified,please apply your change to the latest versionand try again</code> 删除metrics server API server即可恢复，如果用的新版的<code>v0.3.4</code>为发现这个问题。此时执行<code>kubectl api-resources</code>直接hang住无任何反应。<br><img src="/images/etcd-4.png" alt="etcd-4"></p>
+<p>查看api server日志发现报如下错误<code>the object has been modified,please apply your change to the latest versionand try again</code> 删除metrics server API server即可恢复，如果用的新版的<code>v0.3.4</code>未发现这个问题。此时执行<code>kubectl api-resources</code>直接hang住无任何反应。<br><img src="/images/etcd-4.png" alt="etcd-4"></p>
 
       
     </div>
@@ -391,7 +391,7 @@
   <p><span>本文标题:</span>Etcd 备份恢复</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年09月11日 - 18:00:35</p>
-  <p><span>最后更新:</span>2019年09月16日 - 14:19:26</p>
+  <p><span>最后更新:</span>2019年09月16日 - 15:15:01</p>
   <p><span>原始链接:</span><a href="/2019/09/11/etcd-Disaster-recovery/" title="Etcd 备份恢复">https://system51.github.io/2019/09/11/etcd-Disaster-recovery/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/09/11/etcd-Disaster-recovery/" aria-label="复制成功！"></i></span>
   </p>
