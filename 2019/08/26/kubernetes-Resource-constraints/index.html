@@ -88,7 +88,7 @@
 <meta property="og:description" content="资源类型 CPU 和 memory 都是 资源类型。资源类型具有基本单位。CPU 的单位是 core，memory 的单位是 byte。这些都统称为计算资源。  CPU含义： CPU 资源的限制和请求以cpu为单位。Kubernetes 中的一个 cpu 等于一个core，就是逻辑CPU。1颗逻辑CPU等于1000millicores。500m=0.5颗cpu。  内存含义： 内存的限制和请求以字">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/cpu-requests.png">
-<meta property="og:updated_time" content="2019-09-06T02:03:50.891Z">
+<meta property="og:updated_time" content="2019-09-19T03:21:34.284Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="kubernetes之管理容器的计算资源">
 <meta name="twitter:description" content="资源类型 CPU 和 memory 都是 资源类型。资源类型具有基本单位。CPU 的单位是 core，memory 的单位是 byte。这些都统称为计算资源。  CPU含义： CPU 资源的限制和请求以cpu为单位。Kubernetes 中的一个 cpu 等于一个core，就是逻辑CPU。1颗逻辑CPU等于1000millicores。500m=0.5颗cpu。  内存含义： 内存的限制和请求以字">
@@ -388,6 +388,16 @@
 <p>结果：</p>
 </blockquote>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl describe pod my-demo03</span><br><span class="line">....</span><br><span class="line">QoS Class:       BestEffort</span><br><span class="line">....</span><br></pre></td></tr></table></figure>
+
+<h3 id="容器中的JVM资源限制"><a href="#容器中的JVM资源限制" class="headerlink" title="容器中的JVM资源限制"></a>容器中的JVM资源限制</h3><p>在Kubernetes环境中部署Java程序不一会就重启了，这意味着你的pod是不健康的。然后我们可以通过describe去查看一下重启的原因。发现是因为Pod超出了资源限制被kill掉，在日志最后一行会出现一个kill的字段。为什么Kubernetes会kill掉，因为它超出了Kubernetes对Pod的资源限制。默认情况下Docker容器会使用宿主机所有的资源，但如果不做资源限制，会影响整个宿主机。然后整个宿主机资源不够会实现飘移，会转移到其他主机上，然后再异常，可能会起到一种雪崩的效应，所以一般我们都是要做Pod资源限制。如果Java容器中未设置JVM的<code>-Xmx</code>（最大的堆内存使用）参数，一旦这个Pod的使用内存超出Kubernetes的limits限制，Kubernetes就会把它杀掉并重启一个新的Pod。在JVM中这个值建议要比limits要小一点，小个10%吧，因为超过这个limits限制就会杀死掉从新在拉起新的Pod。</p>
+<ul>
+<li><p>Host</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">cat /proc/meminfo </span><br><span class="line">MemTotal: 197869260 kB</span><br><span class="line">MemFree: 3698100 kB</span><br><span class="line">MemAvailable: 62230260 kB</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>容器</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">docker run -it --rm alpine cat /proc/meminfo</span><br><span class="line">MemTotal:       197869260 kB</span><br><span class="line">MemFree:         3677800 kB</span><br><span class="line">MemAvailable:   62210088 kB</span><br></pre></td></tr></table></figure></li>
+</ul>
+
       
     </div>
     
@@ -409,7 +419,7 @@
   <p><span>本文标题:</span>kubernetes之管理容器的计算资源</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 11:58:50</p>
-  <p><span>最后更新:</span>2019年09月06日 - 10:03:50</p>
+  <p><span>最后更新:</span>2019年09月19日 - 11:21:34</p>
   <p><span>原始链接:</span><a href="/2019/08/26/kubernetes-Resource-constraints/" title="kubernetes之管理容器的计算资源">https://system51.github.io/2019/08/26/kubernetes-Resource-constraints/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/kubernetes-Resource-constraints/" aria-label="复制成功！"></i></span>
   </p>
@@ -596,7 +606,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#资源类型"><span class="nav-number">1.</span> <span class="nav-text">资源类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CPU含义："><span class="nav-number">2.</span> <span class="nav-text">CPU含义：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存含义："><span class="nav-number">3.</span> <span class="nav-text">内存含义：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#POD中的资源请求和资源限制"><span class="nav-number">4.</span> <span class="nav-text">POD中的资源请求和资源限制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#QoS（服务质量等级）"><span class="nav-number">5.</span> <span class="nav-text">QoS（服务质量等级）</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#资源类型"><span class="nav-number">1.</span> <span class="nav-text">资源类型</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#CPU含义："><span class="nav-number">2.</span> <span class="nav-text">CPU含义：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#内存含义："><span class="nav-number">3.</span> <span class="nav-text">内存含义：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#POD中的资源请求和资源限制"><span class="nav-number">4.</span> <span class="nav-text">POD中的资源请求和资源限制</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#QoS（服务质量等级）"><span class="nav-number">5.</span> <span class="nav-text">QoS（服务质量等级）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容器中的JVM资源限制"><span class="nav-number">6.</span> <span class="nav-text">容器中的JVM资源限制</span></a></li></ol></div>
             
 
           </div>
