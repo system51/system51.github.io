@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="前面我们讲了ConfigMap的使用，我们说ConfigMap这个资源对象是Kubernetes当中非常重要的一个对象，一般情况下ConfigMap是用来存储一些非安全的配置信息，如果涉及到一些安全相关的数据的话用ConfigMap就非常不妥了，因为ConfigMap是明文存储的，我们说这个时候我们就需要用到另外一个资源对象了：Secret，Secret用来保存敏感信息，例如密码、OAuth 令">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-09-20T02:04:43.447Z">
+<meta property="og:updated_time" content="2019-09-20T02:12:07.797Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之Secret">
 <meta name="twitter:description" content="前面我们讲了ConfigMap的使用，我们说ConfigMap这个资源对象是Kubernetes当中非常重要的一个对象，一般情况下ConfigMap是用来存储一些非安全的配置信息，如果涉及到一些安全相关的数据的话用ConfigMap就非常不妥了，因为ConfigMap是明文存储的，我们说这个时候我们就需要用到另外一个资源对象了：Secret，Secret用来保存敏感信息，例如密码、OAuth 令">
@@ -379,7 +379,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create secret docker-registry myregistry --docker-server=DOCKER_SERVER --docker-username=DOCKER_USER --docker-password=DOCKER_PASSWORD --docker-email=DOCKER_EMAIL</span><br><span class="line">secret &quot;myregistry&quot; created</span><br></pre></td></tr></table></figure>
 
 <p>然后查看Secret列表：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get secret</span><br><span class="line">NAME                  TYPE                                  DATA      AGE</span><br><span class="line">default-token-n9w2d    kubernetes.io/service-account-token   3         33d</span><br><span class="line">myregistry            kubernetes.io/dockerconfigjson        1         15s</span><br><span class="line">mysecret              Opaque                                2         34m</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get secret</span><br><span class="line">NAME                  TYPE                                  DATA      AGE</span><br><span class="line">default-token-n9w2d   kubernetes.io/service-account-token   3         33d</span><br><span class="line">myregistry            kubernetes.io/dockerconfigjson        1         15s</span><br><span class="line">mysecret              Opaque                                2         34m</span><br></pre></td></tr></table></figure>
 
 <p>注意看上面的TYPE类型，myregistry是不是对应的kubernetes.io/dockerconfigjson，同样的可以使用describe命令来查看详细信息：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl describe secret myregistry</span><br><span class="line">Name:         myregistry</span><br><span class="line">Namespace:    default</span><br><span class="line">Labels:       &lt;none&gt;</span><br><span class="line">Annotations:  &lt;none&gt;</span><br><span class="line"></span><br><span class="line">Type:  kubernetes.io/dockerconfigjson</span><br><span class="line"></span><br><span class="line">Data</span><br><span class="line">====</span><br><span class="line">.dockerconfigjson:  152 bytes</span><br></pre></td></tr></table></figure>
@@ -441,7 +441,7 @@
   <p><span>本文标题:</span>Kubernetes之Secret</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 10:43:45</p>
-  <p><span>最后更新:</span>2019年09月20日 - 10:04:43</p>
+  <p><span>最后更新:</span>2019年09月20日 - 10:12:07</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-Secret/" title="Kubernetes之Secret">https://system51.github.io/2019/08/26/Kubernetes-Secret/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-Secret/" aria-label="复制成功！"></i></span>
   </p>
