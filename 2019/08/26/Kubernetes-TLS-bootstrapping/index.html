@@ -93,7 +93,7 @@
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-4.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-5.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-6.png">
-<meta property="og:updated_time" content="2019-09-06T02:03:24.827Z">
+<meta property="og:updated_time" content="2019-09-26T10:02:40.029Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes TLS bootstrapping 那点事">
 <meta name="twitter:description" content="一、TLS bootstrapping 简介 当集群开启了 TLS 认证后，每个节点的 kubelet 组件都要使用由 apiserver 使用的 CA 签发的有效证书才能与 apiserver 通讯；此时如果节点多起来，为每个节点单独签署证书将是一件非常繁琐的事情；TLS bootstrapping 功能就是让 kubelet 先使用一个预定的低权限用户连接到 apiserver，然后向 api">
@@ -356,15 +356,27 @@
 </blockquote>
 <h4 id="3-2、kubelet-首次启动流程"><a href="#3-2、kubelet-首次启动流程" class="headerlink" title="3.2、kubelet 首次启动流程"></a>3.2、kubelet 首次启动流程</h4><blockquote>
 <p>看完上面的介绍，不知道有没有人想过，既然 TLS bootstrapping 功能是让 kubelet 组件去 apiserver 申请证书，然后用于连接 apiserver；那么第一次启动时没有证书如何连接 apiserver ?</p>
-</blockquote>
-<blockquote>
-<p>1、kubelet启动<br>2、kubelet看到它没有kubeconfig文件<br>3、kubelet搜索并查找bootstrap-kubeconfig文件<br>4、kubelet读取它的bootstrap文件，检索API server的URL和一个低权限的“token”<br>5、kubelet连接到API服务器，使用token进行身份验证<br>6、kubelet现在具有创建和检索证书签名请求（CSR）的有限凭据<br>7、kubelet为自己创建了一个CSR<br>8、CSR通过以下两种方式之一获得批准：</p>
 <ul>
+<li>kubelet启动</li>
+<li>kubelet看到它没有kubeconfig文件</li>
+<li>kubelet搜索并查找bootstrap-kubeconfig文件</li>
+<li>kubelet读取它的bootstrap文件，检索API server的URL和一个低权限的“token”</li>
+<li>kubelet连接到API服务器，使用token进行身份验证</li>
+<li>kubelet现在具有创建和检索证书签名请求（CSR）的有限凭据</li>
+<li>kubelet为自己创建了一个CSR</li>
+<li>CSR通过以下两种方式之一获得批准：<ul>
 <li>如果已配置，kube-controller-manager将自动批准CSR</li>
-<li>如果已配置，则外部流程（可能是人员）使用Kubernetes API或通过批准CSR kubectl<br>9、为kubelet创建证书<br>10、证书颁发给kubelet<br>11、kubelet检索证书<br>12、kubelet 使用密钥和签名证书创建一个正确的kubeconfig文件<br>13、kubelet开始正常运作<br>14、可选：如果已配置，则当证书接近到期时，kubelet会自动请求更新证书</li>
+<li>如果已配置，则外部流程（可能是人员）使用Kubernetes API或通过批准CSR kubectl</li>
+</ul>
+</li>
+<li>为kubelet创建证书</li>
+<li>证书颁发给kubelet</li>
+<li>kubelet检索证书</li>
+<li>kubelet 使用密钥和签名证书创建一个正确的kubeconfig文件</li>
+<li>kubelet开始正常运作</li>
+<li>可选：如果已配置，则当证书接近到期时，kubelet会自动请求更新证书</li>
 </ul>
 </blockquote>
-<p>-</p>
 <blockquote>
 <p>在有些用户首次启动时，可能与遇到 kubelet 报 401 无权访问 apiserver 的错误；kubelet 通过bootstrap.kubeconfig 中的预设用户 Token 声明了自己的身份，然后创建 CSR 请求；但是不要忘记这个“用户和组”在我们不处理的情况下他没任何权限的，包括创建 CSR 请求；所以需要如下命令创建一个 ClusterRoleBinding，将预设“用户”或“组”与内置的 ClusterRole system:node-bootstrapper 绑定到一起，使其能够发起 CSR 请求（以下是用“组”做绑定）。</p>
 </blockquote>
@@ -545,7 +557,7 @@
   <p><span>本文标题:</span>Kubernetes TLS bootstrapping 那点事</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 13:51:38</p>
-  <p><span>最后更新:</span>2019年09月06日 - 10:03:24</p>
+  <p><span>最后更新:</span>2019年09月26日 - 18:02:40</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-TLS-bootstrapping/" title="Kubernetes TLS bootstrapping 那点事">https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/" aria-label="复制成功！"></i></span>
   </p>
