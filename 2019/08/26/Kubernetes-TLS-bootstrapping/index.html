@@ -93,7 +93,7 @@
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-4.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-5.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-6.png">
-<meta property="og:updated_time" content="2019-09-27T03:18:00.861Z">
+<meta property="og:updated_time" content="2019-09-27T03:47:24.400Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes TLS bootstrapping 那点事">
 <meta name="twitter:description" content="一、TLS bootstrapping 简介 当集群开启了 TLS 认证后，每个节点的 kubelet 组件都要使用由 apiserver 使用的 CA 签发的有效证书才能与 apiserver 通讯；此时如果节点多起来，为每个节点单独签署证书将是一件非常繁琐的事情；TLS bootstrapping 功能就是让 kubelet 先使用一个预定的低权限用户连接到 apiserver，然后向 api">
@@ -337,8 +337,8 @@
 <h4 id="2-2、CSR-请求类型"><a href="#2-2、CSR-请求类型" class="headerlink" title="2.2、CSR 请求类型"></a>2.2、CSR 请求类型</h4><blockquote>
 <p>kubelet 发起的 CSR 请求都是由 <code>kube-controller-manager</code> 来做实际签署的，对于 <code>kube-controller-manager</code> 来说，TLS bootstrapping 下 kubelet 发起的 CSR 请求大致分为以下两种</p>
 <ul>
-<li>nodeclient: kubelet 首次创建新证书以 O=system:bootstrappers 和 CN=system:bootstrappers 形式发起的 CSR 请求</li>
-<li>selfnodeclient: kubelet client 更新自己的证书以 O=system:nodes 和 CN=system:nodes 形式发起的 CSR 请求</li>
+<li>nodeclient: kubelet 首次创建新证书以 <code>O=system:bootstrappers</code> 和 <code>CN=system:bootstrappers</code> 形式发起的 CSR 请求</li>
+<li>selfnodeclient: kubelet client 更新自己的证书以 <code>O=system:nodes</code> 和 <code>CN=system:nodes</code> 形式发起的 CSR 请求</li>
 </ul>
 </blockquote>
 <blockquote>
@@ -406,22 +406,22 @@
 </blockquote>
 <blockquote>
 <ul>
-<li>kubelet-client-current.pem<br>这是一个软连接文件，当 kubelet 配置了 –feature-gates=RotateKubeletClientCertificate=true 选项后，会在证书总有效期的 70%~90% 的时间内发起续期请求，请求被批准后会生成一个 kubelet-client-时间戳.pem；kubelet-client-current.pem 文件则始终软连接到最新的真实证书文件，除首次启动外，kubelet 一直会使用这个证书同 apiserver 通讯</li>
+<li>kubelet-client-current.pem<br>这是一个软连接文件，当 kubelet 配置了 <code>--feature-gates=RotateKubeletClientCertificate=true</code> 选项后，会在证书总有效期的 70%~90% 的时间内发起续期请求，请求被批准后会生成一个 kubelet-client-时间戳.pem；kubelet-client-current.pem 文件则始终软连接到最新的真实证书文件，除首次启动外，kubelet 一直会使用这个证书同 apiserver 通讯</li>
 </ul>
 </blockquote>
 <blockquote>
 <ul>
-<li>kubelet.crt<br>该文件在 kubelet 完成 TLS bootstrapping 后并且没有配置 –feature-gates=RotateKubeletServerCertificate=true 时才会生成；这种情况下该文件为一个独立于 apiserver CA 的自签 CA 证书，有效期为 1 年；被用作 kubelet 10250 api 端口</li>
+<li>kubelet.crt<br>该文件在 kubelet 完成 TLS bootstrapping 后并且没有配置 <code>--feature-gates=RotateKubeletClientCertificate=true</code> 时才会生成；这种情况下该文件为一个独立于 apiserver CA 的自签 CA 证书，有效期为 1 年；被用作 kubelet 10250 api 端口</li>
 </ul>
 </blockquote>
 <blockquote>
 <ul>
-<li>kubelet-server.crt<br>该文件在 kubelet 完成 TLS bootstrapping 后并且配置了 –feature-gates=RotateKubeletServerCertificate=true 时才会生成；这种情况下该证书由 apiserver CA 签署，默认有效期同样是 1 年，被用作 kubelet 10250 api 端口鉴权</li>
+<li>kubelet-server.crt<br>该文件在 kubelet 完成 TLS bootstrapping 后并且配置了 <code>--feature-gates=RotateKubeletServerCertificate=true</code> 时才会生成；这种情况下该证书由 apiserver CA 签署，默认有效期同样是 1 年，被用作 kubelet 10250 api 端口鉴权</li>
 </ul>
 </blockquote>
 <blockquote>
 <ul>
-<li>kubelet-server-current.pem<br>同样是一个软连接文件，当 kubelet 配置了 –feature-gates=RotateKubeletServerCertificate=true 选项后，会在证书总有效期的 70%~90% 的时间内发起续期请求，请求被批准后会生成一个 kubelet-server-时间戳.pem；kubelet-server-current.pem 文件则始终软连接到最新的真实证书文件，该文件将会一直被用于 kubelet 10250 api 端口鉴权</li>
+<li>kubelet-server-current.pem<br>同样是一个软连接文件，当 kubelet 配置了 <code>--feature-gates=RotateKubeletServerCertificate=true</code> 选项后，会在证书总有效期的 70%~90% 的时间内发起续期请求，请求被批准后会生成一个 kubelet-server-时间戳.pem；kubelet-server-current.pem 文件则始终软连接到最新的真实证书文件，该文件将会一直被用于 kubelet 10250 api 端口鉴权</li>
 </ul>
 </blockquote>
 <h3 id="五、使用-Bootstrap-Token"><a href="#五、使用-Bootstrap-Token" class="headerlink" title="五、使用 Bootstrap Token"></a>五、使用 Bootstrap Token</h3><h4 id="5-1、创建-Bootstrap-Token"><a href="#5-1、创建-Bootstrap-Token" class="headerlink" title="5.1、创建 Bootstrap Token"></a>5.1、创建 Bootstrap Token</h4><blockquote>
@@ -430,7 +430,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ echo &quot;$(head -c 6 /dev/urandom | md5sum | head -c 6)&quot;.&quot;$(head -c 16 /dev/urandom | md5sum | head -c 16)&quot;</span><br><span class="line">47f392.d22d04e89a65eb22</span><br></pre></td></tr></table></figure>
 
 <blockquote>
-<p>这个 47f392.d22d04e89a65eb22 就是生成的 Bootstrap Token，保存好 token，因为后续要用；关于这个 token 解释如下:<br>Token 必须满足 [a-z0-9]{6}.[a-z0-9]{16} 格式；以 . 分割，前面的部分被称作 Token ID，Token ID 并不是 “机密信息”，它可以暴露出去；相对的后面的部分称为 Token Secret，它应该是保密的。</p>
+<p>这个 <code>47f392.d22d04e89a65eb22</code> 就是生成的 <code>Bootstrap Token</code>，保存好 token，因为后续要用；关于这个 token 解释如下:<br>Token 必须满足 <code>[a-z0-9]{6}\.[a-z0-9]{16}</code> 格式；以<code>.</code>分割，前面的部分被称作 Token ID，Token ID 并不是 “机密信息”，它可以暴露出去；相对的后面的部分称为 Token Secret，它应该是保密的。</p>
 </blockquote>
 <h4 id="5-2、创建-Bootstrap-Token-Secret"><a href="#5-2、创建-Bootstrap-Token-Secret" class="headerlink" title="5.2、创建 Bootstrap Token Secret"></a>5.2、创建 Bootstrap Token Secret</h4><blockquote>
 <p>对于 Kubernetes 来说 Bootstrap Token Secret 也仅仅是一个特殊的 Secret 而已；对于这个特殊的 Secret 样例 yaml 配置如下:</p>
@@ -439,13 +439,13 @@
 
 <blockquote>
 <h4 id="需要注意几点"><a href="#需要注意几点" class="headerlink" title="需要注意几点:"></a>需要注意几点:</h4><ul>
-<li>作为 Bootstrap Token Secret 的 type 必须为 bootstrap.kubernetes.io/token，name 必须为 bootstrap-token-<token id> (Token ID 就是上一步创建的 Token 前一部分)</token></li>
-<li>usage-bootstrap-authentication、usage-bootstrap-signing 必须存才且设置为 true (我个人感觉 usage-bootstrap-signing 可以没有，具体见文章最后部分)</li>
-<li>expiration 字段是可选的，如果设置则 Secret 到期后将由 Controller Manager 中的 tokencleaner 自动清理<br>auth-extra-groups 也是可选的，令牌的扩展认证组，组必须以 system:bootstrappers: 开头</li>
+<li>作为<code>Bootstrap Token Secret</code> 的<code>type</code>必须为<code>bootstrap.kubernetes.io/token</code>，name 必须为<code>bootstrap-token-&lt;token id&gt;</code>(Token ID 就是上一步创建的 Token 前一部分)</li>
+<li><code>usage-bootstrap-authentication</code>、<code>usage-bootstrap-signing</code> 必须存才且设置为<code>true</code> (我个人感觉<code>usage-bootstrap-signing</code>可以没有，具体见文章最后部分)</li>
+<li><code>expiration</code> 字段是可选的，如果设置则 Secret 到期后将由 Controller Manager 中的 tokencleaner 自动清理<br><code>auth-extra-groups</code> 也是可选的，令牌的扩展认证组，组必须以<code>system:bootstrappers:</code> 开头</li>
 </ul>
 </blockquote>
 <blockquote>
-<p>最后使用 kubectl create -f bootstrap.secret.yaml 创建即可</p>
+<p>最后使用 <code>kubectl create -f bootstrap.secret.yaml</code> 创建即可</p>
 </blockquote>
 <h4 id="5-3、创建-ClusterRoleBinding-将-ClusterRole-绑定到适当的用户组，以完成自动批准相关-CSR-请求"><a href="#5-3、创建-ClusterRoleBinding-将-ClusterRole-绑定到适当的用户组，以完成自动批准相关-CSR-请求" class="headerlink" title="5.3、创建 ClusterRoleBinding 将 ClusterRole 绑定到适当的用户组，以完成自动批准相关 CSR 请求"></a>5.3、创建 ClusterRoleBinding 将 ClusterRole 绑定到适当的用户组，以完成自动批准相关 CSR 请求</h4><blockquote>
 <p>需要注意的是 在使用 Bootstrap Token 进行引导时，Kubelet 组件使用 Token 发起的请求其用户名为 system:bootstrap:<token id>，用户组为 system:bootstrappers；so 我们在创建 ClusterRoleBinding 时要绑定到这个用户或者组上；</token></p>
@@ -524,7 +524,7 @@
   <p><span>本文标题:</span>Kubernetes TLS bootstrapping 那点事</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 13:51:38</p>
-  <p><span>最后更新:</span>2019年09月27日 - 11:18:00</p>
+  <p><span>最后更新:</span>2019年09月27日 - 11:47:24</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-TLS-bootstrapping/" title="Kubernetes TLS bootstrapping 那点事">https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/" aria-label="复制成功！"></i></span>
   </p>
