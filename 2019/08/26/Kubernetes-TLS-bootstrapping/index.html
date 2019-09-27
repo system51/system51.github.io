@@ -93,7 +93,7 @@
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-4.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-5.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-6.png">
-<meta property="og:updated_time" content="2019-09-27T05:35:16.748Z">
+<meta property="og:updated_time" content="2019-09-27T05:40:07.841Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes TLS bootstrapping 那点事">
 <meta name="twitter:description" content="一、TLS bootstrapping 简介 当集群开启了 TLS 认证后，每个节点的 kubelet 组件都要使用由 apiserver 使用的 CA 签发的有效证书才能与 apiserver 通讯；此时如果节点多起来，为每个节点单独签署证书将是一件非常繁琐的事情；TLS bootstrapping 功能就是让 kubelet 先使用一个预定的低权限用户连接到 apiserver，然后向 api">
@@ -411,7 +411,7 @@
 </blockquote>
 <blockquote>
 <ul>
-<li>kubelet.crt<br>该文件在 kubelet 完成 TLS bootstrapping 后并且没有配置 <code>--feature-gates=RotateKubeletClientCertificate=true</code> 时才会生成；这种情况下该文件为一个独立于 apiserver CA 的自签 CA 证书，有效期为 1 年；被用作 kubelet 10250 api 端口</li>
+<li>kubelet.crt<br>该文件在 kubelet 完成 TLS bootstrapping 后并且没有配置 <code>--feature-gates=RotateKubeletServerCertificate=true</code> 时才会生成；这种情况下该文件为一个独立于 apiserver CA 的自签 CA 证书，有效期为 1 年；被用作 kubelet 10250 api 端口</li>
 </ul>
 </blockquote>
 <blockquote>
@@ -524,7 +524,7 @@
   <p><span>本文标题:</span>Kubernetes TLS bootstrapping 那点事</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 13:51:38</p>
-  <p><span>最后更新:</span>2019年09月27日 - 13:35:16</p>
+  <p><span>最后更新:</span>2019年09月27日 - 13:40:07</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-TLS-bootstrapping/" title="Kubernetes TLS bootstrapping 那点事">https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/" aria-label="复制成功！"></i></span>
   </p>
