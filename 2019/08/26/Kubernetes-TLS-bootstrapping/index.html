@@ -93,7 +93,7 @@
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-4.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-5.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-6.png">
-<meta property="og:updated_time" content="2019-09-27T03:47:24.400Z">
+<meta property="og:updated_time" content="2019-09-27T03:53:17.381Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes TLS bootstrapping 那点事">
 <meta name="twitter:description" content="一、TLS bootstrapping 简介 当集群开启了 TLS 认证后，每个节点的 kubelet 组件都要使用由 apiserver 使用的 CA 签发的有效证书才能与 apiserver 通讯；此时如果节点多起来，为每个节点单独签署证书将是一件非常繁琐的事情；TLS bootstrapping 功能就是让 kubelet 先使用一个预定的低权限用户连接到 apiserver，然后向 api">
@@ -448,7 +448,7 @@
 <p>最后使用 <code>kubectl create -f bootstrap.secret.yaml</code> 创建即可</p>
 </blockquote>
 <h4 id="5-3、创建-ClusterRoleBinding-将-ClusterRole-绑定到适当的用户组，以完成自动批准相关-CSR-请求"><a href="#5-3、创建-ClusterRoleBinding-将-ClusterRole-绑定到适当的用户组，以完成自动批准相关-CSR-请求" class="headerlink" title="5.3、创建 ClusterRoleBinding 将 ClusterRole 绑定到适当的用户组，以完成自动批准相关 CSR 请求"></a>5.3、创建 ClusterRoleBinding 将 ClusterRole 绑定到适当的用户组，以完成自动批准相关 CSR 请求</h4><blockquote>
-<p>需要注意的是 在使用 Bootstrap Token 进行引导时，Kubelet 组件使用 Token 发起的请求其用户名为 system:bootstrap:<token id>，用户组为 system:bootstrappers；so 我们在创建 ClusterRoleBinding 时要绑定到这个用户或者组上；</token></p>
+<p>需要注意的是 在使用 Bootstrap Token 进行引导时，Kubelet 组件使用 Token 发起的请求其用户名为 <code>system:bootstrap:&lt;token id&gt;</code>，用户组为 <code>system:bootstrappers</code>；所以我们在创建 ClusterRoleBinding 时要绑定到这个用户或者组上；</p>
 </blockquote>
 <ul>
 <li><p>允许 system:bootstrappers 组用户创建 CSR 请求</p>
@@ -524,7 +524,7 @@
   <p><span>本文标题:</span>Kubernetes TLS bootstrapping 那点事</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 13:51:38</p>
-  <p><span>最后更新:</span>2019年09月27日 - 11:47:24</p>
+  <p><span>最后更新:</span>2019年09月27日 - 11:53:17</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-TLS-bootstrapping/" title="Kubernetes TLS bootstrapping 那点事">https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/" aria-label="复制成功！"></i></span>
   </p>
