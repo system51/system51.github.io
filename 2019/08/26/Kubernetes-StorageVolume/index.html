@@ -83,7 +83,7 @@
 <meta name="keywords" content="kubernetes,devops">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Kubernetes之存储卷">
-<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-Storage volume/index.html">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-StorageVolume/index.html">
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="一、存储卷的概念和类型 为了保证数据的持久性，必须保证数据在外部存储在docker容器中，为了实现数据的持久性存储，在宿主机和容器内做映射，可以保证在容器的生命周期结束，数据依旧可以实现持久性存储。但是在k8s中，由于pod分布在各个不同的节点之上，并不能实现不同节点之间持久性数据的共享，并且，在节点故障时，可能会导致数据的永久性丢失。为此，k8s就引入了外部存储卷的功能。  k8s的存储卷类型：">
 <meta property="og:locale" content="zh-Hans">
@@ -125,7 +125,7 @@
 
 
 
-  <link rel="canonical" href="https://system51.github.io/2019/08/26/Kubernetes-Storage volume/">
+  <link rel="canonical" href="https://system51.github.io/2019/08/26/Kubernetes-StorageVolume/">
 
 
 
@@ -248,7 +248,7 @@
   
   
   <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/26/Kubernetes-Storage volume/">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/26/Kubernetes-StorageVolume/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
       <meta itemprop="name" content="Mr.Ye">
@@ -296,8 +296,8 @@
                 <span class="post-meta-item-icon">
                   <i class="fa fa-comment-o"></i>
                 </span>
-                <a href="/2019/08/26/Kubernetes-Storage volume/#comments" itemprop="discussionUrl">
-                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/26/Kubernetes-Storage volume/" itemprop="commentCount"></span>
+                <a href="/2019/08/26/Kubernetes-StorageVolume/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/26/Kubernetes-StorageVolume/" itemprop="commentCount"></span>
                 </a>
               </span>
             
@@ -591,8 +591,8 @@
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 09:54:44</p>
   <p><span>最后更新:</span>2019年09月06日 - 10:02:43</p>
-  <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-Storage volume/" title="Kubernetes之存储卷">https://system51.github.io/2019/08/26/Kubernetes-Storage volume/</a>
-    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-Storage volume/" aria-label="复制成功！"></i></span>
+  <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-StorageVolume/" title="Kubernetes之存储卷">https://system51.github.io/2019/08/26/Kubernetes-StorageVolume/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-StorageVolume/" aria-label="复制成功！"></i></span>
   </p>
   <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
 </div>

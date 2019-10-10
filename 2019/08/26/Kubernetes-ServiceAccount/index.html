@@ -79,19 +79,19 @@
 
 
 
-<meta name="description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver 会将用户认证为一个特定的 User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与 apiserver 联系，当它们在联系 apiserver 的时候，它们会被认证为一个特定的 Servi">
+<meta name="description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver会将用户认证为一个特定的User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与apiserver联系，当它们在联系apiserver的时候，它们会被认证为一个特定的Service Acco">
 <meta name="keywords" content="kubernetes,devops">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Kubernetes之ServiceAccount">
 <meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-ServiceAccount/index.html">
 <meta property="og:site_name" content="Mr.Ye Blogs">
-<meta property="og:description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver 会将用户认证为一个特定的 User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与 apiserver 联系，当它们在联系 apiserver 的时候，它们会被认证为一个特定的 Servi">
+<meta property="og:description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver会将用户认证为一个特定的User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与apiserver联系，当它们在联系apiserver的时候，它们会被认证为一个特定的Service Acco">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/serviceaccount-1.png">
-<meta property="og:updated_time" content="2019-09-06T02:02:24.771Z">
+<meta property="og:updated_time" content="2019-10-10T06:24:48.751Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之ServiceAccount">
-<meta name="twitter:description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver 会将用户认证为一个特定的 User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与 apiserver 联系，当它们在联系 apiserver 的时候，它们会被认证为一个特定的 Servi">
+<meta name="twitter:description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver会将用户认证为一个特定的User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与apiserver联系，当它们在联系apiserver的时候，它们会被认证为一个特定的Service Acco">
 <meta name="twitter:image" content="https://system51.github.io/images/serviceaccount-1.png">
 
 
@@ -323,19 +323,19 @@
 
       
         <h3 id="ServiceAccount"><a href="#ServiceAccount" class="headerlink" title="ServiceAccount"></a>ServiceAccount</h3><blockquote>
-<p>Service Account为Pod中的进程提供身份信息。<br>当用户访问集群（例如使用kubectl命令）时，apiserver 会将用户认证为一个特定的 User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与 apiserver 联系，当它们在联系 apiserver 的时候，它们会被认证为一个特定的 Service Account（例如default）。</p>
+<p>Service Account为Pod中的进程提供身份信息。<br>当用户访问集群（例如使用kubectl命令）时，<code>apiserver</code>会将用户认证为一个特定的<code>User Account</code>（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与<code>apiserver</code>联系，当它们在联系<code>apiserver</code>的时候，它们会被认证为一个特定的<code>Service Account</code>（例如default）。</p>
 </blockquote>
 <blockquote>
 <ul>
-<li>User account是为人设计的，而service account则是为Pod中的进程调用Kubernetes API而设计；</li>
-<li>User account是跨namespace的，而service account则是仅局限它所在的namespace；</li>
-<li>每个namespace都会自动创建一个default service account</li>
-<li>Token controller检测service account的创建，并为它们创建secret</li>
-<li>开启ServiceAccount Admission Controller后<ul>
-<li>每个Pod在创建后都会自动设置spec.serviceAccount为default（除非指定了其他ServiceAccout）</li>
+<li><code>User account</code>是为人设计的，而<code>service account</code>则是为Pod中的进程调用Kubernetes API而设计；</li>
+<li><code>User account</code>是跨namespace的，而<code>service account</code>则是仅局限它所在的namespace；</li>
+<li>每个<code>namespace</code>都会自动创建一个<code>default</code> <code>service account</code></li>
+<li><code>Token controller</code>检测service account的创建，并为它们创建secret</li>
+<li>开启<code>ServiceAccount Admission Controller</code>后<ul>
+<li>每个Pod在创建后都会自动设置<code>spec.serviceAccount</code>为<code>default</code>（除非指定了其他ServiceAccout）</li>
 <li>验证Pod引用的service account已经存在，否则拒绝创建</li>
-<li>如果Pod没有指定ImagePullSecrets，则把service account的ImagePullSecrets加到Pod中</li>
-<li>每个container启动后都会挂载该service account的token和ca.crt到/var/run/secrets/kubernetes.io/serviceaccount/</li>
+<li>如果Pod没有指定<code>ImagePullSecrets</code>，则把service account的<code>ImagePullSecrets</code>加到Pod中</li>
+<li>每个<code>container</code>启动后都会挂载该<code>Service Account</code>的<code>token</code>和<code>ca.crt</code>到<code>/var/run/secrets/kubernetes.io/serviceaccount/</code></li>
 </ul>
 </li>
 </ul>
@@ -444,7 +444,7 @@
   <p><span>本文标题:</span>Kubernetes之ServiceAccount</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 10:53:03</p>
-  <p><span>最后更新:</span>2019年09月06日 - 10:02:24</p>
+  <p><span>最后更新:</span>2019年10月10日 - 14:24:48</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-ServiceAccount/" title="Kubernetes之ServiceAccount">https://system51.github.io/2019/08/26/Kubernetes-ServiceAccount/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-ServiceAccount/" aria-label="复制成功！"></i></span>
   </p>
