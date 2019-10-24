@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="注意：适合有基础的观看，没有太详细的说明；服务器初始化请看上一篇文章二进制部署Kubernetes v1.13.5（一） 节点初始化三个 master 节点，三个 woker 节点    hostname os vip ip    k8s-master1 centos7 10.0.7.100 10.0.7.101   k8s-master2 centos7 10.0.7.100 10.0.7.10">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-10-17T03:17:05.767Z">
+<meta property="og:updated_time" content="2019-10-24T08:04:10.008Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="二进制安装 kubernetes v1.13.5（二）">
 <meta name="twitter:description" content="注意：适合有基础的观看，没有太详细的说明；服务器初始化请看上一篇文章二进制部署Kubernetes v1.13.5（一） 节点初始化三个 master 节点，三个 woker 节点    hostname os vip ip    k8s-master1 centos7 10.0.7.100 10.0.7.101   k8s-master2 centos7 10.0.7.100 10.0.7.10">
@@ -789,6 +789,108 @@
 
 <h3 id="Flannel网卡设置"><a href="#Flannel网卡设置" class="headerlink" title="Flannel网卡设置"></a>Flannel网卡设置</h3><p>由于flannel使用默认路由的网卡接口，导致使用了外网网卡，在多网卡的时候致使pod之间无法访问。所以需要指定使用相应网卡。在command参数增加<code>--iface=eth1</code>和<code>--public-ip=10.15.1.4</code>即可，具体配置如下:</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">containers:</span><br><span class="line">- name: kube-flannel</span><br><span class="line">  image: quay.io/coreos/flannel:v0.10.0-amd64</span><br><span class="line">  command:</span><br><span class="line">  - /opt/bin/flanneld</span><br><span class="line">  args:</span><br><span class="line">  - --ip-masq</span><br><span class="line">  - --kube-subnet-mgr</span><br><span class="line">  - --iface=eth1</span><br><span class="line">  - --public-ip=10.15.1.4</span><br></pre></td></tr></table></figure>
+
+<h2 id="Kubelet认证-授权"><a href="#Kubelet认证-授权" class="headerlink" title="Kubelet认证/授权"></a>Kubelet认证/授权</h2><p><code>apiserver-kubelet-client</code> 证书是 <code>apiserver</code> 反向连接 <code>kubelet</code> 组件 <code>10250</code> 端口需要使用的证书(例如执行 <code>kubectl logs</code>)。如果这里配置有误将导致 <code>kubectl logs</code> 无法获取日志，提示证书问题。</p>
+<p>Kubelet认证配置段：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">authentication:</span><br><span class="line">  anonymous:</span><br><span class="line">    enabled: false</span><br><span class="line">  webhook:</span><br><span class="line">    cacheTTL: 2m0s</span><br><span class="line">    enabled: true</span><br><span class="line">  x509:</span><br><span class="line">    clientCAFile: /etc/kubernetes/pki/ca.crt</span><br><span class="line">authorization:</span><br><span class="line">  mode: Webhook</span><br><span class="line">  webhook:</span><br><span class="line">    cacheAuthorizedTTL: 5m0s</span><br><span class="line">    cacheUnauthorizedTTL: 30s</span><br></pre></td></tr></table></figure>
+
+<h3 id="Kubelet-认证"><a href="#Kubelet-认证" class="headerlink" title="Kubelet 认证"></a>Kubelet 认证</h3><p>默认情况下，所有未被配置的其他身份验证方法拒绝的，对 <code>kubelet</code> 的 HTTPS 端点的请求将被视为匿名请求，并被授予 <code>system:anonymous</code> 用户名和 <code>system:unauthenticated</code> 组。</p>
+<p>如果要禁用匿名访问并发送 <code>401 Unauthorized</code> 的未经身份验证的请求的响应：</p>
+<ul>
+<li>启动 <code>kubelet</code> 时指定 <code>--anonymous-auth=false</code> 标志</li>
+</ul>
+<p>如果要对 kubelet 的 HTTPS 端点启用 X509 客户端证书身份验证：</p>
+<ul>
+<li>启动 <code>kubelet</code> 时指定 <code>--client-ca-file</code> 标志，提供 CA bundle 以验证客户端证书</li>
+<li>启动 <code>apiserver</code> 时指定 <code>--kubelet-client-certificate</code> 和 <code>--kubelet-client-key</code> 标志</li>
+</ul>
+<p>启用 API bearer token（包括 service account token）用于向 kubelet 的 HTTPS 端点进行身份验证：</p>
+<ul>
+<li>确保在 API server 中开启了 <code>authentication.k8s.io/v1beta1</code> API 组。</li>
+<li>启动 kubelet 时指定 <code>--authentication-token-webhook</code> 和 <code>--kubeconfig</code> 标志</li>
+<li>Kubelet 在配置的 API server 上调用 <code>TokenReview API</code> 以确定来自 <code>bearer token</code> 的用户信息</li>
+</ul>
+<h3 id="Kubelet-授权"><a href="#Kubelet-授权" class="headerlink" title="Kubelet 授权"></a>Kubelet 授权</h3><p>接着对任何成功验证的请求（包括匿名请求）授权。默认授权模式为 <code>AlwaysAllow</code>，允许所有请求。</p>
+<p>细分访问 kubelet API 有很多原因：</p>
+<ul>
+<li>启用匿名认证，但匿名用户调用 kubelet API 的能力应受到限制</li>
+<li>启动 bearer token 认证，但是 API 用户（如 service account）调用 kubelet API 的能力应受到限制</li>
+<li>客户端证书身份验证已启用，但只有那些配置了 CA 签名的客户端证书的用户才可以使用 kubelet API</li>
+</ul>
+<p>如果要细分访问 kubelet API，将授权委托给 API server：</p>
+<ul>
+<li>确保 API server 中启用了 <code>authorization.k8s.io/v1beta1 API</code> 组</li>
+<li>启动 kubelet 时指定 <code>--authorization-mode=Webhook</code>、 <code>--kubeconfig</code> 标志（指定 –authorization-mode=Webhook 后 10250 端口 RBAC 授权将会委托给 apiserver）</li>
+<li>kubelet 在配置的 API server 上调用 <code>SubjectAccessReview API</code>，以确定每个请求是否被授权</li>
+</ul>
+<p>kubelet 使用与 apiserver 相同的 请求属性 方法来授权 API 请求。</p>
+<p>Verb（动词）是根据传入的请求的 HTTP 动词确定的：</p>
+<table>
+<thead>
+<tr>
+<th>HTTP 动词</th>
+<th align="center">request 动词</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>POST</td>
+<td align="center">create</td>
+</tr>
+<tr>
+<td>GET, HEAD</td>
+<td align="center">get</td>
+</tr>
+<tr>
+<td>PUT</td>
+<td align="center">update</td>
+</tr>
+<tr>
+<td>PATCH</td>
+<td align="center">patch</td>
+</tr>
+<tr>
+<td>DELETE</td>
+<td align="center">delete</td>
+</tr>
+</tbody></table>
+<p>资源和子资源根据传入请求的路径确定：</p>
+<table>
+<thead>
+<tr>
+<th>Kubelet API</th>
+<th align="center">资源</th>
+<th align="right">子资源</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>/stats/*</td>
+<td align="center">nodes</td>
+<td align="right">stats</td>
+</tr>
+<tr>
+<td>/metrics/*</td>
+<td align="center">nodes</td>
+<td align="right">metrics</td>
+</tr>
+<tr>
+<td>/logs/*</td>
+<td align="center">nodes</td>
+<td align="right">log</td>
+</tr>
+<tr>
+<td>/spec/*</td>
+<td align="center">nodes</td>
+<td align="right">spec</td>
+</tr>
+<tr>
+<td>all others</td>
+<td align="center">nodes</td>
+<td align="right">proxy</td>
+</tr>
+</tbody></table>
+<p>Namespace 和 API 组属性总是空字符串，资源的名字总是 kubelet 的 Node API 对象的名字。</p>
+<p>当以该模式运行时，请确保用户为 apiserver 指定了 <code>--kubelet-client-certificate</code> 和 <code>--kubelet-client-key</code> 标志并授权了如下属性：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">verb=*, resource=nodes, subresource=proxy</span><br><span class="line">verb=*, resource=nodes, subresource=stats</span><br><span class="line">verb=*, resource=nodes, subresource=log</span><br><span class="line">verb=*, resource=nodes, subresource=spec</span><br><span class="line">verb=*, resource=nodes, subresource=metrics</span><br></pre></td></tr></table></figure>
       
     </div>
     
@@ -810,7 +912,7 @@
   <p><span>本文标题:</span>二进制安装 kubernetes v1.13.5（二）</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 14:14:00</p>
-  <p><span>最后更新:</span>2019年10月17日 - 11:17:05</p>
+  <p><span>最后更新:</span>2019年10月24日 - 16:04:10</p>
   <p><span>原始链接:</span><a href="/2019/08/26/deploy-kubernets-1.13/" title="二进制安装 kubernetes v1.13.5（二）">https://system51.github.io/2019/08/26/deploy-kubernets-1.13/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/deploy-kubernets-1.13/" aria-label="复制成功！"></i></span>
   </p>
@@ -997,7 +1099,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点初始化"><span class="nav-number">1.</span> <span class="nav-text">节点初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置每台主机的hosts文件，添加到-etc-hosts文件中"><span class="nav-number">2.</span> <span class="nav-text">配置每台主机的hosts文件，添加到/etc/hosts文件中</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#准备证书"><span class="nav-number">3.</span> <span class="nav-text">准备证书</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#准备-kubeconfig"><span class="nav-number">4.</span> <span class="nav-text">准备 kubeconfig</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分发证书"><span class="nav-number">5.</span> <span class="nav-text">分发证书</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-HA"><span class="nav-number">6.</span> <span class="nav-text">配置 HA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-etcd"><span class="nav-number">7.</span> <span class="nav-text">配置 etcd</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-master-组件"><span class="nav-number">8.</span> <span class="nav-text">配置 master 组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-bootstrap"><span class="nav-number">9.</span> <span class="nav-text">配置 bootstrap</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-worker-组件"><span class="nav-number">10.</span> <span class="nav-text">配置 worker 组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点标签"><span class="nav-number">11.</span> <span class="nav-text">节点标签</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-flannel"><span class="nav-number">12.</span> <span class="nav-text">安装 flannel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-coredns"><span class="nav-number">13.</span> <span class="nav-text">安装 coredns</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#kubectl-设置"><span class="nav-number">14.</span> <span class="nav-text">kubectl 设置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-helm"><span class="nav-number">15.</span> <span class="nav-text">安装 helm</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-istio"><span class="nav-number">16.</span> <span class="nav-text">安装 istio</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Kubernetes-日志管理"><span class="nav-number">17.</span> <span class="nav-text">Kubernetes 日志管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-logrotate-切割日志"><span class="nav-number">17.1.</span> <span class="nav-text">使用 logrotate 切割日志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Kubernetes主机多网卡"><span class="nav-number">18.</span> <span class="nav-text">Kubernetes主机多网卡</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Flannel网卡设置"><span class="nav-number">18.1.</span> <span class="nav-text">Flannel网卡设置</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#节点初始化"><span class="nav-number">1.</span> <span class="nav-text">节点初始化</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置每台主机的hosts文件，添加到-etc-hosts文件中"><span class="nav-number">2.</span> <span class="nav-text">配置每台主机的hosts文件，添加到/etc/hosts文件中</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#准备证书"><span class="nav-number">3.</span> <span class="nav-text">准备证书</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#准备-kubeconfig"><span class="nav-number">4.</span> <span class="nav-text">准备 kubeconfig</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#分发证书"><span class="nav-number">5.</span> <span class="nav-text">分发证书</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-HA"><span class="nav-number">6.</span> <span class="nav-text">配置 HA</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-etcd"><span class="nav-number">7.</span> <span class="nav-text">配置 etcd</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-master-组件"><span class="nav-number">8.</span> <span class="nav-text">配置 master 组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-bootstrap"><span class="nav-number">9.</span> <span class="nav-text">配置 bootstrap</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#配置-worker-组件"><span class="nav-number">10.</span> <span class="nav-text">配置 worker 组件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#节点标签"><span class="nav-number">11.</span> <span class="nav-text">节点标签</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-flannel"><span class="nav-number">12.</span> <span class="nav-text">安装 flannel</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-coredns"><span class="nav-number">13.</span> <span class="nav-text">安装 coredns</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#kubectl-设置"><span class="nav-number">14.</span> <span class="nav-text">kubectl 设置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-helm"><span class="nav-number">15.</span> <span class="nav-text">安装 helm</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#安装-istio"><span class="nav-number">16.</span> <span class="nav-text">安装 istio</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Kubernetes-日志管理"><span class="nav-number">17.</span> <span class="nav-text">Kubernetes 日志管理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#使用-logrotate-切割日志"><span class="nav-number">17.1.</span> <span class="nav-text">使用 logrotate 切割日志</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Kubernetes主机多网卡"><span class="nav-number">18.</span> <span class="nav-text">Kubernetes主机多网卡</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Flannel网卡设置"><span class="nav-number">18.1.</span> <span class="nav-text">Flannel网卡设置</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Kubelet认证-授权"><span class="nav-number">19.</span> <span class="nav-text">Kubelet认证/授权</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Kubelet-认证"><span class="nav-number">19.1.</span> <span class="nav-text">Kubelet 认证</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Kubelet-授权"><span class="nav-number">19.2.</span> <span class="nav-text">Kubelet 授权</span></a></li></ol></li></ol></div>
             
 
           </div>
