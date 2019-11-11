@@ -88,7 +88,7 @@
 <meta property="og:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/envoy-1.png">
-<meta property="og:updated_time" content="2019-11-11T01:41:20.003Z">
+<meta property="og:updated_time" content="2019-11-11T02:02:03.783Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Envoy的概念与术语">
 <meta name="twitter:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
@@ -567,7 +567,7 @@
 </ul>
 </li>
 <li>HTTP connection manager<ul>
-<li>HTTP connection manager自身是L3/L4过路器，它能够将原始字节转换为HTTP级别消息和事件（例如，headers和body等）</li>
+<li>HTTP connection manager自身是L3/L4过滤器，它能够将原始字节转换为HTTP级别消息和事件（例如，headers和body等）</li>
 <li>它还处理所有HTTP连接和请求共有的功能，例如访问日志记录、请求ID生成和跟踪、请求/响应头操作、路由表管理和统计信息等；</li>
 <li>与L3/L4过滤器堆栈相似，Envoy还支持在HTTP连接管理器中使用HTTP级过滤器堆栈；</li>
 <li>HTTP过滤器在L7运行，它们访问和操作HTTP请求和响应；例如，gRPC-JSON Transcoder Filter为gRPC后端公开REST API，并将请求和响应转换为相应的格式；</li>
@@ -597,7 +597,7 @@
   <p><span>本文标题:</span>Envoy的概念与术语</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年11月11日 - 08:41:14</p>
-  <p><span>最后更新:</span>2019年11月11日 - 09:41:20</p>
+  <p><span>最后更新:</span>2019年11月11日 - 10:02:03</p>
   <p><span>原始链接:</span><a href="/2019/11/11/Envoy-concept/" title="Envoy的概念与术语">https://system51.github.io/2019/11/11/Envoy-concept/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/11/11/Envoy-concept/" aria-label="复制成功！"></i></span>
   </p>
