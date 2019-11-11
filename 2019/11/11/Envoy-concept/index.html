@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Envoy的概念与术语">
+<meta property="og:url" content="https://system51.github.io/2019/11/11/Envoy-concept/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://system51.github.io/images/envoy-1.png">
+<meta property="og:updated_time" content="2019-11-11T00:46:36.155Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Envoy的概念与术语">
+<meta name="twitter:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
+<meta name="twitter:image" content="https://system51.github.io/images/envoy-1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/11/11/Envoy-concept/">
+
+
+
+
+
+  <title>Envoy的概念与术语 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/11/11/Envoy-concept/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Envoy的概念与术语</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-11-11T08:41:14+08:00">
+                2019-11-11
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/11/11/Envoy-concept/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/11/11/Envoy-concept/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="什么是Envoy？"><a href="#什么是Envoy？" class="headerlink" title="什么是Envoy？"></a>什么是Envoy？</h2><p>Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。</p>
+<ul>
+<li>该项目是源于以下理念而诞生的：<ul>
+<li>网络对应用程序来说应该是透明的。</li>
+<li>当网络和应用程序出现问题时，应该很容易确定问题的根源。</li>
+</ul>
+</li>
+</ul>
+<p>Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实现各类管理任务，而一些工作线程（Worker threads）则负责执行监听、过滤和转发等代理服务器的核心功能。</p>
+<h3 id="主线程："><a href="#主线程：" class="headerlink" title="主线程："></a>主线程：</h3><p>负责Envoy程序的启动和关闭、xDS API调用处理（包括DNS、健康状态检测和集群管理等）、运行时配置、统计数据刷新、管理接口维护和其它线程管理（信号和热重启等）等，相关的所有事件均以异步非阻塞模式完成；</p>
+<h3 id="工作线程："><a href="#工作线程：" class="headerlink" title="工作线程："></a>工作线程：</h3><p>默认情况下，Envoy根据当前主机CPU核心数来创建等同数量的工作线程，不过，管理员也可以通过程序选项–concurrency具体指定；每个工作线程运行一个非阻塞型事件循环，负责为每个侦听器监听指定的套接字、接收新请求、为每个连接初始一个过滤器栈并处理此连接整个生命周期中的所有事件；</p>
+<h3 id="文件刷写线程："><a href="#文件刷写线程：" class="headerlink" title="文件刷写线程："></a>文件刷写线程：</h3><p>Envoy写入的每个文件都有一个专用、独立的阻塞型刷写线程，当工作线程需要写入文件时，数据实际上被移入内存缓冲区，最终通过文件刷写线程同步至文件中。</p>
+<h2 id="xDS-API常用术语"><a href="#xDS-API常用术语" class="headerlink" title="xDS API常用术语"></a>xDS API常用术语</h2><h4 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h4><table>
+<thead>
+<tr>
+<th>Concept</th>
+<th align="center">概念</th>
+<th align="right">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Host</td>
+<td align="center">主机</td>
+<td align="right">能够进行网络通信的实体（如移动设备、服务器上的应用程序）。在Envoy，主机是逻辑网络应用程序。一块物理硬件上可能运行有多个主机，只要它们是可以独立寻址的。</td>
+</tr>
+<tr>
+<td>Downstream</td>
+<td align="center">下游</td>
+<td align="right">下游主机连接到 Envoy，发送请求并接收响应。</td>
+</tr>
+<tr>
+<td>Upstream</td>
+<td align="center">上游</td>
+<td align="right">上游主机接收来自 Envoy 的连接和请求，并返回响应。</td>
+</tr>
+<tr>
+<td>Mesh</td>
+<td align="center">网格</td>
+<td align="right">一组主机，协调好以提供一致的网络拓扑。在本文档中，“Envoy mesh”是一组 Envoy 代理，它们构成了分布式系统的消息传递基础，这个分布式系统由很多不同服务和应用程序平台组成。</td>
+</tr>
+<tr>
+<td>Runtime configuration</td>
+<td align="center">运行时配置</td>
+<td align="right">外置实时配置系统，和 Envoy 一起部署。可以更改配置设置，影响操作，而无需重启 Envoy 或更改主要配置。</td>
+</tr>
+</tbody></table>
+<h4 id="请求转发概念"><a href="#请求转发概念" class="headerlink" title="请求转发概念"></a>请求转发概念</h4><table>
+<thead>
+<tr>
+<th>Concept</th>
+<th align="center">概念</th>
+<th align="right">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Listener</td>
+<td align="center">监听器</td>
+<td align="right">监听器是命名网地址（例如，端口、unix domain socket等)，可以被下游客户端连接。Envoy 暴露一个或者多个监听器给下游主机连接</td>
+</tr>
+<tr>
+<td>Router</td>
+<td align="center">路由</td>
+<td align="right">路由是一组将虚拟主机(virtual hosts)与群集(cluster)匹配的规则(rule)，允许您创建流量转移规则</td>
+</tr>
+<tr>
+<td>Cluster</td>
+<td align="center">集群</td>
+<td align="right">集群是指 Envoy 连接到的逻辑上相同的一组上游主机</td>
+</tr>
+<tr>
+<td>Endpoint</td>
+<td align="center">端点</td>
+<td align="right">Envoy将“端点(Endpoint)”定义为群集(Cluster)中可用的IP和端口</td>
+</tr>
+</tbody></table>
+<h4 id="xDS-API概念"><a href="#xDS-API概念" class="headerlink" title="xDS API概念"></a>xDS API概念</h4><p>xds API 是 Envoy 定义的，用于控制平面和数据平面之间数据交互的通讯协议。</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th align="center">全称</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LDS</td>
+<td align="center">Listener Discovery Service</td>
+</tr>
+<tr>
+<td>RDS</td>
+<td align="center">Route Discovery Service</td>
+</tr>
+<tr>
+<td>CDS</td>
+<td align="center">Cluster Discovery Service</td>
+</tr>
+<tr>
+<td>EDS</td>
+<td align="center">Endpoint Discovery Service</td>
+</tr>
+<tr>
+<td>ADS</td>
+<td align="center">Aggregated Discovery Service</td>
+</tr>
+<tr>
+<td>HDS</td>
+<td align="center">Health Discovery Service</td>
+</tr>
+<tr>
+<td>SDS</td>
+<td align="center">Secret Discovery Service</td>
+</tr>
+<tr>
+<td>MS</td>
+<td align="center">Secret Discovery Service</td>
+</tr>
+<tr>
+<td>RLS</td>
+<td align="center">Rate Limit Service</td>
+</tr>
+</tbody></table>
+<h4 id="和xDS相关的其他概念还有："><a href="#和xDS相关的其他概念还有：" class="headerlink" title="和xDS相关的其他概念还有："></a>和xDS相关的其他概念还有：</h4><table>
+<thead>
+<tr>
+<th>概念</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Management Server</td>
+<td align="center">实现v2 Envoy API的逻辑服务器。这不一定是单个物理机器，因为它可以被复制/分片，并且用于不同xDS API的API服务可以在不同的物理机器上实现。</td>
+</tr>
+</tbody></table>
+<p>区域概念</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th align="center">概念</th>
+<th align="right">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Locality</td>
+<td align="center">局域性</td>
+<td align="right">Envoy实例或端点运行的位置。这包括地域/region，分区/zone和子分区/sub-zone标识。</td>
+</tr>
+<tr>
+<td>Region</td>
+<td align="center">地域</td>
+<td align="right">分区（zone）所在的地理区域。</td>
+</tr>
+<tr>
+<td>Zone</td>
+<td align="center">分区</td>
+<td align="right">AWS中的Availability Zone (AZ), GCP中的Zone</td>
+</tr>
+<tr>
+<td>Sub-zone</td>
+<td align="center">子分区</td>
+<td align="right">Envoy实例或端点在分区内运行的位置。这允许在分区内存在多个负载均衡目标。</td>
+</tr>
+</tbody></table>
+<h2 id="Envoy部署类型"><a href="#Envoy部署类型" class="headerlink" title="Envoy部署类型"></a>Envoy部署类型</h2><p>Envoy 有多种使用场景，其中更多情况下Envoy用于以容器编排系统为底层环境的服务网格中，并以sidecar的形式与主程序容器运行为单个Pod；</p>
+<p>常见部署类型如下图所示：<br><img src="/images/envoy-1.png" alt="envoy-1"></p>
+<ul>
+<li>仅服务之间<ul>
+<li>服务间 egress listener</li>
+<li>服务间 ingress listener</li>
+<li>可选外部服务 egress listener</li>
+</ul>
+</li>
+<li>服务之间外加前端代理</li>
+<li>服务间、前端代理、双向代理</li>
+</ul>
+<h2 id="Envoy配置概述"><a href="#Envoy配置概述" class="headerlink" title="Envoy配置概述"></a>Envoy配置概述</h2><ul>
+<li>启动时从Bootstrap配置文件中加载初始配置</li>
+<li>静态配置</li>
+<li>支持动态配置<ul>
+<li>xDS API<ul>
+<li>从配置文件加载配置</li>
+<li>从管理服务器（Management Server）基于xds协议加载配置</li>
+</ul>
+</li>
+<li>runtime<ul>
+<li>某些关键特性（Feature flags）保存为key/value数据</li>
+<li>支持多层配置和覆盖机制</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>启用全动态配置机制后，仅极少数场景需要重新启动Envoy进程<ul>
+<li>支持热重启</li>
+</ul>
+</li>
+</ul>
+<h2 id="Envoy的配置方式"><a href="#Envoy的配置方式" class="headerlink" title="Envoy的配置方式"></a>Envoy的配置方式</h2><ul>
+<li>Envoy的架构支持非常灵活的配置方式：简单部署场景可以使用纯静态配<br>置，而更复杂的部署场景则可以逐步添加需要的动态配置机制；<ul>
+<li>纯静态配置：用户自行提供侦听器、过滤器链、集群及HTTP路由（http代理场景），上游端点的发现仅可通过DNS服务进行，且配置的重新加载必须通过内置的热重启（hotrestart）完成；</li>
+<li>仅使用EDS：EDS提供的端点发现功能可有效规避DNS的限制（响应中的最大记录数等）；</li>
+<li>使用EDS和CDS：CDS能够让Envoy以优雅的方式添加、更新和删除上游集群，于是，初始配置时，Envoy无须事先了解所有上游集群；</li>
+<li>EDS、CDS和RDS：动态发现路由配置；RDS与EDS、CDS一起使用时，为用户提供了构建复杂路由拓扑的能力（流量转移、蓝/绿部署等）；</li>
+<li>EDS、CDS、RDS和LDS：动态发现侦听器配置，包括内嵌的过滤器链；启用此四种发现服务后，除了较罕见的配置变动、证书轮替或更新Envoy程序之外，几乎无须再热重启Envoy；</li>
+<li>EDS、CDS、RDS、LDS和SDS：动态发现侦听器密钥相关的证书、私钥及TLS会话票据，以及对证书验证逻辑的配置（受信任的根证书和撤销机制等）；</li>
+</ul>
+</li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>Envoy的概念与术语</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年11月11日 - 08:41:14</p>
+  <p><span>最后更新:</span>2019年11月11日 - 08:46:36</p>
+  <p><span>原始链接:</span><a href="/2019/11/11/Envoy-concept/" title="Envoy的概念与术语">https://system51.github.io/2019/11/11/Envoy-concept/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/11/11/Envoy-concept/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/09/11/etcd-Disaster-recovery/" rel="next" title="Etcd 备份恢复">
+                <i class="fa fa-chevron-left"></i> Etcd 备份恢复
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">44</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是Envoy？"><span class="nav-number">1.</span> <span class="nav-text">什么是Envoy？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主线程："><span class="nav-number">1.1.</span> <span class="nav-text">主线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工作线程："><span class="nav-number">1.2.</span> <span class="nav-text">工作线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件刷写线程："><span class="nav-number">1.3.</span> <span class="nav-text">文件刷写线程：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#xDS-API常用术语"><span class="nav-number">2.</span> <span class="nav-text">xDS API常用术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本概念"><span class="nav-number">2.0.1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#请求转发概念"><span class="nav-number">2.0.2.</span> <span class="nav-text">请求转发概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#xDS-API概念"><span class="nav-number">2.0.3.</span> <span class="nav-text">xDS API概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#和xDS相关的其他概念还有："><span class="nav-number">2.0.4.</span> <span class="nav-text">和xDS相关的其他概念还有：</span></a></li></ol></li></ol><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy部署类型"><span class="nav-number">3.</span> <span class="nav-text">Envoy部署类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置概述"><span class="nav-number">4.</span> <span class="nav-text">Envoy配置概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy的配置方式"><span class="nav-number">5.</span> <span class="nav-text">Envoy的配置方式</span></a></li></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
