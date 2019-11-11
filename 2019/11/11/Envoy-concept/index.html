@@ -88,7 +88,7 @@
 <meta property="og:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/envoy-1.png">
-<meta property="og:updated_time" content="2019-11-11T00:57:58.049Z">
+<meta property="og:updated_time" content="2019-11-11T01:41:20.003Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Envoy的概念与术语">
 <meta name="twitter:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
@@ -517,6 +517,23 @@
 </ul>
 </li>
 </ul>
+<h2 id="Envoy配置中的重要概念"><a href="#Envoy配置中的重要概念" class="headerlink" title="Envoy配置中的重要概念"></a>Envoy配置中的重要概念</h2><ul>
+<li>Bootstrap配置中几个重要的基础概念<ul>
+<li>node：节点标识，以呈现给管理服务器并且例如用于标识目的；</li>
+<li>static_resources：静态配置的资源，用于配置静态的listener、cluster和secret；</li>
+<li>dynamic_resources：动态配置的资源，用于配置基于xDS API获取listener、cluster和secret配置的lds_config、cds_config和ads_config；</li>
+<li>admin：Envoy内置的管理接口；</li>
+<li>tracing：分布式跟踪；</li>
+<li>layered_runtime：层级化的运行时，支持使用RTDS从管理服务器动态加载；</li>
+<li>hds_config：使用HDS从管理服务器加载上游主机健康状态检测相关的配置；</li>
+<li>overload_manager：过载管理器；</li>
+<li>stats_sinks：统计信息接收器；</li>
+<li>一般来说，侦听器和集群是最为常用基础配置，无论是以静态或者是动态方式提供；</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">  &quot;node&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;static_resources&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;dynamic_resources&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;cluster_manager&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;hds_config&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;flags_path&quot;: &quot;...&quot;,</span><br><span class="line">  &quot;stats_sinks&quot;: [],</span><br><span class="line">  &quot;stats_config&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;stats_flush_interval&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;watchdog&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;tracing&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;runtime&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;layered_runtime&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;admin&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;overload_manager&quot;: &quot;&#123;...&#125;&quot;,</span><br><span class="line">  &quot;enable_dispatcher_stats&quot;: &quot;...&quot;,</span><br><span class="line">  &quot;header_prefix&quot;: &quot;...&quot;,</span><br><span class="line">  &quot;stats_server_version_override&quot;: &quot;&#123;...&#125;&quot;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
 <h2 id="Envoy的配置方式"><a href="#Envoy的配置方式" class="headerlink" title="Envoy的配置方式"></a>Envoy的配置方式</h2><ul>
 <li>Envoy的架构支持非常灵活的配置方式：简单部署场景可以使用纯静态配置，而更复杂的部署场景则可以逐步添加需要的动态配置机制；<ul>
 <li>纯静态配置：用户自行提供侦听器、过滤器链、集群及HTTP路由（http代理场景），上游端点的发现仅可通过DNS服务进行，且配置的重新加载必须通过内置的热重启（hotrestart）完成；</li>
@@ -525,6 +542,36 @@
 <li>EDS、CDS和RDS：动态发现路由配置；RDS与EDS、CDS一起使用时，为用户提供了构建复杂路由拓扑的能力（流量转移、蓝/绿部署等）；</li>
 <li>EDS、CDS、RDS和LDS：动态发现侦听器配置，包括内嵌的过滤器链；启用此四种发现服务后，除了较罕见的配置变动、证书轮替或更新Envoy程序之外，几乎无须再热重启Envoy；</li>
 <li>EDS、CDS、RDS、LDS和SDS：动态发现侦听器密钥相关的证书、私钥及TLS会话票据，以及对证书验证逻辑的配置（受信任的根证书和撤销机制等）；</li>
+</ul>
+</li>
+</ul>
+<h2 id="Upstream-clusters"><a href="#Upstream-clusters" class="headerlink" title="Upstream clusters"></a>Upstream clusters</h2><ul>
+<li>Envoy可配置任意数量的上游集群，并使用Cluster Manager进行管理；<ul>
+<li>由集群管理器负责管理的各集群可以由用户静态配置，也可借助于CDS API动态获取；</li>
+<li>集群中的每个成员由endpoint进行标识，它可由用户静态配置，也可通过EDS或DNS服务动态发现；<ul>
+<li>Static：静态配置</li>
+<li>Strict DNS：严格DNS，Envoy将持续和异步地解析指定的DNS目标，并将DNS结果中的返回的每个IP地址视为上游集群中可用成员；</li>
+<li>Logical DNS：逻辑DNS，集群仅使用在需要启动新连接时返回的第一个IP地址，而非严格获取DNS查询的结果并假设它们构成整个上游集群；适用于必须通过DNS访问的大规模Web服务集群；</li>
+<li>Original destination：当传入连接通过iptables的REDIRECT或TPROXY target或使用代理协议重定向到Envoy时，可以使用原始目标集群；</li>
+<li>Endpoint discovery service (EDS)：EDS是一种基于GRPC或REST-JSON API的xDS管理服务器获取集群成员的服务发现方式；</li>
+<li>Custom cluster：Envoy还支持在集群配置上的cluster_type字段中指定使用自定义集群发现机制；</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="Listener-Filter"><a href="#Listener-Filter" class="headerlink" title="Listener Filter"></a>Listener Filter</h2><ul>
+<li>envoy内置了许多L3/L4过滤器，例如<ul>
+<li>代理类：TCP Proxy、HTTP connection manager、Thrift Proxy、Mongo proxy、Dubbo Proxy、ZooKeeper proxy、MySQL proxy和Redis proxy等；</li>
+<li>其它：Client TLS authentication、Rate limit、Role Based Access Control (RBAC) Network Filter和Upstream Cluster from SNI等；</li>
+</ul>
+</li>
+<li>HTTP connection manager<ul>
+<li>HTTP connection manager自身是L3/L4过路器，它能够将原始字节转换为HTTP级别消息和事件（例如，headers和body等）</li>
+<li>它还处理所有HTTP连接和请求共有的功能，例如访问日志记录、请求ID生成和跟踪、请求/响应头操作、路由表管理和统计信息等；</li>
+<li>与L3/L4过滤器堆栈相似，Envoy还支持在HTTP连接管理器中使用HTTP级过滤器堆栈；</li>
+<li>HTTP过滤器在L7运行，它们访问和操作HTTP请求和响应；例如，gRPC-JSON Transcoder Filter为gRPC后端公开REST API，并将请求和响应转换为相应的格式；</li>
+<li>常用的HTTP过路器有Router、Rate limit、Health check、Gzip和Fault Injection等；</li>
 </ul>
 </li>
 </ul>
@@ -550,7 +597,7 @@
   <p><span>本文标题:</span>Envoy的概念与术语</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年11月11日 - 08:41:14</p>
-  <p><span>最后更新:</span>2019年11月11日 - 08:57:58</p>
+  <p><span>最后更新:</span>2019年11月11日 - 09:41:20</p>
   <p><span>原始链接:</span><a href="/2019/11/11/Envoy-concept/" title="Envoy的概念与术语">https://system51.github.io/2019/11/11/Envoy-concept/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/11/11/Envoy-concept/" aria-label="复制成功！"></i></span>
   </p>
@@ -733,7 +780,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是Envoy？"><span class="nav-number">1.</span> <span class="nav-text">什么是Envoy？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主线程："><span class="nav-number">1.1.</span> <span class="nav-text">主线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工作线程："><span class="nav-number">1.2.</span> <span class="nav-text">工作线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件刷写线程："><span class="nav-number">1.3.</span> <span class="nav-text">文件刷写线程：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#xDS-API常用术语"><span class="nav-number">2.</span> <span class="nav-text">xDS API常用术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本概念"><span class="nav-number">2.0.1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#请求转发概念"><span class="nav-number">2.0.2.</span> <span class="nav-text">请求转发概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#xDS-API概念"><span class="nav-number">2.0.3.</span> <span class="nav-text">xDS API概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#和xDS相关的其他概念还有："><span class="nav-number">2.0.4.</span> <span class="nav-text">和xDS相关的其他概念还有：</span></a></li></ol></li></ol><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy部署类型"><span class="nav-number">3.</span> <span class="nav-text">Envoy部署类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置概述"><span class="nav-number">4.</span> <span class="nav-text">Envoy配置概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy的配置方式"><span class="nav-number">5.</span> <span class="nav-text">Envoy的配置方式</span></a></li></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是Envoy？"><span class="nav-number">1.</span> <span class="nav-text">什么是Envoy？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主线程："><span class="nav-number">1.1.</span> <span class="nav-text">主线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工作线程："><span class="nav-number">1.2.</span> <span class="nav-text">工作线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件刷写线程："><span class="nav-number">1.3.</span> <span class="nav-text">文件刷写线程：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#xDS-API常用术语"><span class="nav-number">2.</span> <span class="nav-text">xDS API常用术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本概念"><span class="nav-number">2.0.1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#请求转发概念"><span class="nav-number">2.0.2.</span> <span class="nav-text">请求转发概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#xDS-API概念"><span class="nav-number">2.0.3.</span> <span class="nav-text">xDS API概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#和xDS相关的其他概念还有："><span class="nav-number">2.0.4.</span> <span class="nav-text">和xDS相关的其他概念还有：</span></a></li></ol></li></ol><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy部署类型"><span class="nav-number">3.</span> <span class="nav-text">Envoy部署类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置概述"><span class="nav-number">4.</span> <span class="nav-text">Envoy配置概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置中的重要概念"><span class="nav-number">5.</span> <span class="nav-text">Envoy配置中的重要概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy的配置方式"><span class="nav-number">6.</span> <span class="nav-text">Envoy的配置方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Upstream-clusters"><span class="nav-number">7.</span> <span class="nav-text">Upstream clusters</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Listener-Filter"><span class="nav-number">8.</span> <span class="nav-text">Listener Filter</span></a></li></div>
             
 
           </div>
