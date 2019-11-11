@@ -88,7 +88,7 @@
 <meta property="og:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/envoy-1.png">
-<meta property="og:updated_time" content="2019-11-11T00:46:36.155Z">
+<meta property="og:updated_time" content="2019-11-11T00:57:58.049Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Envoy的概念与术语">
 <meta name="twitter:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
@@ -518,7 +518,7 @@
 </li>
 </ul>
 <h2 id="Envoy的配置方式"><a href="#Envoy的配置方式" class="headerlink" title="Envoy的配置方式"></a>Envoy的配置方式</h2><ul>
-<li>Envoy的架构支持非常灵活的配置方式：简单部署场景可以使用纯静态配<br>置，而更复杂的部署场景则可以逐步添加需要的动态配置机制；<ul>
+<li>Envoy的架构支持非常灵活的配置方式：简单部署场景可以使用纯静态配置，而更复杂的部署场景则可以逐步添加需要的动态配置机制；<ul>
 <li>纯静态配置：用户自行提供侦听器、过滤器链、集群及HTTP路由（http代理场景），上游端点的发现仅可通过DNS服务进行，且配置的重新加载必须通过内置的热重启（hotrestart）完成；</li>
 <li>仅使用EDS：EDS提供的端点发现功能可有效规避DNS的限制（响应中的最大记录数等）；</li>
 <li>使用EDS和CDS：CDS能够让Envoy以优雅的方式添加、更新和删除上游集群，于是，初始配置时，Envoy无须事先了解所有上游集群；</li>
@@ -550,7 +550,7 @@
   <p><span>本文标题:</span>Envoy的概念与术语</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年11月11日 - 08:41:14</p>
-  <p><span>最后更新:</span>2019年11月11日 - 08:46:36</p>
+  <p><span>最后更新:</span>2019年11月11日 - 08:57:58</p>
   <p><span>原始链接:</span><a href="/2019/11/11/Envoy-concept/" title="Envoy的概念与术语">https://system51.github.io/2019/11/11/Envoy-concept/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/11/11/Envoy-concept/" aria-label="复制成功！"></i></span>
   </p>
