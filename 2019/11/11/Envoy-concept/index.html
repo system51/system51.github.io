@@ -88,7 +88,7 @@
 <meta property="og:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/envoy-1.png">
-<meta property="og:updated_time" content="2019-11-11T02:02:03.783Z">
+<meta property="og:updated_time" content="2019-11-11T02:08:02.943Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Envoy的概念与术语">
 <meta name="twitter:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
@@ -454,8 +454,7 @@
 <td align="center">实现v2 Envoy API的逻辑服务器。这不一定是单个物理机器，因为它可以被复制/分片，并且用于不同xDS API的API服务可以在不同的物理机器上实现。</td>
 </tr>
 </tbody></table>
-<p>区域概念</p>
-<table>
+<h4 id="区域概念"><a href="#区域概念" class="headerlink" title="区域概念"></a>区域概念</h4><table>
 <thead>
 <tr>
 <th>Concept</th>
@@ -597,7 +596,7 @@
   <p><span>本文标题:</span>Envoy的概念与术语</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年11月11日 - 08:41:14</p>
-  <p><span>最后更新:</span>2019年11月11日 - 10:02:03</p>
+  <p><span>最后更新:</span>2019年11月11日 - 10:08:02</p>
   <p><span>原始链接:</span><a href="/2019/11/11/Envoy-concept/" title="Envoy的概念与术语">https://system51.github.io/2019/11/11/Envoy-concept/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/11/11/Envoy-concept/" aria-label="复制成功！"></i></span>
   </p>
@@ -780,7 +779,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是Envoy？"><span class="nav-number">1.</span> <span class="nav-text">什么是Envoy？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主线程："><span class="nav-number">1.1.</span> <span class="nav-text">主线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工作线程："><span class="nav-number">1.2.</span> <span class="nav-text">工作线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件刷写线程："><span class="nav-number">1.3.</span> <span class="nav-text">文件刷写线程：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#xDS-API常用术语"><span class="nav-number">2.</span> <span class="nav-text">xDS API常用术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本概念"><span class="nav-number">2.0.1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#请求转发概念"><span class="nav-number">2.0.2.</span> <span class="nav-text">请求转发概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#xDS-API概念"><span class="nav-number">2.0.3.</span> <span class="nav-text">xDS API概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#和xDS相关的其他概念还有："><span class="nav-number">2.0.4.</span> <span class="nav-text">和xDS相关的其他概念还有：</span></a></li></ol></li></ol><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy部署类型"><span class="nav-number">3.</span> <span class="nav-text">Envoy部署类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置概述"><span class="nav-number">4.</span> <span class="nav-text">Envoy配置概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置中的重要概念"><span class="nav-number">5.</span> <span class="nav-text">Envoy配置中的重要概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy的配置方式"><span class="nav-number">6.</span> <span class="nav-text">Envoy的配置方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Upstream-clusters"><span class="nav-number">7.</span> <span class="nav-text">Upstream clusters</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Listener-Filter"><span class="nav-number">8.</span> <span class="nav-text">Listener Filter</span></a></li></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是Envoy？"><span class="nav-number">1.</span> <span class="nav-text">什么是Envoy？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主线程："><span class="nav-number">1.1.</span> <span class="nav-text">主线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工作线程："><span class="nav-number">1.2.</span> <span class="nav-text">工作线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件刷写线程："><span class="nav-number">1.3.</span> <span class="nav-text">文件刷写线程：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#xDS-API常用术语"><span class="nav-number">2.</span> <span class="nav-text">xDS API常用术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本概念"><span class="nav-number">2.0.1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#请求转发概念"><span class="nav-number">2.0.2.</span> <span class="nav-text">请求转发概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#xDS-API概念"><span class="nav-number">2.0.3.</span> <span class="nav-text">xDS API概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#和xDS相关的其他概念还有："><span class="nav-number">2.0.4.</span> <span class="nav-text">和xDS相关的其他概念还有：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#区域概念"><span class="nav-number">2.0.5.</span> <span class="nav-text">区域概念</span></a></li></ol></li></ol><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy部署类型"><span class="nav-number">3.</span> <span class="nav-text">Envoy部署类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置概述"><span class="nav-number">4.</span> <span class="nav-text">Envoy配置概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置中的重要概念"><span class="nav-number">5.</span> <span class="nav-text">Envoy配置中的重要概念</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy的配置方式"><span class="nav-number">6.</span> <span class="nav-text">Envoy的配置方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Upstream-clusters"><span class="nav-number">7.</span> <span class="nav-text">Upstream clusters</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Listener-Filter"><span class="nav-number">8.</span> <span class="nav-text">Listener Filter</span></a></li></div>
             
 
           </div>
