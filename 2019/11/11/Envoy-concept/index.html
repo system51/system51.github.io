@@ -79,21 +79,21 @@
 
 
 
-<meta name="description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
+<meta name="description" content="什么是Envoy？Envoy 是以 C++ 开发的高性能非阻塞的服务代理程序，其内置服务发现、高级负载均衡、TLS终止、HTTP/2、GRPC代理、熔断器、健康检查、L3/4网络过滤器、L7层过滤器、动态配置，基于百分比流量拆分的灰度发布、故障注入等功能。Envoy是的新型服务代理程序，与HAProxy和Nginx一样。但Envoy主要面向SOA（面向服务的架构）的网络代理，所以非常适用于微服务，">
 <meta name="keywords" content="kubernetes,devops">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Envoy的概念与术语">
 <meta property="og:url" content="https://system51.github.io/2019/11/11/Envoy-concept/index.html">
 <meta property="og:site_name" content="Mr.Ye Blogs">
-<meta property="og:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
+<meta property="og:description" content="什么是Envoy？Envoy 是以 C++ 开发的高性能非阻塞的服务代理程序，其内置服务发现、高级负载均衡、TLS终止、HTTP/2、GRPC代理、熔断器、健康检查、L3/4网络过滤器、L7层过滤器、动态配置，基于百分比流量拆分的灰度发布、故障注入等功能。Envoy是的新型服务代理程序，与HAProxy和Nginx一样。但Envoy主要面向SOA（面向服务的架构）的网络代理，所以非常适用于微服务，">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/envoy-1.png">
 <meta property="og:image" content="https://system51.github.io/images/envoy-2.png">
 <meta property="og:image" content="https://system51.github.io/images/envoy-3.png">
-<meta property="og:updated_time" content="2019-11-11T03:53:42.136Z">
+<meta property="og:updated_time" content="2019-11-13T01:08:27.055Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Envoy的概念与术语">
-<meta name="twitter:description" content="什么是Envoy？Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。  该项目是源于以下理念而诞生的： 网络对应用程序来说应该是透明的。 当网络和应用程序出现问题时，应该很容易确定问题的根源。    Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实">
+<meta name="twitter:description" content="什么是Envoy？Envoy 是以 C++ 开发的高性能非阻塞的服务代理程序，其内置服务发现、高级负载均衡、TLS终止、HTTP/2、GRPC代理、熔断器、健康检查、L3/4网络过滤器、L7层过滤器、动态配置，基于百分比流量拆分的灰度发布、故障注入等功能。Envoy是的新型服务代理程序，与HAProxy和Nginx一样。但Envoy主要面向SOA（面向服务的架构）的网络代理，所以非常适用于微服务，">
 <meta name="twitter:image" content="https://system51.github.io/images/envoy-1.png">
 
 
@@ -324,14 +324,7 @@
       
 
       
-        <h2 id="什么是Envoy？"><a href="#什么是Envoy？" class="headerlink" title="什么是Envoy？"></a>什么是Envoy？</h2><p>Envoy是与HAProxy和Nginx一样，都是同一领域中的新型网络代理服务器。但是Envoy是专为大型现代 SOA（面向服务架构）架构设计的 L7 代理和通信总线。</p>
-<ul>
-<li>该项目是源于以下理念而诞生的：<ul>
-<li>网络对应用程序来说应该是透明的。</li>
-<li>当网络和应用程序出现问题时，应该很容易确定问题的根源。</li>
-</ul>
-</li>
-</ul>
+        <h2 id="什么是Envoy？"><a href="#什么是Envoy？" class="headerlink" title="什么是Envoy？"></a>什么是Envoy？</h2><p>Envoy 是以 C++ 开发的高性能非阻塞的服务代理程序，其内置服务发现、高级负载均衡、TLS终止、HTTP/2、GRPC代理、熔断器、健康检查、L3/4网络过滤器、L7层过滤器、动态配置，基于百分比流量拆分的灰度发布、故障注入等功能。<br>Envoy是的新型服务代理程序，与HAProxy和Nginx一样。但Envoy主要面向SOA（面向服务的架构）的网络代理，所以非常适用于微服务，其主要是用来调解Service Mesh中所有服务的入站和出站流量。</p>
 <p>Envoy使用单进程/多线程的架构模型，一个主线程（Main thread）负责实现各类管理任务，而一些工作线程（Worker threads）则负责执行监听、过滤和转发等代理服务器的核心功能。</p>
 <h3 id="主线程："><a href="#主线程：" class="headerlink" title="主线程："></a>主线程：</h3><p>负责Envoy程序的启动和关闭、xDS API调用处理（包括DNS、健康状态检测和集群管理等）、运行时配置、统计数据刷新、管理接口维护和其它线程管理（信号和热重启等）等，相关的所有事件均以异步非阻塞模式完成；</p>
 <h3 id="工作线程："><a href="#工作线程：" class="headerlink" title="工作线程："></a>工作线程：</h3><p>默认情况下，Envoy根据当前主机CPU核心数来创建等同数量的工作线程，不过，管理员也可以通过程序选项–concurrency具体指定；每个工作线程运行一个非阻塞型事件循环，负责为每个侦听器监听指定的套接字、接收新请求、为每个连接初始一个过滤器栈并处理此连接整个生命周期中的所有事件；</p>
@@ -488,15 +481,17 @@
 <h2 id="Envoy部署类型"><a href="#Envoy部署类型" class="headerlink" title="Envoy部署类型"></a>Envoy部署类型</h2><p>Envoy 有多种使用场景，其中更多情况下Envoy用于以容器编排系统为底层环境的服务网格中，并以sidecar的形式与主程序容器运行为单个Pod；</p>
 <p>常见部署类型如下图所示：<br><img src="/images/envoy-1.png" alt="envoy-1"></p>
 <ul>
-<li>仅服务之间<ul>
+<li>仅服务之间(东西流量)<ul>
 <li>服务间 egress listener</li>
 <li>服务间 ingress listener</li>
 <li>可选外部服务 egress listener</li>
 </ul>
 </li>
-<li>服务之间外加前端代理</li>
+<li>服务之间外加前端代理(南北流量)</li>
 <li>服务间、前端代理、双向代理</li>
 </ul>
+<h3 id="服务间-egress-listener"><a href="#服务间-egress-listener" class="headerlink" title="服务间 egress listener"></a>服务间 egress listener</h3><p>这是应用程序与基础结构中的其他服务对话所使用的端口。 例如，<code>http://localhost:9001</code>。HTTP 和 gRPC请求使用 HTTP/1.1 host 头或 HTTP/2:authority 头来表示请求指向哪个远程集群。根据配置中的详细信息，Envoy 处理服务发现、负载平衡、速率限制等。服务只需要了解本地 Envoy，不需要关心网络拓扑结构，无论他们是在开发还是在生产中运行。<br>此监听器支持 HTTP/1.1 或 HTTP/2，具体取决于应用程序的功能。</p>
+<h3 id="服务间-ingress-listener"><a href="#服务间-ingress-listener" class="headerlink" title="服务间 ingress listener"></a>服务间 ingress listener</h3><p>这是远程 Envoys 想要与本地 Envoys 通信时使用的端口。例如，<code>http://localhost:9211</code>。入向请求将通过配置的端口路由到本地服务。根据应用程序或负载平衡需求（例如，如果服务需要 HTTP 端口和 gRPC 端口），可能会涉及多个应用程序端口。 本地 Envoy 根据需要执行缓冲、熔断等。<br>我们的默认配置对所有 Envoy 相互间的通信使用 HTTP/2 协议，无论应用程序在通过本地 Envoy 出向时使用的是 HTTP/1.1 还是 HTTP/2。 HTTP/2 通过长连接和显式重置通知提供更好的性能。</p>
 <h2 id="Envoy配置概述"><a href="#Envoy配置概述" class="headerlink" title="Envoy配置概述"></a>Envoy配置概述</h2><ul>
 <li>启动时从Bootstrap配置文件中加载初始配置</li>
 <li>静态配置</li>
@@ -559,7 +554,28 @@
 </ul>
 </li>
 </ul>
-<h2 id="Listener"><a href="#Listener" class="headerlink" title="Listener"></a>Listener</h2><h2 id="Listener-Filter"><a href="#Listener-Filter" class="headerlink" title="Listener Filter"></a>Listener Filter</h2><ul>
+<h2 id="Listener"><a href="#Listener" class="headerlink" title="Listener"></a>Listener</h2><p><code>Listerner</code>接受来自下游客户端请求，Envoy配置支持在单个进程内有任意数量的<code>Listerner</code>（监听器）。通常我们建议每台机器运行一个Envoy，而不必介意配置的监听器数量。这样可以更容易的操作，并有单一的统计来源。（备注：目前 Envoy 只支持 TCP 监听器）</p>
+<h3 id="Listener配置"><a href="#Listener配置" class="headerlink" title="Listener配置"></a>Listener配置</h3><p>监听器配置可以在<code>Bootstrap</code>（引导程序）配置中静态声明，也可以通过监听器发现服务（Listerner Discovert Service/LDS）动态声明。</p>
+<h4 id="静态声明："><a href="#静态声明：" class="headerlink" title="静态声明："></a>静态声明：</h4><ul>
+<li>纯静态资源配置方式主是直接在配置文件中通过static_resources配置参数明确定义listeners、clusters和secrets的配置方式，各配置参数的数据类型如下面的配置所示；<ul>
+<li>其中，listeners用于配置纯静态类型的侦听器列表，clusters用于定义可用的集群列表及每个集群的端点，而可选的secrets用于定义TLS通信中用到数字证书等配置信息</li>
+<li>具体使用时<code>admin</code>和<code>static_resources</code>两参数即可提供一个最小化的资源配置；</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">&quot;listeners&quot;: [],</span><br><span class="line">&quot;clusters&quot;: [],</span><br><span class="line">&quot;secrets&quot;: []</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h4 id="Listener简易静态配置"><a href="#Listener简易静态配置" class="headerlink" title="Listener简易静态配置"></a>Listener简易静态配置</h4><p>侦听器主要用于定义Envoy监听的用于接收Downstreams请求的套接字、用于处理请求时调用的过滤器链及相关的其它配置属性；</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">listeners:</span><br><span class="line">- name:</span><br><span class="line">  address:</span><br><span class="line">  socket_address: &#123; address: ..., port_value: ..., protocol: ... &#125;</span><br><span class="line">  filter_chains:</span><br><span class="line">  - filters:</span><br><span class="line">  - name:</span><br><span class="line">    config:</span><br></pre></td></tr></table></figure>
+
+<p>L4过滤器<code>echo</code>主要用于演示网络过滤器API的功能，它会回显接收到的所有数据至下游的请求者；在配置文件中调用时其名称为<code>envoy.echo</code>；</p>
+<p>下面是一个最简单的静态侦听器配置示例：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">static_resources:</span><br><span class="line">  listeners:</span><br><span class="line">     name: containers_1</span><br><span class="line">     address:</span><br><span class="line">       socket_address:</span><br><span class="line">         address: 0.0.0.0</span><br><span class="line">         port_value: 15001</span><br><span class="line">     filter_chains:</span><br><span class="line">     - filters:</span><br><span class="line">       - name: envoy.echo</span><br></pre></td></tr></table></figure>
+
+<h2 id="基于镜像启动第一个Envoy实例"><a href="#基于镜像启动第一个Envoy实例" class="headerlink" title="基于镜像启动第一个Envoy实例"></a>基于镜像启动第一个Envoy实例</h2><p>基于envoy的预制docker镜像启动实例时，需要额外自定义配置文件。Envoy镜像默认的配置文件在<code>/etc/envoy/envoy.yaml</code>但未必符合用户的使用需求，因此，用户一般需要自定义好配置文件，而后将其以存储卷的方式挂载进容器；</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker run --name envoy -p 80:15001 -v /root/envoy.yaml:/etc/envoy/envoy.yaml envoyproxy/envoy-alpine:latest</span><br></pre></td></tr></table></figure>
+
+<h2 id="Listener-Filter"><a href="#Listener-Filter" class="headerlink" title="Listener Filter"></a>Listener Filter</h2><ul>
 <li>envoy内置了许多L3/L4过滤器，例如<ul>
 <li>代理类：TCP Proxy、HTTP connection manager、Thrift Proxy、Mongo proxy、Dubbo Proxy、ZooKeeper proxy、MySQL proxy和Redis proxy等；</li>
 <li>其它：Client TLS authentication、Rate limit、Role Based Access Control (RBAC) Network Filter和Upstream Cluster from SNI等；</li>
@@ -612,7 +628,7 @@
   <p><span>本文标题:</span>Envoy的概念与术语</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年11月11日 - 08:41:14</p>
-  <p><span>最后更新:</span>2019年11月11日 - 11:53:42</p>
+  <p><span>最后更新:</span>2019年11月13日 - 09:08:27</p>
   <p><span>原始链接:</span><a href="/2019/11/11/Envoy-concept/" title="Envoy的概念与术语">https://system51.github.io/2019/11/11/Envoy-concept/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/11/11/Envoy-concept/" aria-label="复制成功！"></i></span>
   </p>
@@ -795,7 +811,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是Envoy？"><span class="nav-number">1.</span> <span class="nav-text">什么是Envoy？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主线程："><span class="nav-number">1.1.</span> <span class="nav-text">主线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工作线程："><span class="nav-number">1.2.</span> <span class="nav-text">工作线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件刷写线程："><span class="nav-number">1.3.</span> <span class="nav-text">文件刷写线程：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#xDS-API常用术语"><span class="nav-number">2.</span> <span class="nav-text">xDS API常用术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本概念"><span class="nav-number">2.0.1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#请求转发概念"><span class="nav-number">2.0.2.</span> <span class="nav-text">请求转发概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#xDS-API概念"><span class="nav-number">2.0.3.</span> <span class="nav-text">xDS API概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#和xDS相关的其他概念还有："><span class="nav-number">2.0.4.</span> <span class="nav-text">和xDS相关的其他概念还有：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#区域概念"><span class="nav-number">2.0.5.</span> <span class="nav-text">区域概念</span></a></li></ol></li></ol><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy部署类型"><span class="nav-number">3.</span> <span class="nav-text">Envoy部署类型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置概述"><span class="nav-number">4.</span> <span class="nav-text">Envoy配置概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置中的重要概念"><span class="nav-number">5.</span> <span class="nav-text">Envoy配置中的重要概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#侦听器和集群配置概述"><span class="nav-number">5.1.</span> <span class="nav-text">侦听器和集群配置概述</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy的配置方式"><span class="nav-number">6.</span> <span class="nav-text">Envoy的配置方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Listener"><span class="nav-number">7.</span> <span class="nav-text">Listener</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Listener-Filter"><span class="nav-number">8.</span> <span class="nav-text">Listener Filter</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Route"><span class="nav-number">9.</span> <span class="nav-text">Route</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cluster"><span class="nav-number">10.</span> <span class="nav-text">Cluster</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Upstream-clusters"><span class="nav-number">11.</span> <span class="nav-text">Upstream clusters</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Endpoint"><span class="nav-number">12.</span> <span class="nav-text">Endpoint</span></a></li></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#什么是Envoy？"><span class="nav-number">1.</span> <span class="nav-text">什么是Envoy？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#主线程："><span class="nav-number">1.1.</span> <span class="nav-text">主线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#工作线程："><span class="nav-number">1.2.</span> <span class="nav-text">工作线程：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#文件刷写线程："><span class="nav-number">1.3.</span> <span class="nav-text">文件刷写线程：</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#xDS-API常用术语"><span class="nav-number">2.</span> <span class="nav-text">xDS API常用术语</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#基本概念"><span class="nav-number">2.0.1.</span> <span class="nav-text">基本概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#请求转发概念"><span class="nav-number">2.0.2.</span> <span class="nav-text">请求转发概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#xDS-API概念"><span class="nav-number">2.0.3.</span> <span class="nav-text">xDS API概念</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#和xDS相关的其他概念还有："><span class="nav-number">2.0.4.</span> <span class="nav-text">和xDS相关的其他概念还有：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#区域概念"><span class="nav-number">2.0.5.</span> <span class="nav-text">区域概念</span></a></li></ol></li></ol><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy部署类型"><span class="nav-number">3.</span> <span class="nav-text">Envoy部署类型</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#服务间-egress-listener"><span class="nav-number">3.1.</span> <span class="nav-text">服务间 egress listener</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#服务间-ingress-listener"><span class="nav-number">3.2.</span> <span class="nav-text">服务间 ingress listener</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置概述"><span class="nav-number">4.</span> <span class="nav-text">Envoy配置概述</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy配置中的重要概念"><span class="nav-number">5.</span> <span class="nav-text">Envoy配置中的重要概念</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#侦听器和集群配置概述"><span class="nav-number">5.1.</span> <span class="nav-text">侦听器和集群配置概述</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Envoy的配置方式"><span class="nav-number">6.</span> <span class="nav-text">Envoy的配置方式</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Listener"><span class="nav-number">7.</span> <span class="nav-text">Listener</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Listener配置"><span class="nav-number">7.1.</span> <span class="nav-text">Listener配置</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#静态声明："><span class="nav-number">7.1.1.</span> <span class="nav-text">静态声明：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#Listener简易静态配置"><span class="nav-number">7.1.2.</span> <span class="nav-text">Listener简易静态配置</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#基于镜像启动第一个Envoy实例"><span class="nav-number">8.</span> <span class="nav-text">基于镜像启动第一个Envoy实例</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Listener-Filter"><span class="nav-number">9.</span> <span class="nav-text">Listener Filter</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Route"><span class="nav-number">10.</span> <span class="nav-text">Route</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Cluster"><span class="nav-number">11.</span> <span class="nav-text">Cluster</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Upstream-clusters"><span class="nav-number">12.</span> <span class="nav-text">Upstream clusters</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Endpoint"><span class="nav-number">13.</span> <span class="nav-text">Endpoint</span></a></li></div>
             
 
           </div>
