@@ -92,7 +92,7 @@
 <meta property="og:image" content="https://system51.github.io/images/envoy-5.png">
 <meta property="og:image" content="https://system51.github.io/images/envoy-2.png">
 <meta property="og:image" content="https://system51.github.io/images/envoy-3.png">
-<meta property="og:updated_time" content="2019-11-13T02:03:10.655Z">
+<meta property="og:updated_time" content="2019-11-13T02:05:57.719Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Envoy的概念与术语">
 <meta name="twitter:description" content="什么是Envoy？Envoy 是以 C++ 开发的高性能非阻塞的服务代理程序，其内置服务发现、高级负载均衡、TLS终止、HTTP/2、GRPC代理、熔断器、健康检查、L3/4网络过滤器、L7层过滤器、动态配置，基于百分比流量拆分的灰度发布、故障注入等功能。Envoy是的新型服务代理程序，与HAProxy和Nginx一样。但Envoy主要面向SOA（面向服务的架构）的网络代理，所以非常适用于微服务，">
@@ -493,7 +493,7 @@
 <li>服务间、前端代理、双向代理</li>
 </ul>
 <h3 id="仅服务之间"><a href="#仅服务之间" class="headerlink" title="仅服务之间"></a>仅服务之间</h3><p><img src="/images/envoy-4.png" alt="envoy-4"></p>
-<p>上图显示了最简单的 Envoy 部署，它使用 Envoy 作为面向服务架构（SOA）内部的所有流量的通信总线。在这种情况下，Envoy 暴露了几个用于本地来源流量以及服务流量的监听器。</p>
+<p>上图显示了最简单的 Envoy 部署，它使用 Envoy 作为面向服务架构（SOA）内部的所有流量的通信总线。在这种情况下，Envoy 暴露了几个用于本地来源流量以及服务流量的监听器<code>egress listener</code>和<code>igress listener</code>。</p>
 <h4 id="服务间-egress-listener"><a href="#服务间-egress-listener" class="headerlink" title="服务间 egress listener"></a>服务间 egress listener</h4><p>这是应用程序与基础结构中的其他服务对话所使用的端口。 例如，<code>http://localhost:9001</code>。HTTP 和 gRPC请求使用 HTTP/1.1 host 头或 HTTP/2:authority 头来表示请求指向哪个远程集群。根据配置中的详细信息，Envoy 处理服务发现、负载平衡、速率限制等。服务只需要了解本地 Envoy，不需要关心网络拓扑结构，无论他们是在开发还是在生产中运行。<br>此监听器支持 HTTP/1.1 或 HTTP/2，具体取决于应用程序的功能。</p>
 <h4 id="服务间-ingress-listener"><a href="#服务间-ingress-listener" class="headerlink" title="服务间 ingress listener"></a>服务间 ingress listener</h4><p>这是远程 Envoys 想要与本地 Envoys 通信时使用的端口。例如，<code>http://localhost:9211</code>。入向请求将通过配置的端口路由到本地服务。根据应用程序或负载平衡需求（例如，如果服务需要 HTTP 端口和 gRPC 端口），可能会涉及多个应用程序端口。 本地 Envoy 根据需要执行缓冲、熔断等。<br>我们的默认配置对所有 Envoy 相互间的通信使用 HTTP/2 协议，无论应用程序在通过本地 Envoy 出向时使用的是 HTTP/1.1 还是 HTTP/2。 HTTP/2 通过长连接和显式重置通知提供更好的性能。</p>
 <h3 id="服务间外加前端代理"><a href="#服务间外加前端代理" class="headerlink" title="服务间外加前端代理"></a>服务间外加前端代理</h3><p><img src="/images/envoy-5.png" alt="envoy-5"></p>
@@ -640,7 +640,7 @@
   <p><span>本文标题:</span>Envoy的概念与术语</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年11月11日 - 08:41:14</p>
-  <p><span>最后更新:</span>2019年11月13日 - 10:03:10</p>
+  <p><span>最后更新:</span>2019年11月13日 - 10:05:57</p>
   <p><span>原始链接:</span><a href="/2019/11/11/Envoy-concept/" title="Envoy的概念与术语">https://system51.github.io/2019/11/11/Envoy-concept/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/11/11/Envoy-concept/" aria-label="复制成功！"></i></span>
   </p>
