@@ -79,18 +79,18 @@
 
 
 
-<meta name="description" content="节点信息 本文章将以下列节点数与规格来进行部署Kubernetes集群,系统采用CentOS 7.X，另外使用keepalived+haproxy来做master高可用 。其中VIP地址为192.168.0.240；  所有操作全部用root权限 高可用一般建议大于等于3台的奇数台,我使用3台master来做高可用      IP Hostname CPU Memory    192.168.0.">
+<meta name="description" content="节点信息本文章将以下列节点数与规格来进行部署Kubernetes集群,系统采用CentOS 7.X，另外使用keepalived+haproxy来做master高可用 。其中VIP地址为192.168.0.240；  所有操作全部用root权限 高可用一般建议大于等于3台的奇数台,我使用3台master来做高可用     IP Hostname CPU Memory    192.168.0.20">
 <meta name="keywords" content="kubernetes,devops">
 <meta property="og:type" content="article">
 <meta property="og:title" content="二进制部署Kubernetes v1.13.5（一）">
 <meta property="og:url" content="https://system51.github.io/2019/08/26/installation-Kubernetes-v1-13-5/index.html">
 <meta property="og:site_name" content="Mr.Ye Blogs">
-<meta property="og:description" content="节点信息 本文章将以下列节点数与规格来进行部署Kubernetes集群,系统采用CentOS 7.X，另外使用keepalived+haproxy来做master高可用 。其中VIP地址为192.168.0.240；  所有操作全部用root权限 高可用一般建议大于等于3台的奇数台,我使用3台master来做高可用      IP Hostname CPU Memory    192.168.0.">
+<meta property="og:description" content="节点信息本文章将以下列节点数与规格来进行部署Kubernetes集群,系统采用CentOS 7.X，另外使用keepalived+haproxy来做master高可用 。其中VIP地址为192.168.0.240；  所有操作全部用root权限 高可用一般建议大于等于3台的奇数台,我使用3台master来做高可用     IP Hostname CPU Memory    192.168.0.20">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-09-06T02:02:10.971Z">
+<meta property="og:updated_time" content="2019-11-14T02:00:27.149Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="二进制部署Kubernetes v1.13.5（一）">
-<meta name="twitter:description" content="节点信息 本文章将以下列节点数与规格来进行部署Kubernetes集群,系统采用CentOS 7.X，另外使用keepalived+haproxy来做master高可用 。其中VIP地址为192.168.0.240；  所有操作全部用root权限 高可用一般建议大于等于3台的奇数台,我使用3台master来做高可用      IP Hostname CPU Memory    192.168.0.">
+<meta name="twitter:description" content="节点信息本文章将以下列节点数与规格来进行部署Kubernetes集群,系统采用CentOS 7.X，另外使用keepalived+haproxy来做master高可用 。其中VIP地址为192.168.0.240；  所有操作全部用root权限 高可用一般建议大于等于3台的奇数台,我使用3台master来做高可用     IP Hostname CPU Memory    192.168.0.20">
 
 
 
@@ -342,13 +342,11 @@
       
 
       
-        <h3 id="节点信息"><a href="#节点信息" class="headerlink" title="节点信息"></a>节点信息</h3><blockquote>
-<p>本文章将以下列节点数与规格来进行部署Kubernetes集群,系统采用CentOS 7.X，另外使用<code>keepalived+haproxy</code>来做<code>master</code>高可用 。其中VIP地址为<code>192.168.0.240</code>；</p>
+        <h3 id="节点信息"><a href="#节点信息" class="headerlink" title="节点信息"></a>节点信息</h3><p>本文章将以下列节点数与规格来进行部署Kubernetes集群,系统采用CentOS 7.X，另外使用<code>keepalived+haproxy</code>来做<code>master</code>高可用 。其中VIP地址为<code>192.168.0.240</code>；</p>
 <ul>
 <li>所有操作全部用root权限</li>
 <li>高可用一般建议大于等于3台的奇数台,我使用3台master来做高可用</li>
 </ul>
-</blockquote>
 <table>
 <thead>
 <tr>
@@ -466,12 +464,10 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">reboot</span><br></pre></td></tr></table></figure>
 
 <blockquote>
-<p>所有机器安装ipvs(ipvs性能甩iptables几条街并且排错更直观)</p>
-<ul>
-<li>在每台机器上安装依赖包：<br>yum install ipvsadm ipset sysstat conntrack libseccomp -y</li>
-</ul>
+<p>所有机器安装ipvs(ipvs性能甩iptables几条街并且排错更直观)在每台机器上安装依赖包：</p>
 </blockquote>
-<p>-</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">yum install ipvsadm ipset sysstat conntrack libseccomp -y</span><br></pre></td></tr></table></figure>
+
 <blockquote>
 <p>所有机器选择需要开机加载的内核模块,以下是 ipvs 模式需要加载的模块并设置开机自动加载</p>
 </blockquote>
@@ -483,12 +479,11 @@
 <blockquote>
 <p>所有机器需要设定/etc/sysctl.d/k8s.conf的系统参数。</p>
 </blockquote>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF &gt; /etc/sysctl.d/k8s.conf</span><br><span class="line"># https://github.com/moby/moby/issues/31208 </span><br><span class="line"># ipvsadm -l --timout</span><br><span class="line"># 修复ipvs模式下长连接timeout问题 小于900即可</span><br><span class="line">net.ipv4.tcp_keepalive_time = 600</span><br><span class="line">net.ipv4.tcp_keepalive_intvl = 30</span><br><span class="line">net.ipv4.tcp_keepalive_probes = 10</span><br><span class="line">net.ipv6.conf.all.disable_ipv6 = 1</span><br><span class="line">net.ipv6.conf.default.disable_ipv6 = 1</span><br><span class="line">net.ipv6.conf.lo.disable_ipv6 = 1</span><br><span class="line">net.ipv4.neigh.default.gc_stale_time = 120</span><br><span class="line">net.ipv4.conf.all.rp_filter = 0</span><br><span class="line">net.ipv4.conf.default.rp_filter = 0</span><br><span class="line">net.ipv4.conf.default.arp_announce = 2</span><br><span class="line">net.ipv4.conf.lo.arp_announce = 2</span><br><span class="line">net.ipv4.conf.all.arp_announce = 2</span><br><span class="line">net.ipv4.ip_forward = 1</span><br><span class="line">net.ipv4.tcp_max_tw_buckets = 5000</span><br><span class="line">net.ipv4.tcp_syncookies = 1</span><br><span class="line">net.ipv4.tcp_max_syn_backlog = 1024</span><br><span class="line">net.ipv4.tcp_synack_retries = 2</span><br><span class="line"># 要求iptables不对bridge的数据进行处理</span><br><span class="line">net.bridge.bridge-nf-call-ip6tables = 1</span><br><span class="line">net.bridge.bridge-nf-call-iptables = 1</span><br><span class="line">net.bridge.bridge-nf-call-arptables = 1</span><br><span class="line">net.netfilter.nf_conntrack_max = 2310720</span><br><span class="line">fs.inotify.max_user_watches=89100</span><br><span class="line">fs.may_detach_mounts = 1</span><br><span class="line">fs.file-max = 52706963</span><br><span class="line">fs.nr_open = 52706963</span><br><span class="line">vm.swappiness = 0</span><br><span class="line">vm.overcommit_memory=1</span><br><span class="line">vm.panic_on_oom=0</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">sysctl --system</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF &gt; /etc/sysctl.d/k8s.conf</span><br><span class="line"># https://github.com/moby/moby/issues/31208 </span><br><span class="line"># ipvsadm -l --timout</span><br><span class="line"># 修复ipvs模式下长连接timeout问题 小于900即可</span><br><span class="line">net.ipv4.tcp_keepalive_time = 600</span><br><span class="line">net.ipv4.tcp_keepalive_intvl = 30</span><br><span class="line">net.ipv4.tcp_keepalive_probes = 10</span><br><span class="line"></span><br><span class="line"># 关闭IPV6防止触发BUG</span><br><span class="line">net.ipv6.conf.all.disable_ipv6 = 1</span><br><span class="line">net.ipv6.conf.default.disable_ipv6 = 1</span><br><span class="line">net.ipv6.conf.lo.disable_ipv6 = 1</span><br><span class="line"></span><br><span class="line">net.ipv4.neigh.default.gc_stale_time = 120</span><br><span class="line">net.ipv4.conf.all.rp_filter = 0</span><br><span class="line">net.ipv4.conf.default.rp_filter = 0</span><br><span class="line">net.ipv4.conf.default.arp_announce = 2</span><br><span class="line">net.ipv4.conf.lo.arp_announce = 2</span><br><span class="line">net.ipv4.conf.all.arp_announce = 2</span><br><span class="line">net.ipv4.ip_forward = 1</span><br><span class="line">net.ipv4.tcp_max_tw_buckets = 5000</span><br><span class="line">net.ipv4.tcp_syncookies = 1</span><br><span class="line">net.ipv4.tcp_max_syn_backlog = 1024</span><br><span class="line">net.ipv4.tcp_synack_retries = 2</span><br><span class="line"># 要求iptables不对bridge的数据进行处理</span><br><span class="line">net.bridge.bridge-nf-call-ip6tables = 1</span><br><span class="line">net.bridge.bridge-nf-call-iptables = 1</span><br><span class="line">net.bridge.bridge-nf-call-arptables = 1</span><br><span class="line">net.netfilter.nf_conntrack_max = 2310720</span><br><span class="line">fs.inotify.max_user_watches=89100</span><br><span class="line">fs.may_detach_mounts = 1</span><br><span class="line">fs.file-max = 52706963</span><br><span class="line">fs.nr_open = 52706963</span><br><span class="line">vm.swappiness = 0</span><br><span class="line">vm.overcommit_memory=1</span><br><span class="line">vm.panic_on_oom=0</span><br><span class="line">EOF</span><br><span class="line"></span><br><span class="line">sysctl --system</span><br></pre></td></tr></table></figure>
 
 <blockquote>
 <p>所有机器需要安装Docker CE 版本的容器引擎,推荐使用年份命名版本的docker ce：<br>在官方查看K8s支持的docker版本 <a href="https://github.com/kubernetes/kubernetes" target="_blank" rel="noopener">https://github.com/kubernetes/kubernetes</a> 里进对应版本的<code>changelog</code>里搜<code>The list of validated docker versions remain</code></p>
 </blockquote>
-<p>-</p>
 <blockquote>
 <p>建议使用yum安装docker版本,这里我使用的是18.06.03，并为所有机器配置加速源并配置docker的启动参数使用systemd,使用systemd是官方的建议,详见 <a href="https://kubernetes.io/docs/setup/cri/" target="_blank" rel="noopener">https://kubernetes.io/docs/setup/cri/</a></p>
 </blockquote>
@@ -524,7 +519,7 @@
   <p><span>本文标题:</span>二进制部署Kubernetes v1.13.5（一）</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 14:13:38</p>
-  <p><span>最后更新:</span>2019年09月06日 - 10:02:10</p>
+  <p><span>最后更新:</span>2019年11月14日 - 10:00:27</p>
   <p><span>原始链接:</span><a href="/2019/08/26/installation-Kubernetes-v1-13-5/" title="二进制部署Kubernetes v1.13.5（一）">https://system51.github.io/2019/08/26/installation-Kubernetes-v1-13-5/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/installation-Kubernetes-v1-13-5/" aria-label="复制成功！"></i></span>
   </p>
