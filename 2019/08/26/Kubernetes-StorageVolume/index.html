@@ -91,7 +91,7 @@
 <meta property="og:image" content="https://system51.github.io/images/volumes-2.png">
 <meta property="og:image" content="https://system51.github.io/images/volumes-3.png">
 <meta property="og:image" content="https://system51.github.io/images/volumes-4.png">
-<meta property="og:updated_time" content="2019-09-06T02:02:43.700Z">
+<meta property="og:updated_time" content="2019-11-20T06:56:58.298Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之存储卷">
 <meta name="twitter:description" content="一、存储卷的概念和类型 为了保证数据的持久性，必须保证数据在外部存储在docker容器中，为了实现数据的持久性存储，在宿主机和容器内做映射，可以保证在容器的生命周期结束，数据依旧可以实现持久性存储。但是在k8s中，由于pod分布在各个不同的节点之上，并不能实现不同节点之间持久性数据的共享，并且，在节点故障时，可能会导致数据的永久性丢失。为此，k8s就引入了外部存储卷的功能。  k8s的存储卷类型：">
@@ -534,7 +534,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl get sc</span><br><span class="line">NAME          TYPE</span><br><span class="line">gold (default)  kubetnetes.io/gce-pd</span><br></pre></td></tr></table></figure>
 
 <h3 id="动态PV扩容"><a href="#动态PV扩容" class="headerlink" title="动态PV扩容"></a>动态PV扩容</h3><blockquote>
-<p>v1.11之前需要在<code>feature gate</code>中开启<code>ExpandPersistentVolumes</code>，以及 admission 控制器 <code>PersistentVolumeClaimResize</code>（防止在底层存储不支持扩容的情况下对 PVC 进行扩容）。在Kubernetes v1.11+ 默认被激活，一旦管理员确定底层提供程序支持卷扩展，管理员就可以通过在自己的<code>StorageClass</code>对象中将<code>allowVolumeExpansion</code>字段设置为<code>true</code>，使用户可以使用该特性。</p>
+<p>v1.11之前需要在<code>feature gate</code>中开启<code>ExpandInUsePersistentVolumes</code>，以及<code>admission</code>控制器 <code>PersistentVolumeClaimResize</code>（防止在底层存储不支持扩容的情况下对 PVC 进行扩容）。在Kubernetes v1.11+ 默认被激活，一旦管理员确定底层提供程序支持卷扩展，管理员就可以通过在自己的<code>StorageClass</code>对象中将<code>allowVolumeExpansion</code>字段设置为<code>true</code>，使用户可以使用该特性。</p>
 </blockquote>
 <h4 id="以下持久化卷支持扩展持久化卷声明："><a href="#以下持久化卷支持扩展持久化卷声明：" class="headerlink" title="以下持久化卷支持扩展持久化卷声明："></a>以下持久化卷支持扩展持久化卷声明：</h4><ul>
 <li>AWS-EBS</li>
@@ -549,24 +549,20 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: storage.k8s.io/v1</span><br><span class="line">kind: StorageClass</span><br><span class="line">metadata:</span><br><span class="line">  name: gluster-vol-default</span><br><span class="line">provisioner: kubernetes.io/glusterfs</span><br><span class="line">parameters:</span><br><span class="line">  resturl: &quot;http://192.168.10.100:8080&quot;</span><br><span class="line">  restuser: &quot;&quot;</span><br><span class="line">  secretNamespace: &quot;&quot;</span><br><span class="line">  secretName: &quot;&quot;</span><br><span class="line">allowVolumeExpansion: true</span><br></pre></td></tr></table></figure>
 
 <blockquote>
-<p>allowVolumeExpansion字段需要设置成true,编辑PVC为其指定更大容量，自动触发与其绑定的PV的扩容，不是创建新的PV，而是在原有基础上resize，原有数据不会丢失。</p>
+<p>要为PVC请求更大的卷，请编辑PVC对象并指定更大的空间。这将触发与其绑定的PV扩容。不是创建新的PV，而是在原有基础上resize，原有数据不会丢失。</p>
 </blockquote>
 <h4 id="扩容操作"><a href="#扩容操作" class="headerlink" title="扩容操作"></a>扩容操作</h4><blockquote>
-<ul>
-<li>修改PVC的size<br>命令行使用kubectl edit pvc xxx，直接修改PVC的容量即可。</li>
-</ul>
+<p>修改PVC的size使用<code>kubectl edit pvc xxx</code>，直接修改PVC的容量即可。</p>
 </blockquote>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: PersistentVolumeClaim</span><br><span class="line">metadata:</span><br><span class="line">  annotations:</span><br><span class="line">    volume.beta.kubernetes.io/storage-provisioner: ceph.com/rbd</span><br><span class="line">  name: resize</span><br><span class="line">spec:</span><br><span class="line">  resources:</span><br><span class="line">    requests:</span><br><span class="line">      storage: 5Gi</span><br><span class="line">  storageClassName: sata</span><br></pre></td></tr></table></figure>
 
 <blockquote>
-<p>之后PVC会进入 FileSystemResizePending 状态，等待Pod重启。</p>
+<p>之后PVC会进入<code>FileSystemResizePending</code>状态，等待Pod重启。</p>
 </blockquote>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: PersistentVolumeClaim</span><br><span class="line">metadata:</span><br><span class="line">  annotations:</span><br><span class="line">    volume.beta.kubernetes.io/storage-provisioner: ceph.com/rbd</span><br><span class="line">  name: resize</span><br><span class="line">spec:</span><br><span class="line">  resources:</span><br><span class="line">    requests:</span><br><span class="line">      storage: 6Gi</span><br><span class="line">  storageClassName: sata</span><br><span class="line">status:</span><br><span class="line">  accessModes:</span><br><span class="line">  - ReadWriteOnce</span><br><span class="line">  capacity:</span><br><span class="line">    storage: 5Gi</span><br><span class="line">  conditions:</span><br><span class="line">  - lastProbeTime: null</span><br><span class="line">    lastTransitionTime: 2019-04-14T03:51:36Z</span><br><span class="line">    message: Waiting for user to (re-)start a pod to finish file system resize of</span><br><span class="line">      volume on node.</span><br><span class="line">    status: &quot;True&quot;</span><br><span class="line">    type: FileSystemResizePending</span><br><span class="line">  phase: Bound</span><br></pre></td></tr></table></figure>
 
 <blockquote>
-<ul>
-<li>重启挂载该PVC的Pod<br>之后，controller manager 会调用 resize命令，更新image的大小，并重新挂载卷到Pod上去。</li>
-</ul>
+<p>重启挂载该PVC的Pod之后，<code>controller manager</code> 会调用 resize命令，更新image的大小，并重新挂载卷到Pod上去。</p>
 </blockquote>
 
       
@@ -590,7 +586,7 @@
   <p><span>本文标题:</span>Kubernetes之存储卷</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 09:54:44</p>
-  <p><span>最后更新:</span>2019年09月06日 - 10:02:43</p>
+  <p><span>最后更新:</span>2019年11月20日 - 14:56:58</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-StorageVolume/" title="Kubernetes之存储卷">https://system51.github.io/2019/08/26/Kubernetes-StorageVolume/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-StorageVolume/" aria-label="复制成功！"></i></span>
   </p>
