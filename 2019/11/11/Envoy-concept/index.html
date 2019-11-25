@@ -92,7 +92,7 @@
 <meta property="og:image" content="https://system51.github.io/images/envoy-5.png">
 <meta property="og:image" content="https://system51.github.io/images/envoy-2.png">
 <meta property="og:image" content="https://system51.github.io/images/envoy-3.png">
-<meta property="og:updated_time" content="2019-11-22T01:51:41.777Z">
+<meta property="og:updated_time" content="2019-11-25T01:27:58.890Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Envoy的概念与术语">
 <meta name="twitter:description" content="什么是Envoy？Envoy 是以 C++ 开发的高性能非阻塞的服务代理程序，其内置服务发现、高级负载均衡、TLS终止、HTTP/2、GRPC代理、熔断器、健康检查、L3/4网络过滤器、L7层过滤器、动态配置，基于百分比流量拆分的灰度发布、故障注入等功能。Envoy是的新型服务代理程序，与HAProxy和Nginx一样。但Envoy主要面向SOA（面向服务的架构）的网络代理，所以非常适用于微服务，">
@@ -709,7 +709,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-m-1001501017 overlord]# docker exec -it 6f996e7d349e /bin/sh</span><br><span class="line">/ # curl -H &apos;host: k8scast.cn&apos; 127.0.0.1/hostname</span><br><span class="line">Hostname: 28ca847a6bd2.</span><br></pre></td></tr></table></figure>
 
 <ul>
-<li>从上面的envoy示例中我们可以看出，当我们请求<code>ik8s.io</code>的时候会被负载到两个容器上因为上面的<code>web_cluster_1</code>集群中<code>endpoints</code>地址是一个名称<code>myservice</code>。然而这个名称在<code>docker-compose</code>中<code>webserver1</code>和<code>webserver1</code>都有一个别名叫<code>myservice</code>，所以在<code>STRICT_DNS</code>解析的时候会解析到两个容器上。在看我们请求<code>k8scast.cn</code>的时候永远只会请求到<code>webserver1</code>容器上，因为<code>STRICT_DNS</code>通过名称解析只有一个容器的别名叫<code>webserver1</code>。</li>
+<li>从上面的envoy示例中我们可以看出，当我们请求<code>ik8s.io</code>的时候会被负载到两个不同的容器上，因为上面的<code>web_cluster_1</code>集群中<code>endpoints</code>下的<code>address</code>字段是名为<code>myservice</code>的名称。然而这个名称在<code>docker-compose</code>的定义中<code>webserver1</code>和<code>webserver2</code>都有一个别名叫<code>myservice</code>，所以在<code>STRICT_DNS</code>解析的时候会解析到两个不同的容器上。在看我们请求<code>k8scast.cn</code>的时候永远只会请求到<code>webserver1</code>容器上，因为<code>STRICT_DNS</code>通过名称解析只有一个容器的别名叫<code>webserver1</code>。</li>
 </ul>
 <h4 id="L7-Ingress代理配置示例"><a href="#L7-Ingress代理配置示例" class="headerlink" title="L7 Ingress代理配置示例"></a>L7 Ingress代理配置示例</h4><ul>
 <li>在以下示例中将使用<code>docker-compose</code>模拟envoy以<code>Sidecar</code>的方式注入到Pod内和业务服务运行在同一Pod中。业务服务则监听于<code>127.0.0.1:8081</code>，由同一Pod内的envoy程序代理后暴露给外部访问；</li>
@@ -776,7 +776,7 @@
   <p><span>本文标题:</span>Envoy的概念与术语</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年11月11日 - 08:41:14</p>
-  <p><span>最后更新:</span>2019年11月22日 - 09:51:41</p>
+  <p><span>最后更新:</span>2019年11月25日 - 09:27:58</p>
   <p><span>原始链接:</span><a href="/2019/11/11/Envoy-concept/" title="Envoy的概念与术语">https://system51.github.io/2019/11/11/Envoy-concept/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/11/11/Envoy-concept/" aria-label="复制成功！"></i></span>
   </p>
