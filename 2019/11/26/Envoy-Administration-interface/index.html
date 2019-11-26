@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="管理接口admin Envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等），因此非常有必要精心编排其访问控制机制以避免非授权访问；  12345678admin:  access_log_path: ...      # 管理接口的访问日志文件路径，无须记录访问日志时使用/dev/null；  profile_path: ...">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Envoy-Administration-interface">
+<meta property="og:url" content="https://system51.github.io/2019/11/26/Envoy-Administration-interface/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="管理接口admin Envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等），因此非常有必要精心编排其访问控制机制以避免非授权访问；  12345678admin:  access_log_path: ...      # 管理接口的访问日志文件路径，无须记录访问日志时使用/dev/null；  profile_path: ...">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-11-26T06:55:21.973Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Envoy-Administration-interface">
+<meta name="twitter:description" content="管理接口admin Envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等），因此非常有必要精心编排其访问控制机制以避免非授权访问；  12345678admin:  access_log_path: ...      # 管理接口的访问日志文件路径，无须记录访问日志时使用/dev/null；  profile_path: ...">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/11/26/Envoy-Administration-interface/">
+
+
+
+
+
+  <title>Envoy-Administration-interface | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/11/26/Envoy-Administration-interface/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Envoy-Administration-interface</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-11-26T13:45:40+08:00">
+                2019-11-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/11/26/Envoy-Administration-interface/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/11/26/Envoy-Administration-interface/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="管理接口admin"><a href="#管理接口admin" class="headerlink" title="管理接口admin"></a>管理接口admin</h2><ul>
+<li>Envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等），因此非常有必要精心编排其访问控制机制以避免非授权访问；</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">admin:</span><br><span class="line">  access_log_path: ...      # 管理接口的访问日志文件路径，无须记录访问日志时使用/dev/null；</span><br><span class="line">  profile_path: ...         # cpu profiler的输出路径，默认为/var/log/envoy/envoy.prof；</span><br><span class="line">    address:                # 监听的套接字；</span><br><span class="line">    socket_address:</span><br><span class="line">      protocol: ...</span><br><span class="line">      address: ...</span><br><span class="line">      port_value: ...</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>下面是一个简单的配置示例</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">admin:</span><br><span class="line">  access_log_path: /tmp/admin_access.log</span><br><span class="line">  address:</span><br><span class="line">    socket_address: &#123; address: 127.0.0.1, port_value: 9901 &#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>一个完整的envoy配置示例</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line">admin:</span><br><span class="line">  access_log_path: /tmp/admin_access.log</span><br><span class="line">  profile_path: /tmp/envoy.prof</span><br><span class="line">  address:</span><br><span class="line">    socket_address: &#123; address: 127.0.0.1, port_value: 9901 &#125;</span><br><span class="line"></span><br><span class="line">static_resources:</span><br><span class="line">  listeners:</span><br><span class="line">  - name: listener_0</span><br><span class="line">    address:</span><br><span class="line">      socket_address: &#123; address: 127.0.0.1, port_value: 80 &#125;</span><br><span class="line">    filter_chains:</span><br><span class="line">    - filters:</span><br><span class="line">      - name: envoy.http_connection_manager</span><br><span class="line">        config:</span><br><span class="line">          stat_prefix: egress_http</span><br><span class="line">          codec_type: AUTO</span><br><span class="line">          route_config:</span><br><span class="line">            name: test_route</span><br><span class="line">            virtual_hosts:</span><br><span class="line">            - name: web_service_1</span><br><span class="line">              domains: [&quot;*.ik8s.io&quot;, &quot;ik8s.io&quot;]</span><br><span class="line">              routes:</span><br><span class="line">              - match: &#123; prefix: &quot;/&quot; &#125;</span><br><span class="line">                route: &#123; cluster: web_cluster_1 &#125;</span><br><span class="line">            - name: web_service_2</span><br><span class="line">              domains: [&quot;*.k8scast.cn&quot;,&quot;k8scast.cn&quot;]</span><br><span class="line">              routes:</span><br><span class="line">              - match: &#123; prefix: &quot;/&quot; &#125;</span><br><span class="line">                route: &#123; cluster: web_cluster_2 &#125; </span><br><span class="line">          http_filters:</span><br><span class="line">          - name: envoy.router</span><br><span class="line"></span><br><span class="line">  clusters:</span><br><span class="line">  - name: web_cluster_1</span><br><span class="line">    connect_timeout: 0.25s</span><br><span class="line">    type: STRICT_DNS</span><br><span class="line">    lb_policy: ROUND_ROBIN</span><br><span class="line">    load_assignment:</span><br><span class="line">      cluster_name: web_cluster_1 </span><br><span class="line">      endpoints:</span><br><span class="line">      - lb_endpoints:</span><br><span class="line">        - endpoint:</span><br><span class="line">            address:</span><br><span class="line">              socket_address:</span><br><span class="line">                address: myservice</span><br><span class="line">                port_value: 8081</span><br><span class="line"></span><br><span class="line">  - name: web_cluster_2</span><br><span class="line">    connect_timeout: 0.25s</span><br><span class="line">    type: STRICT_DNS</span><br><span class="line">    lb_policy: ROUND_ROBIN</span><br><span class="line">    load_assignment:</span><br><span class="line">      cluster_name: web_cluster_2</span><br><span class="line">      endpoints:</span><br><span class="line">      - lb_endpoints:</span><br><span class="line">        - endpoint:</span><br><span class="line">            address:</span><br><span class="line">              socket_address:</span><br><span class="line">                address: webserver1 </span><br><span class="line">                port_value: 8081</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>管理接口admin<ul>
+<li>admin接口内置了多个/path，不同的path可能会分别接受不同的GET或POST请求</li>
+<li>GET /help：打印所有可用选项；</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">admin commands are:</span><br><span class="line">/: Admin home page                                                       # GET</span><br><span class="line">/certs: print certs on machine                                           # GET，列出已加载的所有TLS证书及相关的信息；</span><br><span class="line">/clusters: upstream cluster status                                       # GET，额外支持使用“GET /clusters?format=json”</span><br><span class="line">/config_dump: dump current Envoy configs (experimental)                  # GET，打印Envoy加载的各类配置信息；</span><br><span class="line">/contention: dump current Envoy mutex contention stats (if enabled)      # GET，互斥跟踪</span><br><span class="line">/cpuprofiler: enable/disable the CPU profiler                            # POST，启用或禁用cpuprofiler</span><br><span class="line">/healthcheck/fail: cause the server to fail health checks                # POST，强制设定HTTP健康状态检查为失败；</span><br><span class="line">/healthcheck/ok: cause the server to pass health checks                  # POST，强制设定HTTP健康状态检查为成功；</span><br><span class="line">/heapprofiler: enable/disable the heap profiler                          # POST，启用或禁用heapprofiler；</span><br><span class="line">/help: print out list of admin commands</span><br><span class="line">/hot_restart_version: print the hot restart compatibility version        # GET，打印热重启相关的信息；</span><br><span class="line">/listeners: print listener addresses                                     # GET，列出所有侦听器，支持使用“GET /listeners?format=json”</span><br><span class="line">/logging: query/change logging levels                                    # POST，启用或禁用不同子组件上的不同日志记录级别</span><br><span class="line">/memory: print current allocation/heap usage                             # POST，打印当前内在分配信息，以字节为单位；</span><br><span class="line">/quitquitquit: exit the server                                           # POST，干净退出服务器；</span><br><span class="line">/reset_counters: reset all counters to zero                              # POST，重围所有计数器；</span><br><span class="line">/runtime: print runtime values                                           # GET，以json格式输出所有运行时相关值；</span><br><span class="line">/runtime_modify: modify runtime values                                   # POST /runtime_modify?key1=value1&amp;key2=value2，添加或修改在查询参数中传递的运行时值</span><br><span class="line">/server_info: print server version/status information                    # GET，打印当前Envoy Server的相关信息；</span><br><span class="line">/stats: print server stats                                               # 按需输出统计数据，例如GET /stats?filter=regex，另外还支持json和prometheus两种输出格式；</span><br><span class="line">/stats/prometheus: print server stats in prometheus format：             # 输出prometheus格式的统计信息；</span><br></pre></td></tr></table></figure>
+
+<h2 id="管理接口几个示例输出"><a href="#管理接口几个示例输出" class="headerlink" title="管理接口几个示例输出"></a>管理接口几个示例输出</h2><ul>
+<li>GET /clusters：列出所有已配置的集群，包括每个集群中发现的所有上游主机以及每个主机的统计信息；支持输出为json格式；<ul>
+<li>集群管理器信息：“version_info string”，无CDS时，则显示为“version_info::static”</li>
+<li>集群相关的信息：断路器、异常点检测和用于表示是否通过CDS添加的集群标识“add_via_api”</li>
+<li>每个主机的统计信息：包括总连接数、活动连接数、总请求数和主机的健康状态等；不健康的原因通常有以下三种<ul>
+<li>failed_active_hc：未通过主动健康状态检测；</li>
+<li>failed_eds_health：被EDS标记为不健康；</li>
+<li>failed_outlier_check：未通过异常检测机制的检查；</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>GET /listeners：列出所有已配置的侦听器，包括侦听器的名称以及监听的地址；支持输出为json格式；</li>
+<li>POST /reset_counters：将所有计数器重置为0；不过，它只会影响Server本地的输出，对于已经发送到外部存储系统的统计数据无效；</li>
+<li>GET /config_dump：以json格式打印当前从Envoy的各种组件加载的配置信息；</li>
+<li>GET /ready：获取Server就绪与否的状态，LIVE状态为200，否则为503；</li>
+</ul>
+<h2 id="统计集群中每个主机的状态信息说明"><a href="#统计集群中每个主机的状态信息说明" class="headerlink" title="统计集群中每个主机的状态信息说明"></a>统计集群中每个主机的状态信息说明</h2><table>
+<thead>
+<tr>
+<th align="left">Name</th>
+<th align="right">Type</th>
+<th align="center">Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">cx_total</td>
+<td align="right">Counter</td>
+<td align="center">Total connections</td>
+</tr>
+<tr>
+<td align="left">cx_active</td>
+<td align="right">Gauge</td>
+<td align="center">Total active connections</td>
+</tr>
+<tr>
+<td align="left">cx_connect_fail</td>
+<td align="right">Counter</td>
+<td align="center">Total connection failures</td>
+</tr>
+<tr>
+<td align="left">rq_total</td>
+<td align="right">Counter</td>
+<td align="center">Total requests</td>
+</tr>
+<tr>
+<td align="left">rq_timeout</td>
+<td align="right">Counter</td>
+<td align="center">Total timed out requests</td>
+</tr>
+<tr>
+<td align="left">rq_success</td>
+<td align="right">Counter</td>
+<td align="center">Total requests with non-5xx responses</td>
+</tr>
+<tr>
+<td align="left">rq_error</td>
+<td align="right">Counter</td>
+<td align="center">Total requests with 5xx responses</td>
+</tr>
+<tr>
+<td align="left">rq_active</td>
+<td align="right">Gauge</td>
+<td align="center">Total active requests</td>
+</tr>
+<tr>
+<td align="left">healthy</td>
+<td align="right">String</td>
+<td align="center">The health status of the host. See below</td>
+</tr>
+<tr>
+<td align="left">weight</td>
+<td align="right">Integer</td>
+<td align="center">Load balancing weight (1-100)</td>
+</tr>
+<tr>
+<td align="left">zone</td>
+<td align="right">String</td>
+<td align="center">Service zone</td>
+</tr>
+<tr>
+<td align="left">canary</td>
+<td align="right">Boolean</td>
+<td align="center">Whether the host is a canary</td>
+</tr>
+<tr>
+<td align="left">success_rate</td>
+<td align="right">Double</td>
+<td align="center">Request success rate (0-100). -1 if there was not enough request volume in the interval to calculate it</td>
+</tr>
+</tbody></table>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>Envoy-Administration-interface</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年11月26日 - 13:45:40</p>
+  <p><span>最后更新:</span>2019年11月26日 - 14:55:21</p>
+  <p><span>原始链接:</span><a href="/2019/11/26/Envoy-Administration-interface/" title="Envoy-Administration-interface">https://system51.github.io/2019/11/26/Envoy-Administration-interface/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/11/26/Envoy-Administration-interface/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/11/11/Envoy-concept/" rel="next" title="Envoy的概念与术语">
+                <i class="fa fa-chevron-left"></i> Envoy的概念与术语
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">45</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#管理接口admin"><span class="nav-number">1.</span> <span class="nav-text">管理接口admin</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#管理接口几个示例输出"><span class="nav-number">2.</span> <span class="nav-text">管理接口几个示例输出</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#统计集群中每个主机的状态信息说明"><span class="nav-number">3.</span> <span class="nav-text">统计集群中每个主机的状态信息说明</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
