@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="市面上很多kubeadm的文章都是错误示范或者不够详细，大多数都没写系统设置之类的就直接kubeadm init导致很多跟着做的人会报错 我期望看到本文的读者最少具备以下知识:  Linux一些目录规范和systemd 学过一点docker 懂dns和/etc/hosts、curl互相结合来测试一些web的接口响应状态 不要求github有自己项目，至少会浏览github  本教学将以下列节点数与">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-12-03T09:04:44.933Z">
+<meta property="og:updated_time" content="2019-12-03T09:10:46.739Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="使用Kubeadm搭建一个高可用集群">
 <meta name="twitter:description" content="市面上很多kubeadm的文章都是错误示范或者不够详细，大多数都没写系统设置之类的就直接kubeadm init导致很多跟着做的人会报错 我期望看到本文的读者最少具备以下知识:  Linux一些目录规范和systemd 学过一点docker 懂dns和/etc/hosts、curl互相结合来测试一些web的接口响应状态 不要求github有自己项目，至少会浏览github  本教学将以下列节点数与">
@@ -431,7 +431,7 @@
 <li><p>修改hostname<br>kubelet和kube-proxy上报node信息默认是取hostname的，除非通过<code>--hostname-override</code>指定，这里自行设置hostname</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hostnamectl set-hostname xxx</span><br></pre></td></tr></table></figure>
 </li>
-<li><p>修改hosts文件</p>
+<li><p>所有主机修改hosts文件</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">cat &gt;&gt;/etc/hosts &lt;&lt; EOF</span><br><span class="line">10.15.1.17 k8s-m1</span><br><span class="line">10.15.1.18 k8s-m2</span><br><span class="line">10.15.1.19 k8s-m3</span><br><span class="line">10.15.1.20 k8s-n1</span><br><span class="line">10.15.1.21 k8s-n2</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
 </li>
 <li><p>docker官方的内核检查脚本建议<code>(RHEL7/CentOS7: User namespaces disabled; add &#39;user_namespace.enable=1&#39; to boot command line)</code>,使用下面命令开启</p>
@@ -619,7 +619,7 @@
   <p><span>本文标题:</span>使用Kubeadm搭建一个高可用集群</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年12月03日 - 13:40:56</p>
-  <p><span>最后更新:</span>2019年12月03日 - 17:04:44</p>
+  <p><span>最后更新:</span>2019年12月03日 - 17:10:46</p>
   <p><span>原始链接:</span><a href="/2019/12/03/kubeadm-base-use/" title="使用Kubeadm搭建一个高可用集群">https://system51.github.io/2019/12/03/kubeadm-base-use/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/12/03/kubeadm-base-use/" aria-label="复制成功！"></i></span>
   </p>
