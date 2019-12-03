@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="市面上很多kubeadm的文章都是错误示范或者不够详细，大多数都没写系统设置之类的就直接kubeadm init导致很多跟着做的人会报错 我期望看到本文的读者最少具备以下知识:  Linux一些目录规范和systemd 学过一点docker 懂dns和/etc/hosts、curl互相结合来测试一些web的接口响应状态 不要求github有自己项目，至少会浏览github  本教学将以下列节点数与">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-12-03T08:44:04.862Z">
+<meta property="og:updated_time" content="2019-12-03T08:56:42.474Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="使用Kubeadm搭建一个高可用集群">
 <meta name="twitter:description" content="市面上很多kubeadm的文章都是错误示范或者不够详细，大多数都没写系统设置之类的就直接kubeadm init导致很多跟着做的人会报错 我期望看到本文的读者最少具备以下知识:  Linux一些目录规范和systemd 学过一点docker 懂dns和/etc/hosts、curl互相结合来测试一些web的接口响应状态 不要求github有自己项目，至少会浏览github  本教学将以下列节点数与">
@@ -470,11 +470,7 @@
 </ul>
 <p>把<code>ExecStart</code>的部分复制在终端运行，去掉<code>--logtostderr</code>和<code>--log-dir</code>相关的不前台打印日志的选项,–v是日志等级，1-8</p>
 <ul>
-<li><p>另外kubelet启动报下面错的话，请开启ipv6</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker_service.go:401] Streaming server stopped unexpectedly: listen tcp [::1]:0: bind: cannot assign requested address</span><br></pre></td></tr></table></figure>
-</li>
-<li><p>开启ipv6</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ansible all -m shell -a &apos;echo 0 &gt; /proc/sys/net/ipv6/conf/all/disable_ipv6&apos;</span><br><span class="line">sed -ri sed -rn &apos;/f\.[a|d].+ipv6/s#1#0#&apos; /etc/sysctl.d/k8s-sysctl.conf</span><br><span class="line">ansible all -m copy -a &apos;src=/etc/sysctl.d/k8s-sysctl.conf dest=/etc/sysctl.d/k8s-sysctl.conf&apos;</span><br></pre></td></tr></table></figure>
+<li>另外kubelet启动报下面错的话，请开启ipv6<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker_service.go:401] Streaming server stopped unexpectedly: listen tcp [::1]:0: bind: cannot assign requested address</span><br></pre></td></tr></table></figure>
 
 </li>
 </ul>
@@ -625,7 +621,7 @@
   <p><span>本文标题:</span>使用Kubeadm搭建一个高可用集群</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年12月03日 - 13:40:56</p>
-  <p><span>最后更新:</span>2019年12月03日 - 16:44:04</p>
+  <p><span>最后更新:</span>2019年12月03日 - 16:56:42</p>
   <p><span>原始链接:</span><a href="/2019/12/03/kubeadm-base-use/" title="使用Kubeadm搭建一个高可用集群">https://system51.github.io/2019/12/03/kubeadm-base-use/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/12/03/kubeadm-base-use/" aria-label="复制成功！"></i></span>
   </p>
