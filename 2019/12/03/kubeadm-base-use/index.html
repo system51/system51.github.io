@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="市面上很多kubeadm的文章都是错误示范或者不够详细，大多数都没写系统设置之类的就直接kubeadm init导致很多跟着做的人会报错 我期望看到本文的读者最少具备以下知识:  Linux一些目录规范和systemd 学过一点docker 懂dns和/etc/hosts、curl互相结合来测试一些web的接口响应状态 不要求github有自己项目，至少会浏览github  本教学将以下列节点数与">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-12-03T08:56:42.474Z">
+<meta property="og:updated_time" content="2019-12-03T09:04:44.933Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="使用Kubeadm搭建一个高可用集群">
 <meta name="twitter:description" content="市面上很多kubeadm的文章都是错误示范或者不够详细，大多数都没写系统设置之类的就直接kubeadm init导致很多跟着做的人会报错 我期望看到本文的读者最少具备以下知识:  Linux一些目录规范和systemd 学过一点docker 懂dns和/etc/hosts、curl互相结合来测试一些web的接口响应状态 不要求github有自己项目，至少会浏览github  本教学将以下列节点数与">
@@ -474,11 +474,9 @@
 
 </li>
 </ul>
-<h2 id="kubeadm部署"><a href="#kubeadm部署" class="headerlink" title="kubeadm部署"></a>kubeadm部署</h2><h4 id="安装kubeadm相关"><a href="#安装kubeadm相关" class="headerlink" title="安装kubeadm相关"></a>安装kubeadm相关</h4><ul>
-<li>默认源在国外会无法安装，我们使用国内的镜像源，所有机器都要操作<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF &gt;/etc/yum.repos.d/kubernetes.repo</span><br><span class="line">[kubernetes]</span><br><span class="line">name=Kubernetes</span><br><span class="line">baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64</span><br><span class="line">enabled=1</span><br><span class="line">gpgcheck=0</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
+<h2 id="kubeadm部署"><a href="#kubeadm部署" class="headerlink" title="kubeadm部署"></a>kubeadm部署</h2><h4 id="安装kubeadm相关"><a href="#安装kubeadm相关" class="headerlink" title="安装kubeadm相关"></a>安装kubeadm相关</h4><p>默认源在国外会无法安装，我们使用国内的镜像源，所有机器都要操作</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">cat &lt;&lt;EOF &gt;/etc/yum.repos.d/kubernetes.repo</span><br><span class="line">[kubernetes]</span><br><span class="line">name=Kubernetes</span><br><span class="line">baseurl=https://mirrors.aliyun.com/kubernetes/yum/repos/kubernetes-el7-x86_64</span><br><span class="line">enabled=1</span><br><span class="line">gpgcheck=0</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
 
-</li>
-</ul>
 <h5 id="master部分安装相关软件"><a href="#master部分安装相关软件" class="headerlink" title="master部分安装相关软件"></a>master部分安装相关软件</h5><p>k8s的node就是kubelet+cri(一般是docker)，kubectl是一个agent读取kubeconfig去访问kube-apiserver来操作集群，kubeadm是部署，所以master节点需要安装三个，node一般不需要kubectl但是yum安装的时候还是会给你安装最新版所以我这里node还是安装了kubectl</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">yum install -y \</span><br><span class="line">    kubeadm-1.15.6 \</span><br><span class="line">    kubectl-1.15.6 \</span><br><span class="line">    kubelet-1.15.6 \</span><br><span class="line">    --disableexcludes=kubernetes &amp;&amp; \</span><br><span class="line">    systemctl enable kubelet</span><br></pre></td></tr></table></figure>
 
@@ -621,7 +619,7 @@
   <p><span>本文标题:</span>使用Kubeadm搭建一个高可用集群</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年12月03日 - 13:40:56</p>
-  <p><span>最后更新:</span>2019年12月03日 - 16:56:42</p>
+  <p><span>最后更新:</span>2019年12月03日 - 17:04:44</p>
   <p><span>原始链接:</span><a href="/2019/12/03/kubeadm-base-use/" title="使用Kubeadm搭建一个高可用集群">https://system51.github.io/2019/12/03/kubeadm-base-use/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/12/03/kubeadm-base-use/" aria-label="复制成功！"></i></span>
   </p>
