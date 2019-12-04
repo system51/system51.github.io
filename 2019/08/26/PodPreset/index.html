@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="PodPreset 介绍 PodPreset 是一种 K8s API 资源，用于在创建 Pod 时注入其他运行时需要的信息，这些信息包括 secrets、volume mounts、environment variables 等，我们可以使用标签选择器来指定某个或某些 Pod，来将 PodPreset 预设信息应用上去。使用 PodPreset 的好处就是我们可以将一些常用 Pod 预设信息配置为">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PodPreset注入信息到 Pods">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/PodPreset/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="PodPreset 介绍 PodPreset 是一种 K8s API 资源，用于在创建 Pod 时注入其他运行时需要的信息，这些信息包括 secrets、volume mounts、environment variables 等，我们可以使用标签选择器来指定某个或某些 Pod，来将 PodPreset 预设信息应用上去。使用 PodPreset 的好处就是我们可以将一些常用 Pod 预设信息配置为">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-12-04T03:15:28.689Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="PodPreset注入信息到 Pods">
+<meta name="twitter:description" content="PodPreset 介绍 PodPreset 是一种 K8s API 资源，用于在创建 Pod 时注入其他运行时需要的信息，这些信息包括 secrets、volume mounts、environment variables 等，我们可以使用标签选择器来指定某个或某些 Pod，来将 PodPreset 预设信息应用上去。使用 PodPreset 的好处就是我们可以将一些常用 Pod 预设信息配置为">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2019/08/26/PodPreset/">
+
+
+
+
+
+  <title>PodPreset注入信息到 Pods | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2019/08/26/PodPreset/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">PodPreset注入信息到 Pods</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-08-26T10:45:23+08:00">
+                2019-08-26
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2019/08/26/PodPreset/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2019/08/26/PodPreset/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="PodPreset-介绍"><a href="#PodPreset-介绍" class="headerlink" title="PodPreset 介绍"></a>PodPreset 介绍</h2><blockquote>
+<p>PodPreset 是一种 K8s API 资源，用于在创建 Pod 时注入其他运行时需要的信息，这些信息包括 secrets、volume mounts、environment variables 等，我们可以使用标签选择器来指定某个或某些 Pod，来将 PodPreset 预设信息应用上去。使用 PodPreset 的好处就是我们可以将一些常用 Pod 预设信息配置为模板，这样就不需要显式为每个 Pod 提供所有信息，简化 Pod 初始化配置，还能起到配置统一的效果。</p>
+</blockquote>
+<h2 id="K8s-启用-PodPreset-配置"><a href="#K8s-启用-PodPreset-配置" class="headerlink" title="K8s 启用 PodPreset 配置"></a>K8s 启用 PodPreset 配置</h2><p>K8s 默认不开启 PodPreset 支持的，其 API 类型为 <code>settings.k8s.io/v1alpha1</code>，如果不确认集群是否已开启 PodPreset 支持，可以通过 kubectl api-versions 命令查看是否存在该类型，或者 <code>kubectl get podpreset</code> 命令查看，如果没开启会提示 <code>error: the server doesn&#39;t have a resource type &quot;podpreset&quot;</code> 错误。</p>
+<p>启用 PodPreset，可以通过 K8s ApiServer 增加 <code>--runtime-config=settings.k8s.io/v1alpha1=true</code> 配置即可。Kubeadm 方式安装集群，可以在<code>/etc/kubernetes/manifests</code>路径下的<code>kube-apiserver.yaml</code>中追加如下命令：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">--runtime-config=api/all,settings.k8s.io/v1alpha1=true</span><br></pre></td></tr></table></figure>
+
+<p>admission中添加：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">--enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeClaimResize,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,Priority,PodPreset</span><br></pre></td></tr></table></figure>
+
+<p>待组件自动重启完毕后，可以再次检查是否已支持 PodPreset。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl api-versions | grep settings.k8s.io</span><br><span class="line">settings.k8s.io/v1alpha1</span><br></pre></td></tr></table></figure>
+
+<h2 id="PodPreset-注入信息示例"><a href="#PodPreset-注入信息示例" class="headerlink" title="PodPreset 注入信息示例"></a>PodPreset 注入信息示例</h2><p>现在我们演示一下，如何使用 PodPreset 注入信息到 Pod 中，这里举两个示例，一个是匹配指定 Pod 加载配置，另一个是匹配某个 Namespace 下所有 Pod 加载配置。</p>
+<h3 id="匹配指定-Pod-加载配置"><a href="#匹配指定-Pod-加载配置" class="headerlink" title="匹配指定 Pod 加载配置"></a>匹配指定 Pod 加载配置</h3><p>上边提到过 <code>使用标签选择器来指定某个或某些 Pod，来将 PodPreset 预设信息应用上去</code>，这里我们来演示下如何匹配指定 Pod 加载配置。首先新建 PodPreset Yaml 资源文件。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">$ vim podpreset-busybox-hwy.yaml</span><br><span class="line">apiVersion: settings.k8s.io/v1alpha1</span><br><span class="line">kind: PodPreset</span><br><span class="line">metadata:</span><br><span class="line">  name: busybox-hwy</span><br><span class="line">  namespace: wanyang3</span><br><span class="line">spec:</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      role: busybox-hwy</span><br><span class="line">  env:</span><br><span class="line">    - name: PODPRESET_MESSAGE</span><br><span class="line">      value: &quot;This is podpreset message.&quot;</span><br><span class="line">  volumeMounts:</span><br><span class="line">    - mountPath: /opt/logs</span><br><span class="line">      name: logs-volume</span><br><span class="line">  volumes:</span><br><span class="line">    - name: logs-volume</span><br><span class="line">      emptyDir: &#123;&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到如下几个关键信息：</p>
+<ul>
+<li>PodPreset 资源 ApiVersion 为 <code>settings.k8s.io/v1alpha1</code></li>
+<li>这里 <code>selector.matchLabels</code> 通过 Labels 匹配标签包含 <code>role: busybox-hwy</code> 的 Pod</li>
+<li>注入了 <code>env</code> 环境变量 <code>PODPRESET_MESSAGE=This is podpreset message.</code> 到匹配的 Pod 中</li>
+<li>注入了 <code>volumes</code> 卷挂载目录到匹配的 Pod 中的 <code>/opt/logs</code> 目录</li>
+</ul>
+<p>创建一下该 PodPreset 资源。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create ns wanyang3</span><br><span class="line">namespace/wanyang3 created</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">$ kubectl apply -f podpreset-busybox-hwy.yaml</span><br><span class="line">podpreset.settings.k8s.io/busybox-hwy created</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">$ kubectl get podpreset -n wanyang3</span><br><span class="line">NAME          CREATED AT</span><br><span class="line">busybox-hwy   2019-07-07T02:10:31Z</span><br></pre></td></tr></table></figure>
+
+<p>接下来，我们来创建 Pod Yaml 资源文件。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ vim pod-busybox-hwy.yaml </span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: busybox-hwy</span><br><span class="line">  namespace: wanyang3</span><br><span class="line">  labels:</span><br><span class="line">    app: busybox-hwy</span><br><span class="line">    role: busybox-hwy</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">    - name: busybox-hwy</span><br><span class="line">      image: busybox:latest</span><br><span class="line">      command: [&quot;sleep&quot;, &quot;60000&quot;]</span><br></pre></td></tr></table></figure>
+
+<p>注意：这里我以 <code>busybox</code> 容器来测试，这里 labels <code>role: busybox-hwy</code> 要跟上边 PodPreset <code>selector.matchLabels</code> 匹配上，否则将没法注入信息。那么创建一下该 Pod 资源。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl apply -f pod-busybox-hwy.yaml</span><br><span class="line">pod/busybox-hwy created</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">$ kubectl get pod -n wanyang3</span><br><span class="line">NAME          READY   STATUS    RESTARTS   AGE</span><br><span class="line">busybox-hwy   1/1     Running   0          15s</span><br></pre></td></tr></table></figure>
+
+<p>成功创建，进入到容器内验证一下 PodPreset 信息是否正确注入吧！</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl exec -it busybox-hwy -n wanyang3 /bin/sh</span><br><span class="line">/ # printenv |grep PODPRESET</span><br><span class="line">PODPRESET_MESSAGE=This is podpreset message.</span><br><span class="line">/ # df -h</span><br><span class="line">Filesystem                Size      Used Available Use% Mounted on</span><br><span class="line">overlay                  36.0G      9.3G     26.7G  26% /</span><br><span class="line">tmpfs                    64.0M         0     64.0M   0% /dev</span><br><span class="line">tmpfs                     1.8G         0      1.8G   0% /sys/fs/cgroup</span><br><span class="line">/dev/mapper/centos-root</span><br><span class="line">                         36.0G      9.3G     26.7G  26% /opt/logs</span><br><span class="line">/dev/mapper/centos-root</span><br><span class="line">                         36.0G      9.3G     26.7G  26% /dev/termination-log</span><br><span class="line">/dev/mapper/centos-root</span><br><span class="line">                         36.0G      9.3G     26.7G  26% /etc/resolv.conf</span><br><span class="line">/dev/mapper/centos-root</span><br><span class="line">                         36.0G      9.3G     26.7G  26% /etc/hostname</span><br><span class="line">/dev/mapper/centos-root</span><br><span class="line">                         36.0G      9.3G     26.7G  26% /etc/hosts</span><br><span class="line">......</span><br></pre></td></tr></table></figure>
+
+<p>验证没有问题，PodPreset 信息注入到 Pod 里面了，而我们的 Pod yaml 文件就非常简洁了，从而避免了某一个配置更改，所有相关的 Pod 都需要更新 Yaml 配置的麻烦，是不是很方便！咱们在更深入了解一下 PodPreset 实现的方式，此时获取 Pod 的 Yaml 文件看下。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line"># kubectl get pod busybox-hwy -n wanyang3 -o yaml</span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  annotations:</span><br><span class="line">    podpreset.admission.kubernetes.io/podpreset-busybox-hwy: &quot;24187&quot;</span><br><span class="line">  creationTimestamp: 2019-07-07T02:22:27Z</span><br><span class="line">  labels:</span><br><span class="line">    app: busybox-hwy</span><br><span class="line">    role: busybox-hwy</span><br><span class="line">  name: busybox-hwy</span><br><span class="line">  namespace: wanyang3</span><br><span class="line">  resourceVersion: &quot;24302&quot;</span><br><span class="line">  selfLink: /api/v1/namespaces/wanyang3/pods/busybox-hwy</span><br><span class="line">  uid: 1066b217-a05e-11e9-aab0-080027a076a9</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">  - command:</span><br><span class="line">    - sleep</span><br><span class="line">    - &quot;60000&quot;</span><br><span class="line">    env:</span><br><span class="line">    - name: PODPRESET_MESSAGE</span><br><span class="line">      value: This is podpreset message.</span><br><span class="line">    image: busybox:latest</span><br><span class="line">    imagePullPolicy: Always</span><br><span class="line">    name: busybox-hwy</span><br><span class="line">    resources: &#123;&#125;</span><br><span class="line">    terminationMessagePath: /dev/termination-log</span><br><span class="line">    terminationMessagePolicy: File</span><br><span class="line">    volumeMounts:</span><br><span class="line">    - mountPath: /opt/logs</span><br><span class="line">      name: logs-volume</span><br><span class="line">    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount</span><br><span class="line">      name: default-token-nnbrm</span><br><span class="line">      readOnly: true</span><br><span class="line">  dnsPolicy: ClusterFirst</span><br><span class="line">  nodeName: minikube</span><br><span class="line">  ......</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，经过 k8s admission controller 之后此时的 Yaml 文件是将 PodPreset 和 Pod 资源 Merge 合并了，同时增加了 <code>podpreset.admission.kubernetes.io/podpreset-busybox-hwy: &quot;24187&quot;</code> 这样的注解，类似模板的 Include 功能，而这个 <code>24187</code> 资源号就是上边 <code>podpreset-busybox-hwy</code> 创建完成之后的 <code>resourceVersion: &quot;24187&quot;</code> 资源版本号。</p>
+<h3 id="匹配某个-Namespace-下所有-Pod-加载配置"><a href="#匹配某个-Namespace-下所有-Pod-加载配置" class="headerlink" title="匹配某个 Namespace 下所有 Pod 加载配置"></a>匹配某个 Namespace 下所有 Pod 加载配置</h3><p>上边演示了匹配一个或多个指定 Pod 注入信息，如果我们想针对某个 Namespace 下的所有的 Pod 注入信息该如何配置呢？方法就是配置 <code>selector.matchLabels</code> 时匹配所有即可。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ vim podpreset-ns-test.yaml </span><br><span class="line">apiVersion: settings.k8s.io/v1alpha1</span><br><span class="line">kind: PodPreset</span><br><span class="line">metadata:</span><br><span class="line">  name: podpreset-ns-test</span><br><span class="line">  namespace: podpreset-test</span><br><span class="line">spec:</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:  #关键在这里，匹配所有</span><br><span class="line">  env:</span><br><span class="line">    - name: DB_PORT</span><br><span class="line">      value: &quot;6379&quot;</span><br><span class="line">    - name: TZ</span><br><span class="line">      value: Asia/Shanghai</span><br></pre></td></tr></table></figure>
+
+<p>说明一下：这里 <code>matchLabels:</code> 设置为空，表示匹配该 Namespaces 下所有，这里匹配 <code>podpreset-test</code> 命名空间下所有 Pod，并注入了 <code>DB_PORT= 6379</code> 和 <code>TZ=Asia/Shanghai</code> 两个公用环境变量配置。注意：这里的 <code>TZ=Asia/Shanghai</code> 环境变量配置可以用于修改 Pod 所属时区，从而实现该命名空间所有的 Pod 统一更改时区（毕竟 Centos 默认时间为 <code>UTC</code>）。接下来，创建一下该 PodPreset 资源。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl create ns podpreset-test</span><br><span class="line">namespace/podpreset-test created</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">$ kubectl apply -f podpreset-ns-test.yaml</span><br><span class="line">podpreset.settings.k8s.io/podpreset-ns-test created</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">$ kubectl get podpreset -n podpreset-test</span><br><span class="line">NAME                CREATED AT</span><br><span class="line">podpreset-ns-test   2019-07-07T03:52:42Z</span><br></pre></td></tr></table></figure>
+
+<p>然后，分别创建多个 Pod 来注入该 PodPreset 信息。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ vim pod-nginx-test-1.yaml </span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-test-1</span><br><span class="line">  namespace: podpreset-test</span><br><span class="line">  labels:</span><br><span class="line">    app: nginx-test-1</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">    - name: nginx-test-1</span><br><span class="line">      image: nginx:latest</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ vim pod-nginx-test-2.yaml </span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-test-2</span><br><span class="line">  namespace: podpreset-test</span><br><span class="line">  labels:</span><br><span class="line">    app: nginx-test-2</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">    - name: nginx-test-2</span><br><span class="line">      image: nginx:latest</span><br></pre></td></tr></table></figure>
+
+<p>创建以上 Pod 资源，并分别验证是否注入信息成功。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl apply -f pod-nginx-test-1.yaml</span><br><span class="line">pod/nginx-test-1 created</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">$ kubectl apply -f pod-nginx-test-2.yaml</span><br><span class="line">pod/nginx-test-2 created</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">$ kubectl get pod -n podpreset-test</span><br><span class="line">NAME           READY   STATUS    RESTARTS   AGE</span><br><span class="line">nginx-test-1   1/1     Running   0          26s</span><br><span class="line">nginx-test-2   1/1     Running   0          20s</span><br></pre></td></tr></table></figure>
+
+<p>分别进入容器内验证是否注入成功</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl exec -it nginx-test-1 -n podpreset-test /bin/sh</span><br><span class="line"># printenv</span><br><span class="line">KUBERNETES_PORT=tcp://10.96.0.1:443</span><br><span class="line">KUBERNETES_SERVICE_PORT=443</span><br><span class="line">HOSTNAME=nginx-test-1</span><br><span class="line">DB_PORT=6379</span><br><span class="line">HOME=/root</span><br><span class="line">PKG_RELEASE=1~stretch</span><br><span class="line">TERM=xterm</span><br><span class="line">KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1</span><br><span class="line">NGINX_VERSION=1.17.1</span><br><span class="line">......</span><br><span class="line">PWD=/</span><br><span class="line">TZ=Asia/Shanghai</span><br><span class="line"># date</span><br><span class="line">Sun Jul  7 12:16:53 CST 2019</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl exec -it nginx-test-2 -n podpreset-test /bin/sh</span><br><span class="line"># printenv</span><br><span class="line">KUBERNETES_SERVICE_PORT=443</span><br><span class="line">KUBERNETES_PORT=tcp://10.96.0.1:443</span><br><span class="line">HOSTNAME=nginx-test-2</span><br><span class="line">DB_PORT=6379</span><br><span class="line">HOME=/root</span><br><span class="line">PKG_RELEASE=1~stretch</span><br><span class="line">TERM=xterm</span><br><span class="line">KUBERNETES_PORT_443_TCP_ADDR=10.96.0.1</span><br><span class="line">NGINX_VERSION=1.17.1</span><br><span class="line">......</span><br><span class="line">PWD=/</span><br><span class="line">TZ=Asia/Shanghai</span><br><span class="line"># date</span><br><span class="line">Sun Jul  7 12:17:26 CST 2019</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，该 Namespace 下的两个 Pod 都成功注入了配置信息，时区也改过来了，是不是很方便了。不过，如果想指定该 Namespace 下某个 Pod 不使用该 PodPreset 该如何配置呢？毕竟有些个性化的 Pod 不使用通用配置。我们可以配置 <code>podpreset.admission.kubernetes.io/exclude: &quot;true&quot;</code> 注解来注明该 Pod 不注入 PodPreset，接下来演示一下。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">$ vim pod-nginx-test-3.yaml </span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: nginx-test-3</span><br><span class="line">  namespace: podpreset-test</span><br><span class="line">  annotations:</span><br><span class="line">    podpreset.admission.kubernetes.io/exclude: &quot;true&quot;</span><br><span class="line">  labels:</span><br><span class="line">    app: nginx-test-3</span><br><span class="line">spec:</span><br><span class="line">  containers:</span><br><span class="line">    - name: nginx-test-3</span><br><span class="line">      image: nginx:latest</span><br></pre></td></tr></table></figure>
+
+<p>创建该 Pod 资源，验证信息是否注入容器进去。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ kubectl apply -f pod-nginx-test-3.yaml</span><br><span class="line">$ kubectl exec -it nginx-test-3 -n podpreset-test /bin/sh</span><br><span class="line">$ printenv | grep TZ</span><br><span class="line">$ printenv | grep DB_PORT</span><br><span class="line">$ date</span><br><span class="line">Sun Jul  7 04:18:54 UTC 2019</span><br></pre></td></tr></table></figure>
+
+<p>可以看到，添加了忽略 PodPreset 注入 annotations 后，没有将信息注入进去，时间还是默认的 UTC 时间。</p>
+<p>PodPreset 除了上边演示的两种用法外，还支持多 PodPreset 应用到同一 Pod，支持多种资源类型（ReplicaSet 等），支持从 ConfigMap 中取值。同时要说明一下，当 PodPreset 跟 Pod 配置有冲突时，例如 Pod Yaml 容器挂载配置跟 PodPreset 容器挂载配置为同一路径时，会报错提示冲突。</p>
+<p>最后要提一下注意的问题：</p>
+<ul>
+<li>目前 PodPreset 的预设功能这块还在演进中，不过已经能大大简化了相关的管理工作，将这些公用配置从开发者手中分离出来，变成系统管理配置。</li>
+<li>PodPreset 是 Namespace 级别的对象，其作用范围只能是同一个命名空间下容器。</li>
+<li>目前为 <code>v1alpha1</code> 版本，还不成熟，例如当我们对已创建的 PodPreset 执行非常少量的修改时，重新 apply 或者 replace 时，服务端并没有更新过来（亲测会有问题，只能删除重建），大家可以自己尝试下。</li>
+</ul>
+<h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h3><ul>
+<li><a href="https://kubernetes.io/docs/tasks/inject-data-application/podpreset/" target="_blank" rel="noopener">PodPreset Doc</a></li>
+<li><a href="https://kubernetes.io/docs/concepts/workloads/pods/podpreset/" target="_blank" rel="noopener">Enable PodPreset</a></li>
+</ul>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>PodPreset注入信息到 Pods</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2019年08月26日 - 10:45:23</p>
+  <p><span>最后更新:</span>2019年12月04日 - 11:15:28</p>
+  <p><span>原始链接:</span><a href="/2019/08/26/PodPreset/" title="PodPreset注入信息到 Pods">https://system51.github.io/2019/08/26/PodPreset/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/PodPreset/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes-Secret/" rel="next" title="Kubernetes之Secret">
+                <i class="fa fa-chevron-left"></i> Kubernetes之Secret
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2019/08/26/Kubernetes-statefulset/" rel="prev" title="Kubernetes之statefulset控制器">
+                Kubernetes之statefulset控制器 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">47</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#PodPreset-介绍"><span class="nav-number">1.</span> <span class="nav-text">PodPreset 介绍</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#K8s-启用-PodPreset-配置"><span class="nav-number">2.</span> <span class="nav-text">K8s 启用 PodPreset 配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PodPreset-注入信息示例"><span class="nav-number">3.</span> <span class="nav-text">PodPreset 注入信息示例</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#匹配指定-Pod-加载配置"><span class="nav-number">3.1.</span> <span class="nav-text">匹配指定 Pod 加载配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#匹配某个-Namespace-下所有-Pod-加载配置"><span class="nav-number">3.2.</span> <span class="nav-text">匹配某个 Namespace 下所有 Pod 加载配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#参考资料"><span class="nav-number">3.3.</span> <span class="nav-text">参考资料</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
