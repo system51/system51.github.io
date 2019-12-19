@@ -90,7 +90,7 @@
 <meta property="og:image" content="https://system51.github.io/images/etcd-5.jpg">
 <meta property="og:image" content="https://system51.github.io/images/etcd-6.png">
 <meta property="og:image" content="https://system51.github.io/images/etcd-7.png">
-<meta property="og:updated_time" content="2019-12-19T02:39:23.362Z">
+<meta property="og:updated_time" content="2019-12-19T09:17:33.955Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Prometheus Operator 监控 etcd 集群">
 <meta name="twitter:description" content="&amp;emsp;&amp;emsp;除了 Kubernetes 集群中的一些资源对象、节点以及组件需要监控，有的时候我们可能还需要根据实际的业务需求去添加自定义的监控项，添加一个自定义监控的步骤也是非常简单的。  第一步建立一个 ServiceMonitor 对象，用于 Prometheus 添加监控项 第二步为 ServiceMonitor 对象关联 metrics 数据接口的一个 Service 对象 第">
@@ -332,7 +332,9 @@
 </ul>
 <p>&emsp;&emsp;接下来我们就来以 etcd 为例添加 etcd 集群的监控。无论是 Kubernetes 集群外的还是使用 Kubeadm 安装在集群内部的 etcd 集群，我们这里都将其视作集群外的独立集群，因为对于二者的使用方法没什么特殊之处。</p>
 <h2 id="Etcd-Metrics"><a href="#Etcd-Metrics" class="headerlink" title="Etcd Metrics"></a>Etcd Metrics</h2><p>&emsp;&emsp;对于 etcd 集群一般情况下，为了安全都会开启 https 证书认证的方式，所以要想让 Prometheus 访问到 etcd 集群的监控数据，就需要提供相应的证书校验。</p>
-<p>&emsp;&emsp;这里我是kubeadm安装的kubernetes集群，但etcd是采用二进制方式安装，我们需要两部分信息<code>listen-client-urls的httpsurl</code>和<code>允许客户端证书信息</code></p>
+<p>&emsp;&emsp;这里我是kubeadm安装的kubernetes集群，但etcd是采用二进制方式安装，我们可以通过如下命令获取需要的两部分信息<code>--listen-client-urls</code>中etcd的IP地址和<code>--cert-file</code>中连接etcd用到的证书路径</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-m1 ~]# ps aux | grep -P &apos;/etc[d] &apos;</span><br><span class="line">root      59550  1.6  4.1 10709140 159108 ?     Ssl  Dec10 211:39 /usr/local/bin/etcd --name=etcd0 --data-dir=/var/lib/etcd --listen-client-urls=https://127.0.0.1:2379,https://10.15.1.17:2379 --advertise-client-urls=https://10.15.1.17:2379 --listen-peer-urls=https://10.15.1.17:2380 --initial-advertise-peer-urls=https://10.15.1.17:2380 --cert-file=/etc/kubernetes/pki/etcd/server.crt --key-file=/etc/kubernetes/pki/etcd/server.key --client-cert-auth --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt --peer-key-file=/etc/kubernetes/pki/etcd/peer.key --peer-client-cert-auth --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt --initial-cluster=etcd0=https://10.15.1.17:2380,etcd1=https://10.15.1.18:2380,etcd2=https://10.15.1.19:2380 --initial-cluster-token=my-etcd-token --initial-cluster-state=new --heartbeat-interval 1000 --election-timeout 5000</span><br></pre></td></tr></table></figure>
+
 <p>然后使用下面的curl，带上各自证书路径访问https的url执行</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl --cacert /etc/kubernetes/pki/etcd/ca.crt --cert /etc/kubernetes/pki/etcd/server.crt  --key /etc/kubernetes/pki/etcd/server.key  https://10.15.1.17:2379/metrics</span><br></pre></td></tr></table></figure>
 
@@ -392,7 +394,7 @@
   <p><span>本文标题:</span>Prometheus Operator 监控 etcd 集群</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年12月19日 - 09:41:01</p>
-  <p><span>最后更新:</span>2019年12月19日 - 10:39:23</p>
+  <p><span>最后更新:</span>2019年12月19日 - 17:17:33</p>
   <p><span>原始链接:</span><a href="/2019/12/19/prometheus-operator-monitor-etcd/" title="Prometheus Operator 监控 etcd 集群">https://system51.github.io/2019/12/19/prometheus-operator-monitor-etcd/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/12/19/prometheus-operator-monitor-etcd/" aria-label="复制成功！"></i></span>
   </p>
