@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="本文将描述如何使用sysctl接口在Kubernetes集群中配置和使用内核参数。 获取sysctl参数列表在Linux中，sysctl接口允许管理员在运行时修改内核参数。参数可以通过/proc/sys/ 虚拟进程文件系统获得。参数涵盖多个子系统，例如:  内核 (通用前缀：kernel.) 网络 (通用前缀：net.) 虚拟内存 (通用前缀：vm.) 设备专用 (通用前缀：dev.) 更多子系统">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在Kuberentes集群中使用sysctl">
+<meta property="og:url" content="https://system51.github.io/2020/01/14/using-sysctls-in-a-kubernetes-cluster/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="本文将描述如何使用sysctl接口在Kubernetes集群中配置和使用内核参数。 获取sysctl参数列表在Linux中，sysctl接口允许管理员在运行时修改内核参数。参数可以通过/proc/sys/ 虚拟进程文件系统获得。参数涵盖多个子系统，例如:  内核 (通用前缀：kernel.) 网络 (通用前缀：net.) 虚拟内存 (通用前缀：vm.) 设备专用 (通用前缀：dev.) 更多子系统">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2020-01-15T03:04:17.135Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="在Kuberentes集群中使用sysctl">
+<meta name="twitter:description" content="本文将描述如何使用sysctl接口在Kubernetes集群中配置和使用内核参数。 获取sysctl参数列表在Linux中，sysctl接口允许管理员在运行时修改内核参数。参数可以通过/proc/sys/ 虚拟进程文件系统获得。参数涵盖多个子系统，例如:  内核 (通用前缀：kernel.) 网络 (通用前缀：net.) 虚拟内存 (通用前缀：vm.) 设备专用 (通用前缀：dev.) 更多子系统">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2020/01/14/using-sysctls-in-a-kubernetes-cluster/">
+
+
+
+
+
+  <title>在Kuberentes集群中使用sysctl | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2020/01/14/using-sysctls-in-a-kubernetes-cluster/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">在Kuberentes集群中使用sysctl</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-01-14T14:33:19+08:00">
+                2020-01-14
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2020/01/14/using-sysctls-in-a-kubernetes-cluster/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2020/01/14/using-sysctls-in-a-kubernetes-cluster/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>本文将描述如何使用sysctl接口在Kubernetes集群中配置和使用内核参数。</p>
+<h2 id="获取sysctl参数列表"><a href="#获取sysctl参数列表" class="headerlink" title="获取sysctl参数列表"></a>获取sysctl参数列表</h2><p>在Linux中，sysctl接口允许管理员在运行时修改内核参数。参数可以通过<code>/proc/sys/</code> 虚拟进程文件系统获得。参数涵盖多个子系统，例如:</p>
+<ul>
+<li>内核 (通用前缀：kernel.)</li>
+<li>网络 (通用前缀：net.)</li>
+<li>虚拟内存 (通用前缀：vm.)</li>
+<li>设备专用 (通用前缀：dev.)</li>
+<li>更多子系统描述见 <a href="https://www.kernel.org/doc/Documentation/sysctl/README" target="_blank" rel="noopener">Kernel docs</a>.</li>
+</ul>
+<p>要获取所有参数列表，你可以运行：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sysctl -a</span><br></pre></td></tr></table></figure>
+
+<h2 id="启用非安全的-Sysctl-参数"><a href="#启用非安全的-Sysctl-参数" class="headerlink" title="启用非安全的 Sysctl 参数"></a>启用非安全的 Sysctl 参数</h2><p>sysctl 参数分为 安全 和 非安全的。安全 sysctl 参数除了需要设置恰当的命名空间外，在同一 node 上的不同 Pod 之间也必须是相互隔离的。这意味着在 Pod 上设置 安全 sysctl 参数</p>
+<ul>
+<li>必须不能影响到节点上的其他 Pod</li>
+<li>必须不能损害节点的健康</li>
+<li>必须不允许使用超出 Pod 的资源限制的 CPU 或内存资源。</li>
+</ul>
+<p>至今为止，大多数 有命名空间的 sysctl 参数不一定被认为是 安全 的。以下几种 sysctl 参数是 安全的：</p>
+<ul>
+<li>kernel.shm_rmid_forced,</li>
+<li>net.ipv4.ip_local_port_range,</li>
+<li>net.ipv4.tcp_syncookies.</li>
+</ul>
+<p>注意: 示例中的 <code>net.ipv4.tcp_syncookies</code> 在Linux 内核 4.4 或更低的版本中是无命名空间的。</p>
+<p>在未来的 Kubernetes 版本中，若kubelet 支持更好的隔离机制，则上述列表中将会列出更多 安全的 sysctl 参数。</p>
+<p>所有 安全的 sysctl 参数都默认启用。</p>
+<p>所有 非安全的 sysctl 参数都默认禁用，且必须由集群管理员在每个节点上手动开启。那些设置了不安全 sysctl 参数的 Pod 仍会被调度，但无法正常启动。</p>
+<p>参考上述警告，集群管理员只有在一些非常特殊的情况下（如：高可用或实时应用调整），才可以启用特定的 非安全的 sysctl 参数。如需启用 非安全的 sysctl 参数，请您在每个节点上分别设置 kubelet 命令行参数，例如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">KUBELET_EXTRA_ARGS=&quot;--v=4 --logtostderr=false --log-dir=/var/log/kubernetes/kubelet --cgroup-driver=cgroupfs --allowed-unsafe-sysctls=ke</span><br><span class="line">rnel.msg*,net.*&quot;</span><br></pre></td></tr></table></figure>
+
+<p>只有有命名空间的sysctl可以通过这种方式启用。</p>
+<h2 id="设置-Pod-的-Sysctl-参数"><a href="#设置-Pod-的-Sysctl-参数" class="headerlink" title="设置 Pod 的 Sysctl 参数"></a>设置 Pod 的 Sysctl 参数</h2><p>目前，在 Linux 内核中，有许多的 sysctl 参数都是 有命名空间的 。 这就意味着可以为节点上的每个 Pod 分别去设置它们的 sysctl 参数。 在 Kubernetes 中，只有那些有命名空间的 sysctl 参数可以通过 Pod 的 securityContext 对其进行配置。</p>
+<p>以下列出有命名空间的 sysctl 参数，在未来的 Linux 内核版本中，此列表可能会发生变化。</p>
+<ul>
+<li>kernel.shm*,</li>
+<li>kernel.msg*,</li>
+<li>kernel.sem,</li>
+<li>fs.mqueue.*,</li>
+<li>net.*（内核中网络配置项相关参数），它可以在容器命名空间里被更改。然而，也有一些特例 (例如，net.netfilter.nf_conntrack_max 和 net.netfilter.nf_conntrack_expect_max 可以在容器命名空间里被更改，但它们是非命名空间的)。</li>
+</ul>
+<p>没有命名空间的 sysctl 参数称为 节点级别的 sysctl 参数。 如果需要对其进行设置，则必须在每个节点的操作系统上手动地去配置它们，或者通过在 DaemonSet 中运行特权模式容器来配置。</p>
+<p>可使用 pod 的 securityContext 来配置有命名空间的 sysctl 参数，securityContext 应用于同一个 pod 中的所有容器。</p>
+<p>此示例中，使用 Pod SecurityContext 来对一个安全的 sysctl 参数 <code>kernel.shm_rmid_forced</code> 以及两个非安全的 sysctl 参数 <code>net.core.somaxconn</code> 和 <code>kernel.msgmax</code> 进行设置。在 Pod 定义中对 安全的 和 非安全的 sysctl 参数不做区分。</p>
+<p>警告：为了避免破坏操作系统的稳定性，请您在了解变更后果之后再修改 sysctl 参数。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: sysctl-example</span><br><span class="line">spec:</span><br><span class="line">  securityContext:</span><br><span class="line">    sysctls:</span><br><span class="line">    - name: kernel.shm_rmid_forced</span><br><span class="line">      value: &quot;0&quot;</span><br><span class="line">    - name: net.core.somaxconn</span><br><span class="line">      value: &quot;1024&quot;</span><br><span class="line">    - name: kernel.msgmax</span><br><span class="line">      value: &quot;65536&quot;</span><br><span class="line">  ...</span><br></pre></td></tr></table></figure>
+
+<p>最佳实践方案是将具有特殊sysctl设置的节点视为集群中的<code>污染节点</code>，并且只将需要使用到特殊 sysctl 设置的 Pod 调度到这些节点上。建议使用Kubernetes的污染和容忍特性来实现这一点。</p>
+<p>带有非安全sysctl的pod将无法在任何没有显式启用这两个不安全sysctl的节点上启动（启动将会失败）。与节点级sysctl一样，建议使用污染和容忍特性和节点污染将这些pod调度到正确的节点上。</p>
+<h2 id="PodSecurityPolicy"><a href="#PodSecurityPolicy" class="headerlink" title="PodSecurityPolicy"></a>PodSecurityPolicy</h2><p>您可以通过在 PodSecurityPolicy 的 <code>forbiddenSysctls</code> 和/或 <code>allowedUnsafeSysctls</code> 字段中，指定 sysctl 或填写 sysctl 匹配模式来进一步为 Pod 设置 sysctl 参数。sysctl 参数匹配模式以 <code>*</code> 字符结尾，如 <code>kernel.*</code>。 单独的 <code>*</code> 字符匹配所有 sysctl 参数。</p>
+<p>所有 安全的 sysctl 参数都默认启用。</p>
+<p><code>forbiddenSysctls</code> 和 <code>allowedUnsafeSysctls</code> 的值都是字符串列表类型，可以添加 sysctl 参数名称，也可以添加 sysctl 参数匹配模式（以<code>*</code>结尾）。 只填写 <code>*</code> 则匹配所有的 sysctl 参数。</p>
+<p><code>forbiddenSysctls</code> 字段用于禁用特定的 sysctl 参数。 您可以在列表中禁用安全和非安全的 sysctl 参数的组合。 要禁用所有的 sysctl 参数，请设置为 <code>*</code>。</p>
+<p>如果要在 <code>allowedUnsafeSysctls</code> 字段中指定一个非安全的 sysctl 参数，并且它在<code>forbiddenSysctls</code> 字段中未被禁用，则可以在 Pod 中通过 PodSecurityPolicy 启用该 sysctl 参数。 若要在 PodSecurityPolicy 中开启所有非安全的 sysctl 参数，请设 <code>allowedUnsafeSysctls</code> 字段值为 <code>*</code>。</p>
+<p><code>allowedUnsafeSysctls</code> 与 <code>forbiddenSysctls</code> 两字段的配置不能重叠，否则这就意味着存在某个 sysctl 参数既被启用又被禁用。</p>
+<p>警告：如果您通过 PodSecurityPolicy 中的 <code>allowedUnsafeSysctls</code> 字段将非安全的 sysctl 参数列入白名单，但该 sysctl 参数未通过 kubelet 命令行参数 <code>--allowed-unsafe-sysctls</code> 在节点上将其列入白名单，则设置了这个 sysctl 参数的 Pod 将会启动失败。</p>
+<p>以下示例设置启用了以 <code>kernel.msg</code> 为前缀的非安全的 sysctl 参数，以及禁用了 sysctl 参数 <code>kernel.shm_rmid_forced</code>。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: policy/v1beta1</span><br><span class="line">kind: PodSecurityPolicy</span><br><span class="line">metadata:</span><br><span class="line">  name: sysctl-psp</span><br><span class="line">spec:</span><br><span class="line">  allowedUnsafeSysctls:</span><br><span class="line">  - kernel.msg*</span><br><span class="line">  forbiddenSysctls:</span><br><span class="line">  - kernel.shm_rmid_forced</span><br><span class="line"> ...</span><br></pre></td></tr></table></figure>
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>在Kuberentes集群中使用sysctl</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2020年01月14日 - 14:33:19</p>
+  <p><span>最后更新:</span>2020年01月15日 - 11:04:17</p>
+  <p><span>原始链接:</span><a href="/2020/01/14/using-sysctls-in-a-kubernetes-cluster/" title="在Kuberentes集群中使用sysctl">https://system51.github.io/2020/01/14/using-sysctls-in-a-kubernetes-cluster/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/01/14/using-sysctls-in-a-kubernetes-cluster/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/01/13/reserve-compute-resources-for-system-daemons/" rel="next" title="Kubernetes 资源预留">
+                <i class="fa fa-chevron-left"></i> Kubernetes 资源预留
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">51</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#获取sysctl参数列表"><span class="nav-number">1.</span> <span class="nav-text">获取sysctl参数列表</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#启用非安全的-Sysctl-参数"><span class="nav-number">2.</span> <span class="nav-text">启用非安全的 Sysctl 参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#设置-Pod-的-Sysctl-参数"><span class="nav-number">3.</span> <span class="nav-text">设置 Pod 的 Sysctl 参数</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PodSecurityPolicy"><span class="nav-number">4.</span> <span class="nav-text">PodSecurityPolicy</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
