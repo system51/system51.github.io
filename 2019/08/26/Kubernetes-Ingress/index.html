@@ -94,7 +94,7 @@
 <meta property="og:image" content="https://system51.github.io/images/ingress-5.png">
 <meta property="og:image" content="https://system51.github.io/images/ingress-6.png">
 <meta property="og:image" content="https://system51.github.io/images/ingress-7.png">
-<meta property="og:updated_time" content="2020-01-15T09:29:49.432Z">
+<meta property="og:updated_time" content="2020-01-16T00:49:59.500Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之Ingress">
 <meta name="twitter:description" content="&amp;emsp;&amp;emsp;从前面的学习，我们可以了解到Kubernetes暴露服务的方式目前只有三种：LoadBlancer Service、ExternalName、NodePort Service、Ingress；而我们需要将集群内服务提供外界访问就会产生以下几个问题： Pod 漂移问题：&amp;emsp;&amp;emsp;Kubernetes 具有强大的副本控制能力，能保证在任意副本（Pod）挂掉时自动从">
@@ -424,7 +424,7 @@
 </tbody></table>
 <h4 id="配置无host字段ingress"><a href="#配置无host字段ingress" class="headerlink" title="配置无host字段ingress"></a>配置无host字段ingress</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: Ingress</span><br><span class="line">metadata:</span><br><span class="line">  name: andmu-open-web</span><br><span class="line">  namespace: sh-andmuopen</span><br><span class="line">  annotations:</span><br><span class="line">    nginx.ingress.kubernetes.io/server-alias: &quot;open.andmu.cn&quot;</span><br><span class="line">    kubernetes.io/ingress.class: &quot;sh-andmuopen&quot;</span><br><span class="line">    nginx.ingress.kubernetes.io/use-regex: &quot;true&quot;   #支持nginx的rui的正则匹配</span><br><span class="line">spec:</span><br><span class="line">  rules:</span><br><span class="line">  - http:</span><br><span class="line">      paths:</span><br><span class="line">      - path: /(.*)</span><br><span class="line">        backend:</span><br><span class="line">          serviceName: andmuopen-web</span><br><span class="line">          servicePort: 80</span><br><span class="line">---</span><br></pre></td></tr></table></figure>
 
-<p>在配置中我们没有<code>host</code>字段，这将在ingress-nginx配置中会以如下形式展示，此种方式我们可以用IP或域名的方式访问，因为我们还配置了<code>nginx.ingress.kubernetes.io/server-alias: &quot;open.andmu.cn&quot;</code>，所以当我们用域名访问时用<code>open.andmu.cn</code>。</p>
+<p>在配置中我们没有<code>host</code>字段，这将在ingress-nginx配置中会以如下形式展示，此种方式我们可以用IP或域名的方式访问，因为我们还配置了<code>nginx.ingress.kubernetes.io/server-alias: &quot;open.andmu.cn&quot;</code>，所以当我们用域名访问时用<code>open.andmu.cn</code>访问。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">## start server _</span><br><span class="line"> server &#123;</span><br><span class="line">         server_name _ open.andmu.cn;</span><br><span class="line"></span><br><span class="line">         listen 80 default_server reuseport backlog=65535;</span><br><span class="line"></span><br><span class="line">         listen [::]:80 default_server reuseport backlog=65535;</span><br><span class="line"></span><br><span class="line">         set $proxy_upstream_name &quot;-&quot;;</span><br><span class="line">         set $pass_access_scheme $scheme;</span><br><span class="line">         set $pass_server_port $server_port;</span><br><span class="line">         set $best_http_host $http_host;</span><br><span class="line">         set $pass_port $pass_server_port;</span><br></pre></td></tr></table></figure>
 
 <h4 id="构建TLS站点：-注：必须是标准的证书格式不能key-server-ca放在一个pem文件中"><a href="#构建TLS站点：-注：必须是标准的证书格式不能key-server-ca放在一个pem文件中" class="headerlink" title="构建TLS站点：(注：必须是标准的证书格式不能key+server+ca放在一个pem文件中)"></a>构建TLS站点：(注：必须是标准的证书格式不能key+server+ca放在一个pem文件中)</h4><p>（1）准备证书</p>
@@ -490,7 +490,7 @@
   <p><span>本文标题:</span>Kubernetes之Ingress</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 09:18:49</p>
-  <p><span>最后更新:</span>2020年01月15日 - 17:29:49</p>
+  <p><span>最后更新:</span>2020年01月16日 - 08:49:59</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-Ingress/" title="Kubernetes之Ingress">https://system51.github.io/2019/08/26/Kubernetes-Ingress/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-Ingress/" aria-label="复制成功！"></i></span>
   </p>
