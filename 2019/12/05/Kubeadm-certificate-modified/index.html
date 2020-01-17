@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="下载源码手动下载源码编译，这里我使用v1.15.6来做示范。我们使用容器编译，这里我使用4c8g的centos7.6+docker-ce-18.09。想办法把源码拉下来 123git clone https://github.com/kubernetes/kubernetes -b v1.15.6cd kubernetesgit checkout -b v1.15.6  编译前准备因为我们拉取后修">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-12-05T08:22:53.266Z">
+<meta property="og:updated_time" content="2020-01-17T01:42:32.540Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubeadm 证书过期时间调整">
 <meta name="twitter:description" content="下载源码手动下载源码编译，这里我使用v1.15.6来做示范。我们使用容器编译，这里我使用4c8g的centos7.6+docker-ce-18.09。想办法把源码拉下来 123git clone https://github.com/kubernetes/kubernetes -b v1.15.6cd kubernetesgit checkout -b v1.15.6  编译前准备因为我们拉取后修">
@@ -362,10 +362,31 @@
 <p>获取kubeadm版本信息</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-m1 kubernetes]# kubeadm version</span><br><span class="line">kubeadm version: &amp;version.Info&#123;Major:&quot;1&quot;, Minor:&quot;15&quot;, GitVersion:&quot;v1.15.6&quot;, GitCommit:&quot;7015f71e75f670eb9e7ebd4b5749639d42e20079&quot;, GitTreeState:&quot;clean&quot;, BuildDate:&quot;2019-12-05T05:59:03Z&quot;, GoVersion:&quot;go1.12.12&quot;, Compiler:&quot;gc&quot;, Platform:&quot;linux/amd64&quot;&#125;</span><br></pre></td></tr></table></figure>
 
-<p>更新所有证书（谨慎使用）</p>
+<h2 id="更新所有证书"><a href="#更新所有证书" class="headerlink" title="更新所有证书"></a>更新所有证书</h2><p>由 kubeadm 生成的客户端证书在 1 年后到期。 下面将介绍如何使用 kubeadm 管理证书续订。</p>
+<h3 id="检查证书是否过期"><a href="#检查证书是否过期" class="headerlink" title="检查证书是否过期"></a>检查证书是否过期</h3><p><code>check-expiration</code> 能被用来检查证书是否过期</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubeadm alpha certs check-expiration</span><br></pre></td></tr></table></figure>
+
+<p>输出类似于以下内容：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">CERTIFICATE                EXPIRES                  RESIDUAL TIME   EXTERNALLY MANAGED</span><br><span class="line">admin.conf                 May 15, 2020 13:03 UTC   364d            false</span><br><span class="line">apiserver                  May 15, 2020 13:00 UTC   364d            false</span><br><span class="line">apiserver-etcd-client      May 15, 2020 13:00 UTC   364d            false</span><br><span class="line">apiserver-kubelet-client   May 15, 2020 13:00 UTC   364d            false</span><br><span class="line">controller-manager.conf    May 15, 2020 13:03 UTC   364d            false</span><br><span class="line">etcd-healthcheck-client    May 15, 2020 13:00 UTC   364d            false</span><br><span class="line">etcd-peer                  May 15, 2020 13:00 UTC   364d            false</span><br><span class="line">etcd-server                May 15, 2020 13:00 UTC   364d            false</span><br><span class="line">front-proxy-client         May 15, 2020 13:00 UTC   364d            false</span><br><span class="line">scheduler.conf             May 15, 2020 13:03 UTC   364d            false</span><br></pre></td></tr></table></figure>
+
+<p>该命令显示 <code>/etc/kubernetes/pki</code> 文件夹中的客户端证书以及 kubeadm 使用的 KUBECONFIG 文件中嵌入的客户端证书的到期时间/剩余时间。<br>另外， kubeadm 会通知用户证书是否由外部管理； 在这种情况下，用户应该小心的手动/使用其他工具来管理证书更新。</p>
+<blockquote>
+<p>警告： kubeadm 不能管理由外部 CA 签名的证书</p>
+</blockquote>
+<blockquote>
+<p>注意： 上面的列表中没有包含 kubelet.conf 因为 kubeadm 将 kubelet 配置为自动更新证书。</p>
+</blockquote>
+<h3 id="手动更新证书"><a href="#手动更新证书" class="headerlink" title="手动更新证书"></a>手动更新证书</h3><p>您能随时通过 <code>kubeadm alpha certs renew</code> 命令手动更新您的证书。</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kubeadm  alpha certs renew all</span><br></pre></td></tr></table></figure>
 
 <p>完成后重启kube-apiserver,kube-controller,kube-scheduler这三个容器</p>
+<p>这个命令用 CA （或者 front-proxy-CA ）证书和存储在 <code>/etc/kubernetes/pki</code> 中的密钥执行更新。</p>
+<blockquote>
+<p>警告： 如果您运行了一个 HA 集群，这个命令需要在所有控制面板节点上执行。</p>
+</blockquote>
+<blockquote>
+<p>注意：alpha certs renew 使用现有的证书作为属性 (Common Name、Organization、SAN 等) 的权威来源，而不是 kubeadm-config ConfigMap 。强烈建议使它们保持同步。</p>
+</blockquote>
 <h2 id="启用-Kubelet-Server-证书"><a href="#启用-Kubelet-Server-证书" class="headerlink" title="启用 Kubelet Server 证书"></a>启用 Kubelet Server 证书</h2><p>kubelet证书分为<code>server</code>和<code>client</code>两种， k8s 1.9默认启用了client证书的自动轮换，但server证书出于安全原因需要用户手动签发</p>
 <h3 id="增加-kubelet-参数"><a href="#增加-kubelet-参数" class="headerlink" title="增加 kubelet 参数"></a>增加 kubelet 参数</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># 在/etc/systemd/system/kubelet.service.d/10-kubeadm.conf 增加如下参数</span><br><span class="line">Environment=&quot;KUBELET_EXTRA_ARGS=--feature-gates=RotateKubeletServerCertificate=true&quot;</span><br></pre></td></tr></table></figure>
 
@@ -391,7 +412,7 @@
   <p><span>本文标题:</span>Kubeadm 证书过期时间调整</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年12月05日 - 15:10:51</p>
-  <p><span>最后更新:</span>2019年12月05日 - 16:22:53</p>
+  <p><span>最后更新:</span>2020年01月17日 - 09:42:32</p>
   <p><span>原始链接:</span><a href="/2019/12/05/Kubeadm-certificate-modified/" title="Kubeadm 证书过期时间调整">https://system51.github.io/2019/12/05/Kubeadm-certificate-modified/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/12/05/Kubeadm-certificate-modified/" aria-label="复制成功！"></i></span>
   </p>
@@ -578,7 +599,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#下载源码"><span class="nav-number">1.</span> <span class="nav-text">下载源码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#编译前准备"><span class="nav-number">2.</span> <span class="nav-text">编译前准备</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#进入容器内开始编译"><span class="nav-number">3.</span> <span class="nav-text">进入容器内开始编译</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#启用-Kubelet-Server-证书"><span class="nav-number">4.</span> <span class="nav-text">启用 Kubelet Server 证书</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#增加-kubelet-参数"><span class="nav-number">4.1.</span> <span class="nav-text">增加 kubelet 参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#增加-controller-manager-参数"><span class="nav-number">4.2.</span> <span class="nav-text">增加 controller-manager 参数</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#下载源码"><span class="nav-number">1.</span> <span class="nav-text">下载源码</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#编译前准备"><span class="nav-number">2.</span> <span class="nav-text">编译前准备</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#进入容器内开始编译"><span class="nav-number">3.</span> <span class="nav-text">进入容器内开始编译</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#更新所有证书"><span class="nav-number">4.</span> <span class="nav-text">更新所有证书</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#检查证书是否过期"><span class="nav-number">4.1.</span> <span class="nav-text">检查证书是否过期</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#手动更新证书"><span class="nav-number">4.2.</span> <span class="nav-text">手动更新证书</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#启用-Kubelet-Server-证书"><span class="nav-number">5.</span> <span class="nav-text">启用 Kubelet Server 证书</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#增加-kubelet-参数"><span class="nav-number">5.1.</span> <span class="nav-text">增加 kubelet 参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#增加-controller-manager-参数"><span class="nav-number">5.2.</span> <span class="nav-text">增加 controller-manager 参数</span></a></li></ol></li></ol></div>
             
 
           </div>
