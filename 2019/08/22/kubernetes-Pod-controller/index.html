@@ -90,7 +90,7 @@
 <meta property="og:image" content="https://system51.github.io/images/master.png">
 <meta property="og:image" content="https://system51.github.io/images/node1.png">
 <meta property="og:image" content="https://system51.github.io/images/node2.png">
-<meta property="og:updated_time" content="2019-09-06T02:06:30.036Z">
+<meta property="og:updated_time" content="2020-05-08T07:22:21.884Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="kubernetes Pod控制器">
 <meta name="twitter:description" content="Controller ManagerKubernetes 通常不会直接创建 Pod，而是通过 Controller 来管理 Pod 的。Controller 中定义了 Pod 的部署特性，比如有几个副本，在什么样的 Node 上运行等。为了满足不同的业务场景，Kubernetes 提供了多种 Controller，包括 Deployment、ReplicaSet、DaemonSet、Statefu">
@@ -348,7 +348,7 @@
 <p>当我们的应用升级时，通常会通过Build一个新的Docker镜像，并用新的镜像版本来替代旧的版本的方式达到目的，在系统升级的过程中，我们希望是平滑的方式，比如当前系统中10个对应的旧版本的Pod，最佳的方式是旧版本的Pod每次停止一个，同时创建一个新版本的Pod，在整个升级过程中，此消彼长，而运行中的Pod数量始终是10个，几分钟以后，当所有的Pod都已经是最新版本时，升级过程完成。通过RC的机制，Kubernetes很容易就实现了这种高级实用的特性，被称为“滚动升级”（Rolling Update）。</p>
 <h3 id="Replica-Set"><a href="#Replica-Set" class="headerlink" title="Replica Set"></a>Replica Set</h3><p>在新版本的 Kubernetes 中建议使用 ReplicaSet（简称为RS ）来取代 ReplicationController。官方解释为“下一代的RC”，它与RC当前存在的唯一区别是：Replica Sets支持基于集合的Label selector（Set-based selector），而RC只支持基于等式的Label Selector（equality-based selector），这使得Replica Set的功能更强，下面是等价于之前RC例子的Replica Set的定义（省去了Pod模版部分的内容）</p>
 <h3 id="ReplicaSet的创建"><a href="#ReplicaSet的创建" class="headerlink" title="ReplicaSet的创建"></a>ReplicaSet的创建</h3><p>Kubernetes官方强烈建议避免直接使用ReplicaSet，而应该通过Deployment来创建RS和Pod。</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: extensions/v1beta1</span><br><span class="line">kind: ReplicaSet</span><br><span class="line">metadata：</span><br><span class="line">  name: frontend</span><br><span class="line">spec:</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      tier: frontend</span><br><span class="line">    matchExpression:</span><br><span class="line">      - &#123;key: tier, operator: In, values: [frontend]&#125;</span><br><span class="line">  template:</span><br><span class="line">  .......</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">apiVersion: apps/v1</span><br><span class="line">kind: ReplicaSet</span><br><span class="line">metadata：</span><br><span class="line">  name: frontend</span><br><span class="line">spec:</span><br><span class="line">  selector:</span><br><span class="line">    matchLabels:</span><br><span class="line">      tier: frontend</span><br><span class="line">    matchExpression:</span><br><span class="line">      - &#123;key: tier, operator: In, values: [frontend]&#125;</span><br><span class="line">  template:</span><br><span class="line">  .......</span><br></pre></td></tr></table></figure>
 
 <p>kubectl命令工具适用于RC的绝大部分命令都同样适用于Replica Set。此外，当前我们很少单独使用Replica Set，它主要被Deployment这个更高层的资源对象所使用，从而形成一整套Pod创建、删除、更新的编排机制。当我们使用Deployment时，无须关心它是如何创建和维护Replica Set的，这一切都是自动发生的。</p>
 <p>Replica Set与Deployment这两个重要资源对象逐步替换了之前的RC的作用，是Kubernetes v1.3里Pod自动扩容（伸缩）这个告警功能实现的基础，也将继续在Kubernetes未来的版本中发挥重要的作用。</p>
@@ -382,7 +382,7 @@
   <p><span>本文标题:</span>kubernetes Pod控制器</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月22日 - 12:04:15</p>
-  <p><span>最后更新:</span>2019年09月06日 - 10:06:30</p>
+  <p><span>最后更新:</span>2020年05月08日 - 15:22:21</p>
   <p><span>原始链接:</span><a href="/2019/08/22/kubernetes-Pod-controller/" title="kubernetes Pod控制器">https://system51.github.io/2019/08/22/kubernetes-Pod-controller/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/22/kubernetes-Pod-controller/" aria-label="复制成功！"></i></span>
   </p>
