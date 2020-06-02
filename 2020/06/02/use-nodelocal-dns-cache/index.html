@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="NodeLocal DNS使用及配置NodeLocal DNSCache 通过在集群节点上运行一个 DaemonSet 来提高 clusterDNS 性能和可靠性。处于 ClusterFirst 的 DNS 模式下的 Pod 可以连接到 kube-dns 的 serviceIP 进行 DNS 查询。通过 kube-proxy 组件添加的 iptables 规则将其转换为 CoreDNS 端点。通过">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在 Kubernetes 集群中使用 NodeLocal DNSCache">
+<meta property="og:url" content="https://system51.github.io/2020/06/02/use-nodelocal-dns-cache/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="NodeLocal DNS使用及配置NodeLocal DNSCache 通过在集群节点上运行一个 DaemonSet 来提高 clusterDNS 性能和可靠性。处于 ClusterFirst 的 DNS 模式下的 Pod 可以连接到 kube-dns 的 serviceIP 进行 DNS 查询。通过 kube-proxy 组件添加的 iptables 规则将其转换为 CoreDNS 端点。通过">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://system51.github.io/images/nodelocaldns-1.png">
+<meta property="og:updated_time" content="2020-06-02T05:49:49.221Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="在 Kubernetes 集群中使用 NodeLocal DNSCache">
+<meta name="twitter:description" content="NodeLocal DNS使用及配置NodeLocal DNSCache 通过在集群节点上运行一个 DaemonSet 来提高 clusterDNS 性能和可靠性。处于 ClusterFirst 的 DNS 模式下的 Pod 可以连接到 kube-dns 的 serviceIP 进行 DNS 查询。通过 kube-proxy 组件添加的 iptables 规则将其转换为 CoreDNS 端点。通过">
+<meta name="twitter:image" content="https://system51.github.io/images/nodelocaldns-1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2020/06/02/use-nodelocal-dns-cache/">
+
+
+
+
+
+  <title>在 Kubernetes 集群中使用 NodeLocal DNSCache | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2020/06/02/use-nodelocal-dns-cache/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">在 Kubernetes 集群中使用 NodeLocal DNSCache</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-06-02T10:38:00+08:00">
+                2020-06-02
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2020/06/02/use-nodelocal-dns-cache/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2020/06/02/use-nodelocal-dns-cache/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="NodeLocal-DNS使用及配置"><a href="#NodeLocal-DNS使用及配置" class="headerlink" title="NodeLocal DNS使用及配置"></a>NodeLocal DNS使用及配置</h2><p><code>NodeLocal DNSCache</code> 通过在集群节点上运行一个 DaemonSet 来提高 clusterDNS 性能和可靠性。处于 <code>ClusterFirst</code> 的 DNS 模式下的 Pod 可以连接到 <code>kube-dns</code> 的 serviceIP 进行 DNS 查询。通过 <code>kube-proxy</code> 组件添加的 <code>iptables</code> 规则将其转换为 <code>CoreDNS</code> 端点。通过在每个集群节点上运行 DNS 缓存，NodeLocal DNSCache 可以缩短 DNS 查找的延迟时间、使 DNS 查找时间更加一致，以及减少发送到 kube-dns 的 DNS 查询次数。</p>
+<p>在集群中运行 NodeLocal DNSCache 有如下几个好处：</p>
+<ul>
+<li>如果本地没有 CoreDNS 实例，则具有最高 DNS QPS 的 Pod 可能必须到另一个节点进行解析，使用 NodeLocal DNSCache 后，拥有本地缓存将有助于改善延迟</li>
+<li>跳过 iptables DNAT 和连接跟踪将有助于减少 conntrack 竞争并避免 UDP DNS 条目填满 conntrack 表（常见的5s超时问题就是这个原因造成的）</li>
+<li>从本地缓存代理到 kube-dns 服务的连接可以升级到 TCP，TCP conntrack 条目将在连接关闭时被删除，而 UDP 条目必须超时(默认 <code>nf_conntrack_udp_timeout</code> 是 30 秒)</li>
+<li>将 DNS 查询从 UDP 升级到 TCP 将减少归因于丢弃的 UDP 数据包和 DNS 超时的尾部等待时间，通常长达 30 秒（3 次重试+ 10 秒超时）</li>
+</ul>
+<p><img src="/images/nodelocaldns-1.png" alt="nodelocaldns-1"></p>
+<p>要安装 NodeLocal DNSCache 也非常简单，直接获取官方的资源清单即可：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget https://raw.githubusercontent.com/kubernetes/kubernetes/master/cluster/addons/dns/nodelocaldns/nodelocaldns.yaml</span><br></pre></td></tr></table></figure>
+
+<p>该资源清单文件中包含几个变量，其中：</p>
+<ul>
+<li><code>__PILLAR__DNS__SERVER__</code> ：表示 kube-dns 这个 Service 的 ClusterIP，可以通过命令 <code>kubectl get svc kube-dns -n kube-system -o jsonpath={.spec.clusterIP}</code> 获取</li>
+<li><code>__PILLAR__LOCAL__DNS__</code> ：表示 DNSCache 本地的 IP，默认为 <code>169.254.20.10</code></li>
+<li><code>__PILLAR__DNS__DOMAIN__</code> ：表示集群域，默认就是 <code>cluster.local</code></li>
+</ul>
+<p>如果kube-proxy使用Iptable模式</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed -i &quot;s/__PILLAR__LOCAL__DNS__/$localdns/g; s/__PILLAR__DNS__DOMAIN__/$domain/g; s/__PILLAR__DNS__SERVER__/$kubedns/g&quot; nodelocaldns.yaml</span><br></pre></td></tr></table></figure>
+
+<p>如果kube-proxy使用IPVS模式</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sed -i &quot;s/__PILLAR__LOCAL__DNS__/$localdns/g; s/__PILLAR__DNS__DOMAIN__/$domain/g; s/__PILLAR__DNS__SERVER__//g; s/__PILLAR__CLUSTER__DNS__/$kubedns/g&quot; nodelocaldns.yaml</span><br></pre></td></tr></table></figure>
+
+<p>需要注意的是这里使用 DaemonSet 部署 node-local-dns 使用了 <code>hostNetwork=true</code>，会占用宿主机的 8080 端口，所以需要保证该端口未被占用。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">containers:</span><br><span class="line">- name: node-cache</span><br><span class="line">  image: k8s.gcr.io/k8s-dns-node-cache:1.15.13</span><br><span class="line">  resources:</span><br><span class="line">    requests:</span><br><span class="line">      cpu: 25m</span><br><span class="line">      memory: 5Mi</span><br><span class="line">  args: [ &quot;-localip&quot;, &quot;169.254.20.10&quot;, &quot;-conf&quot;, &quot;/etc/Corefile&quot;, &quot;-upstreamsvc&quot;, &quot;kube-dns-upstream&quot; ]</span><br></pre></td></tr></table></figure>
+
+<p>注意：在args参数这里”169.254.20.10”会多一个“逗号”记得删除不然启动报错。</p>
+<p>到这里还没有完，如果 kube-proxy 组件使用的是 ipvs 模式的话我们还需要修改 kubelet 的 <code>--cluster-dns</code> 参数，将其指向 <code>169.254.20.10</code>，Daemonset 会在每个节点创建一个网卡来绑这个 IP，Pod 向本节点这个 IP 发 DNS 请求，缓存没有命中的时候才会再代理到上游集群 DNS 进行查询。 <code>iptables</code> 模式下 Pod 还是向原来的集群 DNS 请求，节点上有这个 IP 监听，会被本机拦截，再请求集群上游 DNS，所以不需要更改 <code>--cluster-dns</code> 参数。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ sed -i &apos;s/10.96.0.10/169.254.20.10/g&apos; /var/lib/kubelet/config.yaml</span><br><span class="line">$ systemctl daemon-reload &amp;&amp; systemctl restart kubelet</span><br></pre></td></tr></table></figure>
+
+<p>我们可以部署一个新的 Pod 来验证下</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]# cat busybox.yaml </span><br><span class="line">apiVersion: v1</span><br><span class="line">kind: Pod</span><br><span class="line">metadata:</span><br><span class="line">  name: busybox</span><br><span class="line">  namespace: default</span><br><span class="line">spec:</span><br><span class="line">  nodeSelector:</span><br><span class="line">    coredns: &quot;2&quot;</span><br><span class="line">  containers:</span><br><span class="line">  - name: busybox</span><br><span class="line">    image: zhangguanzhang/centos</span><br><span class="line">    command:</span><br><span class="line">      - sleep</span><br><span class="line">      - &quot;3600&quot;</span><br><span class="line">    imagePullPolicy: IfNotPresent</span><br><span class="line">  restartPolicy: Always</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]# kubectl  exec -it busybox -- nslookup www.baidu.com</span><br><span class="line">Server:         169.254.20.10</span><br><span class="line">Address:        169.254.20.10#53</span><br><span class="line"></span><br><span class="line">Non-authoritative answer:</span><br><span class="line">www.baidu.com   canonical name = www.a.shifen.com.</span><br><span class="line">Name:   www.a.shifen.com</span><br><span class="line">Address: 39.156.66.14</span><br><span class="line">Name:   www.a.shifen.com</span><br><span class="line">Address: 39.156.66.18</span><br><span class="line"></span><br><span class="line">[root@devops010015001003 ~]# kubectl  exec -it busybox -- nslookup nginx</span><br><span class="line">Server:         169.254.20.10</span><br><span class="line">Address:        169.254.20.10#53</span><br><span class="line"></span><br><span class="line">Name:   nginx.default.svc.cluster.local</span><br><span class="line">Address: 10.101.191.0</span><br><span class="line"></span><br><span class="line">[root@devops010015001003 ~]# kubectl  exec -it busybox -- nslookup kubernetes</span><br><span class="line">Server:         169.254.20.10</span><br><span class="line">Address:        169.254.20.10#53</span><br><span class="line"></span><br><span class="line">Name:   kubernetes.default.svc.cluster.local</span><br><span class="line">Address: 10.96.0.1</span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到 <code>nameserver</code> 已经变成 <code>169.254.20.10</code> 了，当然对于之前的历史 Pod 要想使用 <code>node-local-dns</code> 则需要重建，当然如果要想去跟踪 DNS 的解析过程的话可以去通过抓包来观察。</p>
+<h2 id="使用CoreDNS-自定义域名失效"><a href="#使用CoreDNS-自定义域名失效" class="headerlink" title="使用CoreDNS 自定义域名失效"></a>使用CoreDNS 自定义域名失效</h2><p>在使用NodeLocal DNS后遇到个问题就是自定义域名无法解析</p>
+<p>kubernetes coredns 添加自定义DNS解析记录:coredns 自带 hosts 插件， 允许像配置 hosts 一样配置自定义 DNS 解析，修改 kube-system 中 configMap 的 coredns 添加如下设置即可。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">kubectl get cm -o wide -n kube-system</span><br><span class="line">kubectl describe  cm coredns -n kube-system </span><br><span class="line"></span><br><span class="line">.:53 &#123;</span><br><span class="line">    errors</span><br><span class="line">    health</span><br><span class="line">    kubernetes cluster.local in-addr.arpa ip6.arpa &#123;</span><br><span class="line">       pods insecure</span><br><span class="line">       upstream</span><br><span class="line">       fallthrough in-addr.arpa ip6.arpa</span><br><span class="line">    &#125;</span><br><span class="line">    hosts &#123;</span><br><span class="line">        172.21.91.28 cache.redis</span><br><span class="line">        10.151.30.11 git.k8s.local</span><br><span class="line">          </span><br><span class="line">        fallthrough</span><br><span class="line">    &#125;</span><br><span class="line">    prometheus :9153</span><br><span class="line">    proxy . /etc/resolv.conf</span><br><span class="line">    cache 30</span><br><span class="line">    loop</span><br><span class="line">    reload</span><br><span class="line">    loadbalance</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>配置完成后，始终解析不了这个自定义的域名：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]# kubectl exec -it busybox -- nslookup git.k8s.local</span><br><span class="line">Server:         169.254.20.10</span><br><span class="line">Address:        169.254.20.10#53</span><br><span class="line"></span><br><span class="line">** server can&apos;t find git.k8s.local: NXDOMAIN</span><br><span class="line"></span><br><span class="line">command terminated with exit code 1</span><br><span class="line">[root@devops010015001003 ~]# kubectl exec -it busybox -- nslookup cache.redis</span><br><span class="line">Server:         169.254.20.10</span><br><span class="line">Address:        169.254.20.10#53</span><br><span class="line"></span><br><span class="line">** server can&apos;t find cache.redis: NXDOMAIN</span><br><span class="line"></span><br><span class="line">command terminated with exit code 1</span><br></pre></td></tr></table></figure>
+
+<p>我们就直接使用 CoreDNS 的地址来进行解析测试一番：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]# kubectl exec -it busybox -- nslookup cache.redis 10.96.0.10</span><br><span class="line">Server:         10.96.0.10</span><br><span class="line">Address:        10.96.0.10#53</span><br><span class="line"></span><br><span class="line">Name:   cache.redis</span><br><span class="line">Address: 172.21.91.28</span><br><span class="line">** server can&apos;t find cache.redis: NXDOMAIN</span><br><span class="line"></span><br><span class="line">command terminated with exit code 1</span><br><span class="line">[root@devops010015001003 ~]# kubectl exec -it busybox -- nslookup git.k8s.local 10.96.0.10</span><br><span class="line">Server:         10.96.0.10</span><br><span class="line">Address:        10.96.0.10#53</span><br><span class="line"></span><br><span class="line">Name:   git.k8s.local</span><br><span class="line">Address: 10.151.30.11</span><br><span class="line">** server can&apos;t find git.k8s.local: NXDOMAIN</span><br><span class="line"></span><br><span class="line">command terminated with exit code 1</span><br></pre></td></tr></table></figure>
+
+<p>发现居然是正确的，那也就说明 CoreDNS 的配置是没有任何问题的，问题肯定就是 <code>NodeLocal DNSCache</code> 导致的，直接用 LocalDNS 的地址（169.254.20.10）解析发现确实是失败的：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]# kubectl exec -it busybox -- nslookup git.k8s.local 169.254.20.10</span><br><span class="line">Server:         169.254.20.10</span><br><span class="line">Address:        169.254.20.10#53</span><br><span class="line"></span><br><span class="line">** server can&apos;t find git.k8s.local: NXDOMAIN</span><br><span class="line"></span><br><span class="line">command terminated with exit code 1</span><br></pre></td></tr></table></figure>
+
+<p>这个时候只能去查看 LocalDNS 的 Pod 日志了：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]# kubectl logs node-local-dns-58zhf  -n kube-system    </span><br><span class="line">2020/06/02 05:00:32 [INFO] Updated Corefile with 0 custom stubdomains and upstream servers /etc/resolv.conf</span><br><span class="line">2020/06/02 05:00:32 [INFO] Using config file:</span><br><span class="line">cluster.local:53 &#123;</span><br><span class="line">    errors</span><br><span class="line">    cache &#123;</span><br><span class="line">            success 9984 30</span><br><span class="line">            denial 9984 5</span><br><span class="line">    &#125;</span><br><span class="line">    reload</span><br><span class="line">    loop</span><br><span class="line">    bind 169.254.20.10 </span><br><span class="line">    forward . 10.96.0.10 &#123;</span><br><span class="line">            force_tcp</span><br><span class="line">    &#125;</span><br><span class="line">    prometheus :9253</span><br><span class="line">    health 169.254.20.10:8080</span><br><span class="line">    &#125;</span><br><span class="line">in-addr.arpa:53 &#123;</span><br><span class="line">    errors</span><br><span class="line">    cache 30</span><br><span class="line">    reload</span><br><span class="line">    loop</span><br><span class="line">    bind 169.254.20.10 </span><br><span class="line">    forward . 10.96.0.10 &#123;</span><br><span class="line">            force_tcp</span><br><span class="line">    &#125;</span><br><span class="line">    prometheus :9253</span><br><span class="line">    &#125;</span><br><span class="line">ip6.arpa:53 &#123;</span><br><span class="line">    errors</span><br><span class="line">    cache 30</span><br><span class="line">    reload</span><br><span class="line">    loop</span><br><span class="line">    bind 169.254.20.10 </span><br><span class="line">    forward . 10.96.0.10 &#123;</span><br><span class="line">            force_tcp</span><br><span class="line">    &#125;</span><br><span class="line">    prometheus :9253</span><br><span class="line">    &#125;</span><br><span class="line">.:53 &#123;</span><br><span class="line">    errors</span><br><span class="line">    cache 30</span><br><span class="line">    reload</span><br><span class="line">    loop</span><br><span class="line">    bind 169.254.20.10 </span><br><span class="line">    forward . /etc/resolv.conf &#123;</span><br><span class="line">            force_tcp</span><br><span class="line">    &#125;</span><br><span class="line">    prometheus :9253</span><br><span class="line">    &#125;</span><br><span class="line">2020/06/02 05:00:32 [INFO] Added interface - nodelocaldns</span><br><span class="line">.:53 on 169.254.20.10</span><br><span class="line">cluster.local.:53 on 169.254.20.10</span><br><span class="line">in-addr.arpa.:53 on 169.254.20.10</span><br><span class="line">ip6.arpa.:53 on 169.254.20.10</span><br><span class="line">[INFO] plugin/reload: Running configuration MD5 = 6de79febbb00e443750acee66a370b43</span><br><span class="line">CoreDNS-1.6.7</span><br><span class="line">linux/amd64, go1.11.13,</span><br></pre></td></tr></table></figure>
+
+<p>仔细分析上面的 LocalDNS 的配置信息，其中 10.96.0.10 为 CoreDNS 的 Service ClusterIP，169.254.20.10 为 LocalDNS 的 IP 地址，10.103.178.36 是 LocalDNS 新建的一个 Service ClusterIP，该 Service 和 CoreDNS 一样都是关联以前的 CoreDNS 的 Endpoints 列表。</p>
+<p>仔细观察可以发现 <code>cluster.local</code>、<code>in-addr.arpa</code> 以及 <code>ip6.arpa</code> 都会通过 <code>forward</code> 转发到 <code>10.96.0.10</code>，也就是去 CoreDNS 解析，其他的则是 <code>forward . /etc/resolv.conf</code> 通过 resolv.conf 文件去解析，该文件的内容如下所示：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">.:53 &#123;</span><br><span class="line">    errors</span><br><span class="line">    cache 30</span><br><span class="line">    reload</span><br><span class="line">    loop</span><br><span class="line">    bind 169.254.20.10 </span><br><span class="line">    forward . /etc/resolv.conf &#123;</span><br><span class="line">            force_tcp</span><br><span class="line">    &#125;</span><br><span class="line">    prometheus :9253</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们发现这个变量 <code>__PILLAR__UPSTREAM__SERVERS__</code> 会自动替换为 <code>/etc/resolv.conf</code> 这样的话我们的自定义的域名就无法通过<code>CoreDNS</code>解析，所以我们需要修改为 <code>CoreDNS</code> 或  <code>LocalDNS</code> 的SVC地址这样就能解析了。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]#   kubectl get svc -n kube-system</span><br><span class="line">NAME                TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)                  AGE</span><br><span class="line">calico-typha        ClusterIP   10.109.91.45    &lt;none&gt;        5473/TCP                 5d19h</span><br><span class="line">kube-dns            ClusterIP   10.96.0.10      &lt;none&gt;        53/UDP,53/TCP,9153/TCP   11d</span><br><span class="line">kube-dns-upstream   ClusterIP   10.103.178.36   &lt;none&gt;        53/UDP,53/TCP            34m</span><br></pre></td></tr></table></figure>
+
+<p>修改为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">.:53 &#123;</span><br><span class="line">    errors</span><br><span class="line">    cache 30</span><br><span class="line">    reload</span><br><span class="line">    loop</span><br><span class="line">    bind 169.254.20.10 </span><br><span class="line">    forward . 10.103.178.36 &#123;</span><br><span class="line">            force_tcp</span><br><span class="line">    &#125;</span><br><span class="line">    prometheus :9253</span><br><span class="line">    &#125;</span><br></pre></td></tr></table></figure>
+
+<p>对于使用 NodeLocalDNS 的用户一定要注意这个问题，如果使用 hosts 或者 rewrite 插件失效，基本上就是这个问题造成的。排查问题通过日志去分析始终是最好的手段。</p>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>在 Kubernetes 集群中使用 NodeLocal DNSCache</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2020年06月02日 - 10:38:00</p>
+  <p><span>最后更新:</span>2020年06月02日 - 13:49:49</p>
+  <p><span>原始链接:</span><a href="/2020/06/02/use-nodelocal-dns-cache/" title="在 Kubernetes 集群中使用 NodeLocal DNSCache">https://system51.github.io/2020/06/02/use-nodelocal-dns-cache/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/06/02/use-nodelocal-dns-cache/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/05/27/using-calico/" rel="next" title="calico原理及配置">
+                <i class="fa fa-chevron-left"></i> calico原理及配置
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">53</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#NodeLocal-DNS使用及配置"><span class="nav-number">1.</span> <span class="nav-text">NodeLocal DNS使用及配置</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#使用CoreDNS-自定义域名失效"><span class="nav-number">2.</span> <span class="nav-text">使用CoreDNS 自定义域名失效</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
