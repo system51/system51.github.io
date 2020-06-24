@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Mr.Ye Blogs">
 <meta property="og:description" content="&amp;emsp;&amp;emsp;系统资源可分为两类：可压缩资源（CPU）和不可压缩资源（memory、storage）。可压缩资源比如CPU超配后，在系统满负荷时会划分时间片分时运行进程，系统整体会变慢（一般不会导致太大的问题）。但不可压缩资源如Memory，当系统内存不足时，就有可能触发系统 OOM；这时候根据 oom score 来确定优先杀死哪个进程，而 oom_score_adj 又是影响 oom">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-01-14T01:28:29.090Z">
+<meta property="og:updated_time" content="2020-06-24T08:50:58.202Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes 资源预留">
 <meta name="twitter:description" content="&amp;emsp;&amp;emsp;系统资源可分为两类：可压缩资源（CPU）和不可压缩资源（memory、storage）。可压缩资源比如CPU超配后，在系统满负荷时会划分时间片分时运行进程，系统整体会变慢（一般不会导致太大的问题）。但不可压缩资源如Memory，当系统内存不足时，就有可能触发系统 OOM；这时候根据 oom score 来确定优先杀死哪个进程，而 oom_score_adj 又是影响 oom">
@@ -386,7 +386,6 @@
 <ul>
 <li><code>--cgroups-per-qos</code></li>
 <li><code>--cgroup-driver</code></li>
-<li><code>--cgroup-root</code></li>
 <li><code>--enforce-node-allocatable=pods[,][system-reserved][,][kube-reserved]</code></li>
 <li><code>--kube-reserved=[cpu=100m][,][memory=100Mi][,][ephemeral-storage=1Gi]</code></li>
 <li><code>--kube-reserved-cgroup</code></li>
@@ -396,7 +395,6 @@
 </ul>
 <h2 id="参数详解"><a href="#参数详解" class="headerlink" title="参数详解"></a>参数详解</h2><p><code>--cgroups-per-qos</code><br>可选，默认开启。开启这个参数后，kubelet会将所有的pod创建在kubelet管理的cgroup层次结构下（这样才有了限制所有Pod使用资源总量的基础）。要想启用Node Allocatable特性，这个参数必须开启。</p>
 <p><code>--cgroup-driver</code><br>可选。指定kubelet使用的cgroup driver。默认为cgroupfs，还可以是systemd，但是这个值需要和docker runtime所使用的cgroup driver保持一致。</p>
-<p><code>--cgroup-root</code><br>可选。指定给pod使用的根cgroup，容器运行时会尽量将pod的资源限制在这个根cgroup下面。默认为空，即使用容器运行时作为根cgroup。</p>
 <p><code>--enforce-node-allocatable</code><br>指定kubelet为哪些进程做硬限制，可选的值有：pods,kube-reserved,system-reserve。</p>
 <p>这个参数默认开启并指定pods，此时kubelet会为所有pod的总cgroup做资源限制(通过cgroup中的kubepods.limit_in_bytes)，限制为公式计算出的allocatable的大小。而用cgroup做了硬限制后，当所有pod使用量达到allocatable后，会有pod被<code>OOM killer</code>机制杀掉，以保证实际使用量不会超过allocatable。（后面会有实验验证）</p>
 <p>假如想为系统进程和k8s进程也做cgroup级别的硬限制，还可以在限制列表中再加system-reserved和kube-reserved，同时还要分别加上<code>--kube-reserved-cgroup</code>和<code>--system-reserved-cgroup</code>以指定分别限制在哪个cgroup里。</p>
@@ -412,7 +410,7 @@
 <li>对pod、system、kube均分别做cgroup级别限制</li>
 </ul>
 <h3 id="方式1：只限制pod资源总量"><a href="#方式1：只限制pod资源总量" class="headerlink" title="方式1：只限制pod资源总量"></a>方式1：只限制pod资源总量</h3><h4 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h4><p>1.将以下内容添加到kubelet的启动参数中：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">--enforce-node-allocatable=pods \</span><br><span class="line">--cgroup-driver=cgroupfs \</span><br><span class="line">--kube-reserved=cpu=1,memory=1Gi,ephemeral-storage=10Gi \</span><br><span class="line">--system-reserved=cpu=1,memory=2Gi,ephemeral-storage=10Gi \</span><br><span class="line">--eviction-hard=memory.available&lt;500Mi,nodefs.available&lt;10%</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">--enforce-node-allocatable=pods \</span><br><span class="line">--cgroup-driver=systemd \</span><br><span class="line">--kube-reserved=cpu=1,memory=1Gi,ephemeral-storage=10Gi \</span><br><span class="line">--system-reserved=cpu=1,memory=2Gi,ephemeral-storage=10Gi \</span><br><span class="line">--eviction-hard=memory.available&lt;500Mi,nodefs.available&lt;10%</span><br></pre></td></tr></table></figure>
 
 <p>按以上设置，<br>节点上可供Pod所request的资源总和allocatable计算如下：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">allocatable = capacity - kube-reserved - system-reserved - eviction-hard</span><br></pre></td></tr></table></figure>
@@ -430,7 +428,7 @@
 
 <p>根据公式<code>capacity - kube-reserved - system-reserved</code>，Node上Pod能实际使用的资源上限值为：<code>31.4G - 1G -2G = 28.4G</code>，与实际一致。</p>
 <h3 id="方式2：同时限制pod、k8s系统组件、linux系统守护进程资源"><a href="#方式2：同时限制pod、k8s系统组件、linux系统守护进程资源" class="headerlink" title="方式2：同时限制pod、k8s系统组件、linux系统守护进程资源"></a>方式2：同时限制pod、k8s系统组件、linux系统守护进程资源</h3><h4 id="配置-1"><a href="#配置-1" class="headerlink" title="配置"></a>配置</h4><p>1.将以下内容添加到kubelet的启动参数中：</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">--enforce-node-allocatable=pods,kube-reserved,system-reserved \</span><br><span class="line">--cgroup-driver=cgroupfs \</span><br><span class="line">--kube-reserved=cpu=1,memory=1Gi,ephemeral-storage=10Gi \</span><br><span class="line">--kube-reserved-cgroup=/system.slice/kubelet.service \</span><br><span class="line">--system-reserved cpu=1,memory=2Gi,ephemeral-storage=10Gi \</span><br><span class="line">--system-reserved-cgroup=/system.slice \</span><br><span class="line">--eviction-hard=memory.available&lt;500Mi,nodefs.available&lt;10%</span><br></pre></td></tr></table></figure>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">--enforce-node-allocatable=pods,kube-reserved,system-reserved \</span><br><span class="line">--cgroup-driver=systemd \</span><br><span class="line">--kube-reserved=cpu=1,memory=1Gi,ephemeral-storage=10Gi \</span><br><span class="line">--kube-reserved-cgroup=/system.slice/kubelet.service \</span><br><span class="line">--system-reserved cpu=1,memory=2Gi,ephemeral-storage=10Gi \</span><br><span class="line">--system-reserved-cgroup=/system.slice \</span><br><span class="line">--eviction-hard=memory.available&lt;500Mi,nodefs.available&lt;10%</span><br></pre></td></tr></table></figure>
 
 <p>至于如何设置cgroup结构，请参考<a href="https://github.com/kubernetes/community/blob/master/contributors/design-proposals/node/node-allocatable.md#recommended-cgroups-setup" target="_blank" rel="noopener">官方建议</a>。</p>
 <p>2.为system.slice创建cpuset子系统:</p>
@@ -470,7 +468,7 @@
   <p><span>本文标题:</span>Kubernetes 资源预留</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2020年01月13日 - 14:07:42</p>
-  <p><span>最后更新:</span>2020年01月14日 - 09:28:29</p>
+  <p><span>最后更新:</span>2020年06月24日 - 16:50:58</p>
   <p><span>原始链接:</span><a href="/2020/01/13/reserve-compute-resources-for-system-daemons/" title="Kubernetes 资源预留">https://system51.github.io/2020/01/13/reserve-compute-resources-for-system-daemons/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/01/13/reserve-compute-resources-for-system-daemons/" aria-label="复制成功！"></i></span>
   </p>
