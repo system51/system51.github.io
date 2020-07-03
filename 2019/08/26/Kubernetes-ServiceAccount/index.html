@@ -88,7 +88,7 @@
 <meta property="og:description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver会将用户认证为一个特定的User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与apiserver联系，当它们在联系apiserver的时候，它们会被认证为一个特定的Service Acco">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/serviceaccount-1.png">
-<meta property="og:updated_time" content="2019-10-10T06:38:23.731Z">
+<meta property="og:updated_time" content="2020-07-03T01:49:29.811Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes之ServiceAccount">
 <meta name="twitter:description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver会将用户认证为一个特定的User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与apiserver联系，当它们在联系apiserver的时候，它们会被认证为一个特定的Service Acco">
@@ -414,6 +414,10 @@
 
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master pki]# kubectl get pods</span><br><span class="line">No resources found.</span><br><span class="line">Error from server (Forbidden): pods is forbidden: User &quot;magedu&quot; cannot list pods in the namespace &quot;default&quot;</span><br></pre></td></tr></table></figure>
 
+<h4 id="（4）删除用户"><a href="#（4）删除用户" class="headerlink" title="（4）删除用户"></a>（4）删除用户</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master pki]#  kubectl config delete-context yedong@kubernetes</span><br><span class="line">deleted context yedong@kubernetes from /root/.kube/config</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-master pki]# kubectl config unset users.yedong</span><br><span class="line">Property &quot;users.yedong&quot; unset.</span><br></pre></td></tr></table></figure>
+
 <blockquote>
 <p>从上面的演示，当切换成magedu用户进行访问集群时，由于magedu该账户没有管理集群的权限，所以在获取pods资源信息时，会提示Forrbidden。那么下面就再来了解一下怎么对账户进行授权！！！</p>
 </blockquote>
@@ -444,7 +448,7 @@
   <p><span>本文标题:</span>Kubernetes之ServiceAccount</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 10:53:03</p>
-  <p><span>最后更新:</span>2019年10月10日 - 14:38:23</p>
+  <p><span>最后更新:</span>2020年07月03日 - 09:49:29</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-ServiceAccount/" title="Kubernetes之ServiceAccount">https://system51.github.io/2019/08/26/Kubernetes-ServiceAccount/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-ServiceAccount/" aria-label="复制成功！"></i></span>
   </p>
@@ -631,7 +635,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#ServiceAccount"><span class="nav-number">1.</span> <span class="nav-text">ServiceAccount</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用默认的-Service-Account-访问-API-server"><span class="nav-number">2.</span> <span class="nav-text">使用默认的 Service Account 访问 API server</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#service-account的创建"><span class="nav-number">3.</span> <span class="nav-text">service account的创建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#serviceaccount的自定义使用"><span class="nav-number">4.</span> <span class="nav-text">serviceaccount的自定义使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#User-Account的定义及使用："><span class="nav-number">5.</span> <span class="nav-text">User Account的定义及使用：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#自建证书和账号进行访问apiserver演示"><span class="nav-number">6.</span> <span class="nav-text">自建证书和账号进行访问apiserver演示</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#注意：此步骤在-etc-kubernetes-pki路径下执行，因为需要用到Kubernetes-CA证书。"><span class="nav-number">6.1.</span> <span class="nav-text">注意：此步骤在/etc/kubernetes/pki路径下执行，因为需要用到Kubernetes CA证书。</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（1）生成证书"><span class="nav-number">6.2.</span> <span class="nav-text">（1）生成证书</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（2）使用ca-crt进行签署"><span class="nav-number">6.3.</span> <span class="nav-text">（2）使用ca.crt进行签署</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（3）添加到用户认证"><span class="nav-number">6.4.</span> <span class="nav-text">（3）添加到用户认证</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubernetes小技巧："><span class="nav-number">7.</span> <span class="nav-text">kubernetes小技巧：</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#ServiceAccount"><span class="nav-number">1.</span> <span class="nav-text">ServiceAccount</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#使用默认的-Service-Account-访问-API-server"><span class="nav-number">2.</span> <span class="nav-text">使用默认的 Service Account 访问 API server</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#service-account的创建"><span class="nav-number">3.</span> <span class="nav-text">service account的创建</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#serviceaccount的自定义使用"><span class="nav-number">4.</span> <span class="nav-text">serviceaccount的自定义使用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#User-Account的定义及使用："><span class="nav-number">5.</span> <span class="nav-text">User Account的定义及使用：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#自建证书和账号进行访问apiserver演示"><span class="nav-number">6.</span> <span class="nav-text">自建证书和账号进行访问apiserver演示</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#注意：此步骤在-etc-kubernetes-pki路径下执行，因为需要用到Kubernetes-CA证书。"><span class="nav-number">6.1.</span> <span class="nav-text">注意：此步骤在/etc/kubernetes/pki路径下执行，因为需要用到Kubernetes CA证书。</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（1）生成证书"><span class="nav-number">6.2.</span> <span class="nav-text">（1）生成证书</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（2）使用ca-crt进行签署"><span class="nav-number">6.3.</span> <span class="nav-text">（2）使用ca.crt进行签署</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（3）添加到用户认证"><span class="nav-number">6.4.</span> <span class="nav-text">（3）添加到用户认证</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#（4）删除用户"><span class="nav-number">6.5.</span> <span class="nav-text">（4）删除用户</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#kubernetes小技巧："><span class="nav-number">7.</span> <span class="nav-text">kubernetes小技巧：</span></a></li></ol></div>
             
 
           </div>
