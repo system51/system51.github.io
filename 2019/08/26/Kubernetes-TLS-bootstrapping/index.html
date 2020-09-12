@@ -93,7 +93,7 @@
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-4.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-5.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-6.png">
-<meta property="og:updated_time" content="2020-09-11T09:59:56.955Z">
+<meta property="og:updated_time" content="2020-09-12T04:26:08.198Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes TLS bootstrapping 那点事">
 <meta name="twitter:description" content="一、TLS bootstrapping 简介 当集群开启了 TLS 认证后，每个节点的 kubelet 组件都要使用由 apiserver 使用的 CA 签发的有效证书才能与 apiserver 通讯；此时如果节点多起来，为每个节点单独签署证书将是一件非常繁琐的事情；TLS bootstrapping 功能就是让 kubelet 先使用一个预定的低权限用户连接到 apiserver，然后向 api">
@@ -440,9 +440,10 @@
 <blockquote>
 <h4 id="需要注意几点"><a href="#需要注意几点" class="headerlink" title="需要注意几点:"></a>需要注意几点:</h4><ul>
 <li>作为<code>Bootstrap Token Secret</code> 的<code>type</code>必须为<code>bootstrap.kubernetes.io/token</code>，name 必须为<code>bootstrap-token-&lt;token id&gt;</code>(Token ID 就是上一步创建的 Token 前一部分)</li>
-<li><code>usage-bootstrap-authentication</code>、<code>usage-bootstrap-signing</code> 必须存才且设置为<code>true</code> </li>
+<li><code>usage-bootstrap-authentication</code> 表示令牌可以用于 API 服务器的认证。认证器会以 <code>system:bootstrap:&lt;Token ID&gt;</code> 认证。它被包含在 <code>system:bootstrappers</code> 组中。 命名和组是故意受限制的，以防止用户在启动引导后再使用这些令牌。</li>
+<li><code>usage-bootstrap-signing</code> 表示令牌应该被用于 <code>cluster-info</code> ConfigMap 的签名</li>
 <li><code>expiration</code> 字段是可选的，如果设置则 Secret 到期后将由 Controller Manager 中的 tokencleaner 自动清理</li>
-<li><code>auth-extra-groups</code> 也是可选的，令牌的扩展认证组，组必须以<code>system:bootstrappers:</code> 开头。在1.16后可以设置<code>system:bootstrappers:kubeadm:default-node-token</code>组，后面就不需要创建自动批准csr相关的操作。</li>
+<li><code>auth-extra-groups</code> 是可选的，令牌的扩展认证组，组必须以 <code>system:bootstrappers:</code> 开头。在1.16后可以设置<code>system:bootstrappers:kubeadm:default-node-token</code>组，后面就不需要创建自动批准csr相关的操作。</li>
 </ul>
 </blockquote>
 <blockquote>
@@ -523,7 +524,7 @@
   <p><span>本文标题:</span>Kubernetes TLS bootstrapping 那点事</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 13:51:38</p>
-  <p><span>最后更新:</span>2020年09月11日 - 17:59:56</p>
+  <p><span>最后更新:</span>2020年09月12日 - 12:26:08</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-TLS-bootstrapping/" title="Kubernetes TLS bootstrapping 那点事">https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/" aria-label="复制成功！"></i></span>
   </p>
