@@ -93,7 +93,7 @@
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-4.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-5.png">
 <meta property="og:image" content="https://system51.github.io/images/bootstarp-6.png">
-<meta property="og:updated_time" content="2020-09-12T04:26:08.198Z">
+<meta property="og:updated_time" content="2020-09-15T01:25:32.863Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Kubernetes TLS bootstrapping 那点事">
 <meta name="twitter:description" content="一、TLS bootstrapping 简介 当集群开启了 TLS 认证后，每个节点的 kubelet 组件都要使用由 apiserver 使用的 CA 签发的有效证书才能与 apiserver 通讯；此时如果节点多起来，为每个节点单独签署证书将是一件非常繁琐的事情；TLS bootstrapping 功能就是让 kubelet 先使用一个预定的低权限用户连接到 apiserver，然后向 api">
@@ -384,6 +384,8 @@
 
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># 用户</span><br><span class="line">kubectl create clusterrolebinding kubelet-bootstrap \</span><br><span class="line">  --clusterrole=system:node-bootstrapper \</span><br><span class="line">  --user=system:bootstrap:&lt;token id&gt;</span><br></pre></td></tr></table></figure>
 
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"># 使用kubeadm管理token（在高版本中采用Kubeadm管理token可以不用创建自动批准csr步骤，因为默认已经为这个“组”创建好了自动批准csr请求的权限,接下来只需要生成bootstarp文件即可。）</span><br><span class="line">kubeadm token create --groups system:bootstrappers:kubeadm:default-node-token</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-m1 kubernetes]# kubeadm token list</span><br><span class="line">TOKEN                     TTL         EXPIRES   USAGES                   DESCRIPTION                                                EXTRA GROUPS</span><br><span class="line">0c15sx.z41i3lfabbizbqb5   23h         2020-09-16T08:56:30+08:00   authentication,signing   &lt;none&gt;                                                     system:bootstrappers:kubeadm:default-node-token</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-m1 kubernetes]# kubectl  get secret -n kube-system</span><br><span class="line">NAME                                             TYPE                                  DATA   AGE</span><br><span class="line">.....</span><br><span class="line">bootstrap-token-0c15sx                           bootstrap.kubernetes.io/token         6      19m</span><br><span class="line">.....</span><br></pre></td></tr></table></figure>
+
 <h4 id="3-3、手动签发证书"><a href="#3-3、手动签发证书" class="headerlink" title="3.3、手动签发证书"></a>3.3、手动签发证书</h4><blockquote>
 <p>在 kubelet 首次启动后，如果用户 Token 没问题，并且 RBAC 也做了相应的设置，那么此时在集群内应该能看到 kubelet 发起的 CSR 请求</p>
 </blockquote>
@@ -524,7 +526,7 @@
   <p><span>本文标题:</span>Kubernetes TLS bootstrapping 那点事</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2019年08月26日 - 13:51:38</p>
-  <p><span>最后更新:</span>2020年09月12日 - 12:26:08</p>
+  <p><span>最后更新:</span>2020年09月15日 - 09:25:32</p>
   <p><span>原始链接:</span><a href="/2019/08/26/Kubernetes-TLS-bootstrapping/" title="Kubernetes TLS bootstrapping 那点事">https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/" aria-label="复制成功！"></i></span>
   </p>
