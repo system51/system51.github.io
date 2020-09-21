@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="Docker容器的存活周期&amp;emsp;今天和大家聊聊容器的存活周期，但在聊存活周期以前我们得先了解一下init进程，在Linux操作系统中，当内核初始化完毕之后，会启动一个init进程，这个进程是整个操作系统的第一个用户进程，所以它的进程ID为1，也就是我们常说的PID1进程。在这之后，所有的用户态进程都是该进程的后代进程，由此我们可以看出，整个系统的用户进程，是一棵由init进程作为根的进程树。">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Docker容器你需要知道的">
+<meta property="og:url" content="https://system51.github.io/2020/09/17/docker-need-to-know/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Docker容器的存活周期&amp;emsp;今天和大家聊聊容器的存活周期，但在聊存活周期以前我们得先了解一下init进程，在Linux操作系统中，当内核初始化完毕之后，会启动一个init进程，这个进程是整个操作系统的第一个用户进程，所以它的进程ID为1，也就是我们常说的PID1进程。在这之后，所有的用户态进程都是该进程的后代进程，由此我们可以看出，整个系统的用户进程，是一棵由init进程作为根的进程树。">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://system51.github.io/images/init-1.png">
+<meta property="og:image" content="https://system51.github.io/images/init-2.png">
+<meta property="og:image" content="https://system51.github.io/images/init-3.png">
+<meta property="og:image" content="https://system51.github.io/images/init-4.png">
+<meta property="og:image" content="https://system51.github.io/images/init-5.png">
+<meta property="og:image" content="https://system51.github.io/images/init-6.png">
+<meta property="og:image" content="https://system51.github.io/images/init-7.png">
+<meta property="og:image" content="https://system51.github.io/images/init-8.png">
+<meta property="og:image" content="https://system51.github.io/images/init-9.png">
+<meta property="og:image" content="https://system51.github.io/images/init-10.png">
+<meta property="og:updated_time" content="2020-09-21T07:44:50.807Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Docker容器你需要知道的">
+<meta name="twitter:description" content="Docker容器的存活周期&amp;emsp;今天和大家聊聊容器的存活周期，但在聊存活周期以前我们得先了解一下init进程，在Linux操作系统中，当内核初始化完毕之后，会启动一个init进程，这个进程是整个操作系统的第一个用户进程，所以它的进程ID为1，也就是我们常说的PID1进程。在这之后，所有的用户态进程都是该进程的后代进程，由此我们可以看出，整个系统的用户进程，是一棵由init进程作为根的进程树。">
+<meta name="twitter:image" content="https://system51.github.io/images/init-1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2020/09/17/docker-need-to-know/">
+
+
+
+
+
+  <title>Docker容器你需要知道的 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2020/09/17/docker-need-to-know/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Docker容器你需要知道的</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-09-17T09:54:16+08:00">
+                2020-09-17
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2020/09/17/docker-need-to-know/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2020/09/17/docker-need-to-know/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="Docker容器的存活周期"><a href="#Docker容器的存活周期" class="headerlink" title="Docker容器的存活周期"></a>Docker容器的存活周期</h2><p>&emsp;今天和大家聊聊容器的存活周期，但在聊存活周期以前我们得先了解一下init进程，在Linux操作系统中，当内核初始化完毕之后，会启动一个init进程，这个进程是整个操作系统的第一个用户进程，所以它的进程ID为1，也就是我们常说的PID1进程。在这之后，所有的用户态进程都是该进程的后代进程，由此我们可以看出，整个系统的用户进程，是一棵由init进程作为根的进程树。<br>&emsp;init进程有一个非常厉害的地方，就是SIGKILL信号对它无效。很显然，如果我们将一棵树的树根砍了，那么这棵树就会分解成很多棵子树，这样的最终结果是导致整个操作系统进程杂乱无章，无法管理。所以为了防止用户误操作init进程是无法kill掉的。<br>&emsp;PID 1进程的发展也是一段非常有趣的过程，从最早的sysvinit,到upstart,再到systemd。我们可以用 <code>pstree -p</code>查看PID 1的 进程是谁。<br>&emsp;PID 1的作用是负责清理那些被抛弃的进程（孤儿和僵尸进程）所留下来的痕迹，有效的回收的系统资源，保证系统长时间稳定的运行，可谓是功不可没。在理解了它的重要性之后，我们今天主要探讨一下在容器中的PID 1是怎么回事。</p>
+<h3 id="僵尸进程"><a href="#僵尸进程" class="headerlink" title="僵尸进程"></a>僵尸进程</h3><p>僵尸进程指的是：进程退出后，到其父进程还未对其调用wait/waitpid之间的这段时间所处的状态。一般来说，这种状态持续的时间很短，所以我们一般很难在系统中捕捉到。但是，一些粗心的程序员可能会忘记调用wait/waitpid，或者由于某种原因未执行该调用等等，那么这个时候就会出现长期驻留的僵尸进程了。如果大量的产生僵尸进程，其进程号就会一直被占用，可能导致系统不能产生新的进程。（子进程挂了，如果父进程不给子进程“收尸”（调用 wait/waitpid），那这个子进程小可怜就变成了僵尸进程。）</p>
+<h3 id="孤儿进程"><a href="#孤儿进程" class="headerlink" title="孤儿进程"></a>孤儿进程</h3><p>父进程先于子进程退出，那么子进程将成为孤儿进程。孤儿进程将被init进程(进程号为1)接管，并由init进程对它完成状态收集(wait/waitpid)工作。</p>
+<h3 id="容器中的PID-1"><a href="#容器中的PID-1" class="headerlink" title="容器中的PID 1"></a>容器中的PID 1</h3><p>熟悉Docker同学可能知道，容器并不是一个完整的操作系统，它也没有什么内核初始化过程，更没有像init(1)这样的初始化过程。在容器中被标志为PID 1的进程实际上就是一个普普通通的用户进程，也就是我们制作镜像时在Dockerfile中指定的ENTRYPOINT的那个进程。而这个进程在宿主机上有一个普普通通的进程ID，而在容器中之所以变成PID 1，是因为linux内核提供的PID namespaces功能，如果宿主机的所有用户进程构成了一个完整的树型结构，那么PID namespaces实际上就是将这个ENTRYPOINT进程（包括它的后代进程）从这棵大树剪下来，很显然，剪下来的这部分东西本身也是一个树型结构，它完全可以自己长成一棵苍天大树（不断地fork）,当然子namespaces里面是看不到整棵树的原貌的，但是父级的namespaces确可以看到完整的子树。</p>
+<h4 id="创建一个docker-image"><a href="#创建一个docker-image" class="headerlink" title="创建一个docker image"></a>创建一个docker image</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-m1 shallwe]# cat dockerfile </span><br><span class="line">FROM ubuntu</span><br><span class="line">CMD sleep 3600</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-m1 shallwe]# docker build -t test1 .</span><br><span class="line">Sending build context to Docker daemon  117.2kB</span><br><span class="line">Step 1/2 : FROM ubuntu</span><br><span class="line"> ---&gt; bb0eaf4eee00</span><br><span class="line">Step 2/2 : CMD sleep 3600</span><br><span class="line"> ---&gt; Running in 1d8cc7425f0a</span><br><span class="line">Removing intermediate container 1d8cc7425f0a</span><br><span class="line"> ---&gt; 54d1c4970147</span><br><span class="line">Successfully built 54d1c4970147</span><br><span class="line">Successfully tagged test1:latest</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-m1 shallwe]# docker run -itd test1</span><br><span class="line">c1559a36232de647ccce2d760dc1ebdc0541632d8626dfc785d352f10d052900</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-m1 shallwe]# docker ps</span><br><span class="line">CONTAINER ID        IMAGE                                    COMMAND                  CREATED             STATUS              PORTS               NAMES</span><br><span class="line">c1559a36232d        test1                                    &quot;/bin/sh -c &apos;sleep 3…&quot;   5 seconds ago       Up 3 seconds                            affectionate_shtern</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-m1 shallwe]# docker exec -it c1559a36232d /bin/sh</span><br><span class="line"># ps aux</span><br><span class="line">USER        PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND</span><br><span class="line">root          1  0.7  0.0   2612   604 pts/0    Ss+  06:40   0:00 /bin/sh -c sleep 3600</span><br><span class="line">root          6  0.0  0.0   2512   580 pts/0    S+   06:40   0:00 sleep 3600</span><br><span class="line">root          7  4.0  0.0   2612   604 pts/1    Ss   06:40   0:00 /bin/sh</span><br><span class="line">root         12  0.0  0.0   5892  2856 pts/1    R+   06:40   0:00 ps aux</span><br></pre></td></tr></table></figure>
+
+<p>我们发现pid为1的是一个/bin/sh的进程，容器是单独一个pid namespaces的。通过下图可以更方便理解。由于子namespaces无法看到父级的namespaces，所以容器里第一个进程(也就是cmd)认为自己是pid为1，容器里其余进程都是它的子进程。</p>
+<p><img src="/images/init-1.png" alt="init-1"></p>
+<p>在Linux中init进程是不处理SIGKILL信号的，这可以防止init进程被误杀掉，即使是superuser。所以 <code>kill -9 init</code> 不会kill掉init进程。但是容器的进程是在容器的ns里是init级别，我们可以在宿主机上杀掉它</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-n2 shallwe]# docker ps</span><br><span class="line">CONTAINER ID        IMAGE                                    COMMAND                  CREATED             STATUS              PORTS               NAMES</span><br><span class="line">366672a12386        6f715d38cfe0                             &quot;/docker-entrypoint.…&quot;   2 minutes ago       Up 2 minutes                            k8s_nginx_nginx-97499b967-rfcvf_default_077ea5b9-746d-4687-9652-42af09bdc129_0</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-n2 shallwe]# docker exec -it 366672a12386 ps aux</span><br><span class="line">PID   USER     TIME  COMMAND</span><br><span class="line">    1 root      0:00 nginx: master process nginx -g daemon off;</span><br><span class="line">   29 nginx     0:00 nginx: worker process</span><br><span class="line">   30 nginx     0:00 nginx: worker process</span><br><span class="line">   31 nginx     0:00 nginx: worker process</span><br><span class="line">   32 nginx     0:00 nginx: worker process</span><br><span class="line">   39 root      0:00 ps aux</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-n2 shallwe]# docker exec -it 366672a12386 kill -9 1</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-n2 shallwe]# docker exec -it 366672a12386 ps aux</span><br><span class="line">PID   USER     TIME  COMMAND</span><br><span class="line">    1 root      0:00 nginx: master process nginx -g daemon off;</span><br><span class="line">   29 nginx     0:00 nginx: worker process</span><br><span class="line">   30 nginx     0:00 nginx: worker process</span><br><span class="line">   31 nginx     0:00 nginx: worker process</span><br><span class="line">   32 nginx     0:00 nginx: worker process</span><br><span class="line">   49 root      0:00 ps aux</span><br><span class="line"></span><br><span class="line">[root@k8s-n2 shallwe]# docker top 366672a12386</span><br><span class="line">UID                 PID                 PPID                C                   STIME               TTY                 TIME                CMD</span><br><span class="line">root                46176               46157               0                   15:14               ?                   00:00:00            nginx: master process nginx -g daemon off;</span><br><span class="line">101                 46223               46176               0                   15:14               ?                   00:00:00            nginx: worker process</span><br><span class="line">101                 46224               46176               0                   15:14               ?                   00:00:00            nginx: worker process</span><br><span class="line">101                 46225               46176               0                   15:14               ?                   00:00:00            nginx: worker process</span><br><span class="line">101                 46226               46176               0                   15:14               ?                   00:00:00            nginx: worker process</span><br><span class="line"></span><br><span class="line">[root@k8s-n2 shallwe]# ps aux | grep 46157</span><br><span class="line">root      46157  0.0  0.1 108760  8460 ?        Sl   15:14   0:00 containerd-shim -namespace moby -workdir /var/lib/containerd/io.containerd.runtime.v1.linux/moby/366672a1238655735e4dfd180bdd459109115d45caf904b16df792ad547c461b -address /run/containerd/containerd.sock -containerd-binary /usr/bin/containerd -runtime-root /var/run/docker/runtime-runc -systemd-cgroup</span><br><span class="line">root      47549  0.0  0.0  12108  1048 pts/0    S+   15:16   0:00 grep --color=auto 46157</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">[root@k8s-n2 shallwe]# kill -9 46176</span><br><span class="line"></span><br><span class="line">[root@k8s-n2 shallwe]# docker top 366672a12386</span><br><span class="line">Error response from daemon: Container 366672a1238655735e4dfd180bdd459109115d45caf904b16df792ad547c461b is not running</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">[root@guan ~]# docker run -d centos ls</span><br><span class="line">24b2195731fef5b3e52898bcb7e2c6cebdb9afb8cfc929c1e69ed7126e967699</span><br><span class="line">[root@guan ~]# docker run -d centos sleep 10</span><br><span class="line">8c0a7cba4af9a847e0092e1855426149cf093ef90fd4b91b1cbf452001176a38</span><br><span class="line">[root@guan ~]# docker ps -a</span><br><span class="line">CONTAINER ID        IMAGE         COMMAND           CREATED             STATUS                     PORTS                                      NAMES</span><br><span class="line">8c0a7cba4af9        centos        &quot;sleep 10&quot;        4 seconds ago       Up 3 seconds                                                     cocky_visvesvaraya</span><br><span class="line">24b2195731fe        centos        &quot;ls&quot;              10 seconds ago      Exited (0) 9 seconds ago                                         friendly_mirzakhani</span><br><span class="line">[root@guan ~]# docker ps -a</span><br><span class="line">CONTAINER ID        IMAGE         COMMAND           CREATED              STATUS                          PORTS                                      NAMES</span><br><span class="line">8c0a7cba4af9        centos        &quot;sleep 10&quot;        About a minute ago   Exited (0) 15 seconds ago                                       cocky_visvesvaraya</span><br><span class="line">24b2195731fe        centos        &quot;ls&quot;              About a minute ago   Exited (0) 29 seconds ago                                       friendly_mirzakhani</span><br></pre></td></tr></table></figure>
+
+<p>docker run 后面镜像后面的command和arg会覆盖掉镜像的CMD。上面我那个例子覆盖掉centos镜像默认的CMD bash。我们可以看到ls的容器直接退出了，但是sleep 10的容器运行了10秒后就退出了。以上也说明了容器不是虚拟机，容器是个隔离的进程</p>
+<p>这说明了容器的存活是容器里pid为1的进程运行时长决定的。所以nginx的官方镜像里就是用的exec格式让nginx充当pid为1的角色</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">CMD [&quot;nginx&quot;, &quot;-g&quot;, &quot;daemon off;&quot;]</span><br></pre></td></tr></table></figure>
+
+<h3 id="pid-为1-真的好吗"><a href="#pid-为1-真的好吗" class="headerlink" title="pid 为1 真的好吗"></a>pid 为1 真的好吗</h3><p>第一种情况实际上php和java的容器在长期运行后经常会频繁oom，主要是代码里涉及到fork等原因（fork程序子进程）。传统Linux上，pid为1的角色承担了孤儿和僵尸进程的回收，但是目前我们的业务进程都是pid为1的角色，没有处理掉孤儿进程，这里我们主进程用bash模仿个僵尸进程看看会不会被回收。</p>
+<p>起一个容器exec运行sleep</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">docker run -d --name test centos:7 bash -c &apos;sleep 1000&apos;</span><br><span class="line">docker exec -ti test bash   # 运行一个bash操作容器</span><br><span class="line">[root@134b96f29c73 /]# bash -c &apos;sleep 2000&apos;</span><br></pre></td></tr></table></figure>
+
+<p>再开一个终端操作按照如下图操作</p>
+<p><img src="/images/init-2.png" alt="init-2"></p>
+<p>得到一个僵尸进程。解决这个的办法就是pid为1的跑一个支持信号转发且支持回收孤儿僵尸进程的进程就行了，为此有人开发出了tini项目，感兴趣可以github上搜下下，现在tini已经内置在docker里了。</p>
+<p>使用tini可以在docker run的时候添加选项–init即可，底层我猜测是复制docker-init到容器的/dev/init路径里然后启动entrypoint cmd，大家可以在run的时候测试下上面的步骤会发现根本不会有僵尸进程遗留。</p>
+<p>这里不多说，如果是想默认使用tini可以把tini构建到镜像里(例如k8s目前不支持docker run 的–init，所以需要把tini做到镜像里)，参照jenkins官方镜像dockerfile和tini的github地址文档 <a href="https://github.com/krallin/tini" target="_blank" rel="noopener">https://github.com/krallin/tini</a></p>
+<p>如果是基于alpine，tini是依赖glibc的可能还会command not found，可以尝试它的静态版本</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ENV TINI_VERSION=v0.18.0 \</span><br><span class="line">    TINI_DOWNLOAD_URL https://github.com/krallin/tini/releases/download/$&#123;TINI_VERSION&#125;/tini-static</span><br><span class="line">RUN curl -sSL $&#123;TINI_DOWNLOAD_URL&#125; &gt; /usr/bin/tini \</span><br><span class="line">    &amp;&amp; chmod +x /usr/bin/tini </span><br><span class="line">...</span><br><span class="line">ENTRYPOINT [&quot;tini&quot;,&quot;--&quot;]</span><br><span class="line">CMD [&quot;/your/program&quot;,&quot;-and&quot;,&quot;-its&quot;,&quot;args&quot;]</span><br></pre></td></tr></table></figure>
+
+<p>类似tini的还有dumb-init，例如后续的k8s的ingress nginx镜像就是<br><img src="/images/init-3.png" alt="init-3"></p>
+<h2 id="JDK无法识别cgroup限制"><a href="#JDK无法识别cgroup限制" class="headerlink" title="JDK无法识别cgroup限制"></a>JDK无法识别cgroup限制</h2><p>首先Docker容器本质是宿主机上的一个进程，它与宿主机共享一个/proc目录，也就是说我们在容器内看到的<code>/proc/meminfo</code>，<code>/proc/cpuinfo</code>与直接在宿主机上看到的一致。</p>
+<p>如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-n1 shallwe]# head -n3 /proc/meminfo </span><br><span class="line">MemTotal:        7976536 kB</span><br><span class="line">MemFree:         2325284 kB</span><br><span class="line">MemAvailable:    6672952 kB</span><br><span class="line">[root@k8s-n1 shallwe]# docker run -m 500m --rm alpine head -n3 /proc/meminfo   # 带上内存限制选项无法识别</span><br><span class="line">MemTotal:        7976536 kB</span><br><span class="line">MemFree:         2277308 kB</span><br><span class="line">MemAvailable:    6626188 kB</span><br></pre></td></tr></table></figure>
+
+<p>jvm也是读取/proc目录，会导致无法识别cgroup限制。默认情况下，JVM的Max Heap Size是系统内存的1/4，假如我们系统是8G，那么JVM将的默认Heap≈2G。</p>
+<p>Docker通过CGroups完成的是对内存的限制，而/proc目录是已只读形式挂载到容器中的，由于默认情况下Java压根就看不见CGroups的限制的内存大小，而默认使用/proc/meminfo中的信息作为内存信息进行启动，这种不兼容情况会导致，如果容器分配的内存小于JVM的内存，JVM进程申请超过限制的内存会被docker认为oom杀掉。</p>
+<h3 id="测试用例-OPENJDK"><a href="#测试用例-OPENJDK" class="headerlink" title="测试用例(OPENJDK)"></a>测试用例(OPENJDK)</h3><p>在JDK8u212版本之前，JVM在容器里面识别到的是宿主机的内存。如果没有手动调整堆大小的话JVM默认会使用1/4的宿主机内存。这样会远远大于容器规格限制的内存，导致内存爆了之后容器自动重启。这里我用我们生产用的openjdk8做演示，jdk8也是一个长期维护版本。测试机器为8G内存，给容器限制内存为4G，看JDK默认参数下的最大堆为多少。</p>
+<p>测试命令为如下: （jdk包含jre）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker run -m 4GB --rm  openjdk:8-jdk java -XshowSettings:vm  -version</span><br><span class="line">docker run -m 4GB --rm  openjdk:8u181 java -XshowSettings:vm  -version</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>OpenJDK8新版本（正确的识别容器限制，910.50M）安全</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-n1 shallwe]# docker run -m 4GB --rm  openjdk:8-jdk java -XshowSettings:vm  -version</span><br><span class="line">VM settings:</span><br><span class="line">    Max. Heap Size (Estimated): 910.50M</span><br><span class="line">    Ergonomics Machine Class: server</span><br><span class="line">    Using VM: OpenJDK 64-Bit Server VM</span><br><span class="line"></span><br><span class="line">openjdk version &quot;1.8.0_265&quot;</span><br><span class="line">OpenJDK Runtime Environment (build 1.8.0_265-b01)</span><br><span class="line">OpenJDK 64-Bit Server VM (build 25.265-b01, mixed mode)</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>OpenJDK8老版本（并没有识别容器限制，1.69G） 危险</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-n1 shallwe]# docker run -m 4GB --rm  openjdk:8u181 java -XshowSettings:vm  -version</span><br><span class="line">VM settings:</span><br><span class="line">    Max. Heap Size (Estimated): 1.69G</span><br><span class="line">    Ergonomics Machine Class: server</span><br><span class="line">    Using VM: OpenJDK 64-Bit Server VM</span><br><span class="line"></span><br><span class="line">openjdk version &quot;1.8.0_181&quot;</span><br><span class="line">OpenJDK Runtime Environment (build 1.8.0_181-8u181-b13-2~deb9u1-b13)</span><br><span class="line">OpenJDK 64-Bit Server VM (build 25.181-b13, mixed mode)</span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h3 id="结论"><a href="#结论" class="headerlink" title="结论"></a>结论</h3><p>OpenJDK8老版本无法识别容器限制，至于其他版本或者其他发行版的jdk我就不测了，我们在选jdk的时候可以选<code>OpenJDK8</code>或<code>adoptopenjdk</code>。如果你想要的是，不显示的指定-Xmx，让Java进程自动的发现容器限制，那么请选择JDK8u212之后的版本。如果你想要的是手动挡的体验，更加进一步的利用内存资源，那么你可能需要回到手动配置-Xmx时代，那么你选什么版本都无所谓了。</p>
+<h2 id="CMD和ENTRYPOINT指令的作用和区别"><a href="#CMD和ENTRYPOINT指令的作用和区别" class="headerlink" title="CMD和ENTRYPOINT指令的作用和区别"></a>CMD和ENTRYPOINT指令的作用和区别</h2><p>首先先来说说他们两的相同点，他们都有两种写法EXEC和SHELL写法。前者是exec格式也是推荐格式，后者是SHELL格式。当一个dockerfile文件中有多个CMD和ENTRYPOINT时只有最后一个生效。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">CMD [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;] </span><br><span class="line">CMD command param1 param2</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ENTRYPOINT [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;]</span><br><span class="line">ENTRYPOINT command param1 param2</span><br></pre></td></tr></table></figure>
+
+<h3 id="以SHELL风格示例"><a href="#以SHELL风格示例" class="headerlink" title="以SHELL风格示例"></a>以SHELL风格示例</h3><p><img src="/images/init-4.png" alt="init-4"><br><img src="/images/init-5.png" alt="init-5"><br><img src="/images/init-6.png" alt="init-6"></p>
+<p>此时的可执行体/bin/sleep是由/bin/sh启动的，我们发现pid为1的是一个/bin/sh的进程。当我们用docker stop命令来停掉容器的时候会先向容器中PID为1的进程发送系统信号SIGTERM,docker默认会允许容器中的应用程序有10秒的时间用以终止运行。如果等待时间超过10秒会继续发送SIGKILL的系统信号强行kill掉进程。一般业务进程都是pid为1，所有官方的进程都会处理收到的SIGTERM信号进行优雅收尾退出。如果是/bin/sh格式的话，主进程是一个sh -c的进程，shell不用trap处理的话是无法转发信号的。最终只能强制Kill掉。</p>
+<h3 id="以EXEC风格示例"><a href="#以EXEC风格示例" class="headerlink" title="以EXEC风格示例"></a>以EXEC风格示例</h3><p><img src="/images/init-7.png" alt="init-7"><br><img src="/images/init-8.png" alt="init-8"><br><img src="/images/init-9.png" alt="init-9"></p>
+<p>这样不会独立启动一个shell进程，应用的可执行程序(/bin/sleep)成为容器的PID 1进程，可以接收Unix信号。</p>
+<h3 id="ENTRYPOINT与CMD指令"><a href="#ENTRYPOINT与CMD指令" class="headerlink" title="ENTRYPOINT与CMD指令"></a>ENTRYPOINT与CMD指令</h3><ul>
+<li>CMD: 指定容器启动时默认执行的命令。</li>
+<li>ENTRYPOINT: 指定容器启动时所运行的可执行程序与参数。</li>
+</ul>
+<p>上面提到CMD是设置容器启动时的默认命令，既然是默认命令那么就是可以被替换的。当我们执行 <code>docker run [OPTIONS] IMAGE [COMMAND] [ARG...]</code> 镜像后面的<code>command</code>和<code>arg</code>会覆盖掉镜像的CMD。如果ENTRYPOINT和CMD指令同时存在一个dockerfile中，则ENTRYPOINT优先级高于CMD，CMD指令将被作为参数传递给ENTRYPOINT。最终运行的是 <code>&lt;ENTRYPOINT&gt; &lt;CMD&gt;</code>。</p>
+<p><img src="/images/init-10.png" alt="init-10"></p>
+<p>1、首先<code>docker run</code>的时候我们替换掉了CMD里面的<code>&#39;-l&#39;</code>指令。变成了 <code>ls /root</code> 但是alpine的root目录是没有文件，所以<code>ls /root</code>没有输出。<br>2、我们用选项去覆盖住entrypoint可以看到输出了date。注意一点是覆盖entrypoint的时候镜像的CMD会被忽略。</p>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>Docker容器你需要知道的</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2020年09月17日 - 09:54:16</p>
+  <p><span>最后更新:</span>2020年09月21日 - 15:44:50</p>
+  <p><span>原始链接:</span><a href="/2020/09/17/docker-need-to-know/" title="Docker容器你需要知道的">https://system51.github.io/2020/09/17/docker-need-to-know/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/09/17/docker-need-to-know/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/06/02/use-nodelocal-dns-cache/" rel="next" title="在 Kubernetes 集群中使用 NodeLocal DNSCache">
+                <i class="fa fa-chevron-left"></i> 在 Kubernetes 集群中使用 NodeLocal DNSCache
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">54</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Docker容器的存活周期"><span class="nav-number">1.</span> <span class="nav-text">Docker容器的存活周期</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#僵尸进程"><span class="nav-number">1.1.</span> <span class="nav-text">僵尸进程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#孤儿进程"><span class="nav-number">1.2.</span> <span class="nav-text">孤儿进程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容器中的PID-1"><span class="nav-number">1.3.</span> <span class="nav-text">容器中的PID 1</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建一个docker-image"><span class="nav-number">1.3.1.</span> <span class="nav-text">创建一个docker image</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pid-为1-真的好吗"><span class="nav-number">1.4.</span> <span class="nav-text">pid 为1 真的好吗</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#JDK无法识别cgroup限制"><span class="nav-number">2.</span> <span class="nav-text">JDK无法识别cgroup限制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#测试用例-OPENJDK"><span class="nav-number">2.1.</span> <span class="nav-text">测试用例(OPENJDK)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#结论"><span class="nav-number">2.2.</span> <span class="nav-text">结论</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CMD和ENTRYPOINT指令的作用和区别"><span class="nav-number">3.</span> <span class="nav-text">CMD和ENTRYPOINT指令的作用和区别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#以SHELL风格示例"><span class="nav-number">3.1.</span> <span class="nav-text">以SHELL风格示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#以EXEC风格示例"><span class="nav-number">3.2.</span> <span class="nav-text">以EXEC风格示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ENTRYPOINT与CMD指令"><span class="nav-number">3.3.</span> <span class="nav-text">ENTRYPOINT与CMD指令</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
