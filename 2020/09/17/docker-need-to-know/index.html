@@ -100,7 +100,7 @@
 <meta property="og:image" content="https://system51.github.io/images/init-11.png">
 <meta property="og:image" content="https://system51.github.io/images/init-12.png">
 <meta property="og:image" content="https://system51.github.io/images/init-13.png">
-<meta property="og:updated_time" content="2020-10-10T01:39:03.076Z">
+<meta property="og:updated_time" content="2020-10-10T02:41:49.858Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Docker容器你需要知道的">
 <meta name="twitter:description" content="Docker容器的存活周期&amp;emsp;今天和大家聊聊容器的存活周期，但在聊存活周期以前我们得先了解一下init进程，在Linux操作系统中，当内核初始化完毕之后，会启动一个init进程，这个进程是整个操作系统的第一个用户进程，所以它的进程ID为1，也就是我们常说的PID1进程。在这之后，所有的用户态进程都是该进程的后代进程，由此我们可以看出，整个系统的用户进程，是一棵由init进程作为根的进程树。">
@@ -452,7 +452,7 @@
 <p>因为 <code>popcorn.sh</code> 并没有实现捕获和处理 <code>SIGTERM</code> 信号的逻辑，所以需要 10s 左右才能停止容器。要想解决这个问题，就要往脚本中添加信号处理代码，让它捕获到 <code>SIGTERM</code> 信号时就终止进程：</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/sh</span><br><span class="line"># catch the TERM signal and then exit</span><br><span class="line">trap &quot;exit&quot; TERM</span><br><span class="line"> </span><br><span class="line">while true</span><br><span class="line">do</span><br><span class="line">    date</span><br><span class="line">    sleep 1</span><br><span class="line">done</span><br></pre></td></tr></table></figure>
 
-<h4 id="解决方案-2：使用-init-系统"><a href="#解决方案-2：使用-init-系统" class="headerlink" title="解决方案 2：使用 init 系统"></a>解决方案 2：使用 init 系统</h4><p>如果容器中的应用默认无法处理 SIGTERM 信号，又不能修改代码，这时候方案 1 和 2 都行不通了，只能在容器中添加一个 init 系统。init 系统有很多种，这里推荐使用 tini，它是专用于容器的轻量级 init 系统，使用方法也很简单：</p>
+<h4 id="解决方案-2：使用-init-系统"><a href="#解决方案-2：使用-init-系统" class="headerlink" title="解决方案 2：使用 init 系统"></a>解决方案 2：使用 init 系统</h4><p>如果容器中的应用默认无法处理 SIGTERM 信号，又不能修改代码，这时候方案 1 行不通了，只能在容器中添加一个 init 系统。init 系统有很多种，这里推荐使用 tini，它是专用于容器的轻量级 init 系统，使用方法也很简单：</p>
 <ol>
 <li>安装 tini</li>
 <li>将 tini 设为容器的默认应用</li>
@@ -491,7 +491,7 @@
   <p><span>本文标题:</span>Docker容器你需要知道的</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2020年09月17日 - 09:54:16</p>
-  <p><span>最后更新:</span>2020年10月10日 - 09:39:03</p>
+  <p><span>最后更新:</span>2020年10月10日 - 10:41:49</p>
   <p><span>原始链接:</span><a href="/2020/09/17/docker-need-to-know/" title="Docker容器你需要知道的">https://system51.github.io/2020/09/17/docker-need-to-know/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/09/17/docker-need-to-know/" aria-label="复制成功！"></i></span>
   </p>
