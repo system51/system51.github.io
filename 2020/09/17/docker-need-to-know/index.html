@@ -100,7 +100,7 @@
 <meta property="og:image" content="https://system51.github.io/images/init-11.png">
 <meta property="og:image" content="https://system51.github.io/images/init-12.png">
 <meta property="og:image" content="https://system51.github.io/images/init-13.png">
-<meta property="og:updated_time" content="2020-10-10T02:41:49.858Z">
+<meta property="og:updated_time" content="2020-10-10T02:56:36.030Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Docker容器你需要知道的">
 <meta name="twitter:description" content="Docker容器的存活周期&amp;emsp;今天和大家聊聊容器的存活周期，但在聊存活周期以前我们得先了解一下init进程，在Linux操作系统中，当内核初始化完毕之后，会启动一个init进程，这个进程是整个操作系统的第一个用户进程，所以它的进程ID为1，也就是我们常说的PID1进程。在这之后，所有的用户态进程都是该进程的后代进程，由此我们可以看出，整个系统的用户进程，是一棵由init进程作为根的进程树。">
@@ -359,7 +359,7 @@
 <p><img src="/images/init-2.png" alt="init-2"></p>
 <p>得到一个僵尸进程。解决这个的办法就是pid为1的跑一个支持信号转发且支持回收孤儿僵尸进程的进程就行了，为此有人开发出了tini项目，感兴趣可以github上搜下下，现在tini已经内置在docker里了。</p>
 <p>使用tini可以在docker run的时候添加选项–init即可，底层我猜测是复制docker-init到容器的/dev/init路径里然后启动entrypoint cmd，大家可以在run的时候测试下上面的步骤会发现根本不会有僵尸进程遗留。</p>
-<p>这里不多说，如果是想默认使用tini可以把tini构建到镜像里(例如k8s目前不支持docker run 的–init，所以需要把tini做到镜像里)，参照jenkins官方镜像dockerfile和tini的github地址文档 <a href="https://github.com/krallin/tini" target="_blank" rel="noopener">https://github.com/krallin/tini</a></p>
+<p>这里不多说，如果是想默认使用tini可以把tini构建到镜像里(例如k8s目前不支持docker run 的<code>--init</code>，所以需要把tini做到镜像里)，参照jenkins官方镜像dockerfile和tini的github地址文档 <a href="https://github.com/krallin/tini" target="_blank" rel="noopener">https://github.com/krallin/tini</a></p>
 <p>如果是基于alpine，tini是依赖glibc的可能还会command not found，可以尝试它的静态版本</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">ENV TINI_VERSION=v0.18.0 \</span><br><span class="line">    TINI_DOWNLOAD_URL https://github.com/krallin/tini/releases/download/$&#123;TINI_VERSION&#125;/tini-static</span><br><span class="line">RUN curl -sSL $&#123;TINI_DOWNLOAD_URL&#125; &gt; /usr/bin/tini \</span><br><span class="line">    &amp;&amp; chmod +x /usr/bin/tini </span><br><span class="line">...</span><br><span class="line">ENTRYPOINT [&quot;tini&quot;,&quot;--&quot;]</span><br><span class="line">CMD [&quot;/your/program&quot;,&quot;-and&quot;,&quot;-its&quot;,&quot;args&quot;]</span><br></pre></td></tr></table></figure>
 
@@ -390,7 +390,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ENTRYPOINT [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;]</span><br><span class="line">ENTRYPOINT command param1 param2</span><br></pre></td></tr></table></figure>
 
 <h3 id="以SHELL风格示例"><a href="#以SHELL风格示例" class="headerlink" title="以SHELL风格示例"></a>以SHELL风格示例</h3><p><img src="/images/init-4.png" alt="init-4"><br><img src="/images/init-5.png" alt="init-5"><br><img src="/images/init-6.png" alt="init-6"></p>
-<p>此时的可执行体/bin/sleep是由/bin/sh启动的，我们发现pid为1的是一个/bin/sh的进程。当我们用docker stop命令来停掉容器的时候会先向容器中PID为1的进程发送系统信号SIGTERM,docker默认会允许容器中的应用程序有10秒的时间用以终止运行。如果等待时间超过10秒会继续发送SIGKILL的系统信号强行kill掉进程。一般业务进程都是pid为1，所有官方的进程都会处理收到的SIGTERM信号进行优雅收尾退出。如果是/bin/sh格式的话，主进程是一个sh -c的进程，<code>shell风格</code> 不用trap做信号捕捉、信号处理的话是无法转发信号的。最终只能强制Kill掉。</p>
+<p>此时的可执行体/bin/sleep是由/bin/sh启动的，我们发现pid为1的是一个/bin/sh的进程。当我们用docker stop命令来停掉容器的时候会先向容器中PID为1的进程发送系统信号SIGTERM,docker默认会允许容器中的应用程序有10秒的时间用以终止运行。如果等待时间超过10秒会继续发送SIGKILL的系统信号强行kill掉进程。一般业务进程都是pid为1，所有官方的进程都会处理收到的SIGTERM信号进行优雅收尾退出。如果是/bin/sh格式的话，主进程是一个sh -c的进程，shell不用trap做信号捕捉、信号处理的话是无法转发信号的。最终只能强制Kill掉。</p>
 <h3 id="以EXEC风格示例"><a href="#以EXEC风格示例" class="headerlink" title="以EXEC风格示例"></a>以EXEC风格示例</h3><p><img src="/images/init-7.png" alt="init-7"><br><img src="/images/init-8.png" alt="init-8"><br><img src="/images/init-9.png" alt="init-9"></p>
 <p>这样不会独立启动一个shell进程，应用的可执行程序(/bin/sleep)成为容器的PID 1进程，可以接收Unix信号。</p>
 <h3 id="ENTRYPOINT与CMD指令"><a href="#ENTRYPOINT与CMD指令" class="headerlink" title="ENTRYPOINT与CMD指令"></a>ENTRYPOINT与CMD指令</h3><ul>
@@ -491,7 +491,7 @@
   <p><span>本文标题:</span>Docker容器你需要知道的</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2020年09月17日 - 09:54:16</p>
-  <p><span>最后更新:</span>2020年10月10日 - 10:41:49</p>
+  <p><span>最后更新:</span>2020年10月10日 - 10:56:36</p>
   <p><span>原始链接:</span><a href="/2020/09/17/docker-need-to-know/" title="Docker容器你需要知道的">https://system51.github.io/2020/09/17/docker-need-to-know/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/09/17/docker-need-to-know/" aria-label="复制成功！"></i></span>
   </p>
