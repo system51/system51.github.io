@@ -97,7 +97,10 @@
 <meta property="og:image" content="https://system51.github.io/images/init-8.png">
 <meta property="og:image" content="https://system51.github.io/images/init-9.png">
 <meta property="og:image" content="https://system51.github.io/images/init-10.png">
-<meta property="og:updated_time" content="2020-09-21T07:44:50.807Z">
+<meta property="og:image" content="https://system51.github.io/images/init-11.png">
+<meta property="og:image" content="https://system51.github.io/images/init-12.png">
+<meta property="og:image" content="https://system51.github.io/images/init-13.png">
+<meta property="og:updated_time" content="2020-10-10T01:39:03.076Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Docker容器你需要知道的">
 <meta name="twitter:description" content="Docker容器的存活周期&amp;emsp;今天和大家聊聊容器的存活周期，但在聊存活周期以前我们得先了解一下init进程，在Linux操作系统中，当内核初始化完毕之后，会启动一个init进程，这个进程是整个操作系统的第一个用户进程，所以它的进程ID为1，也就是我们常说的PID1进程。在这之后，所有的用户态进程都是该进程的后代进程，由此我们可以看出，整个系统的用户进程，是一棵由init进程作为根的进程树。">
@@ -387,7 +390,7 @@
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ENTRYPOINT [&quot;executable&quot;, &quot;param1&quot;, &quot;param2&quot;]</span><br><span class="line">ENTRYPOINT command param1 param2</span><br></pre></td></tr></table></figure>
 
 <h3 id="以SHELL风格示例"><a href="#以SHELL风格示例" class="headerlink" title="以SHELL风格示例"></a>以SHELL风格示例</h3><p><img src="/images/init-4.png" alt="init-4"><br><img src="/images/init-5.png" alt="init-5"><br><img src="/images/init-6.png" alt="init-6"></p>
-<p>此时的可执行体/bin/sleep是由/bin/sh启动的，我们发现pid为1的是一个/bin/sh的进程。当我们用docker stop命令来停掉容器的时候会先向容器中PID为1的进程发送系统信号SIGTERM,docker默认会允许容器中的应用程序有10秒的时间用以终止运行。如果等待时间超过10秒会继续发送SIGKILL的系统信号强行kill掉进程。一般业务进程都是pid为1，所有官方的进程都会处理收到的SIGTERM信号进行优雅收尾退出。如果是/bin/sh格式的话，主进程是一个sh -c的进程，shell不用trap处理的话是无法转发信号的。最终只能强制Kill掉。</p>
+<p>此时的可执行体/bin/sleep是由/bin/sh启动的，我们发现pid为1的是一个/bin/sh的进程。当我们用docker stop命令来停掉容器的时候会先向容器中PID为1的进程发送系统信号SIGTERM,docker默认会允许容器中的应用程序有10秒的时间用以终止运行。如果等待时间超过10秒会继续发送SIGKILL的系统信号强行kill掉进程。一般业务进程都是pid为1，所有官方的进程都会处理收到的SIGTERM信号进行优雅收尾退出。如果是/bin/sh格式的话，主进程是一个sh -c的进程，<code>shell风格</code> 不用trap做信号捕捉、信号处理的话是无法转发信号的。最终只能强制Kill掉。</p>
 <h3 id="以EXEC风格示例"><a href="#以EXEC风格示例" class="headerlink" title="以EXEC风格示例"></a>以EXEC风格示例</h3><p><img src="/images/init-7.png" alt="init-7"><br><img src="/images/init-8.png" alt="init-8"><br><img src="/images/init-9.png" alt="init-9"></p>
 <p>这样不会独立启动一个shell进程，应用的可执行程序(/bin/sleep)成为容器的PID 1进程，可以接收Unix信号。</p>
 <h3 id="ENTRYPOINT与CMD指令"><a href="#ENTRYPOINT与CMD指令" class="headerlink" title="ENTRYPOINT与CMD指令"></a>ENTRYPOINT与CMD指令</h3><ul>
@@ -397,6 +400,75 @@
 <p>上面提到CMD是设置容器启动时的默认命令，既然是默认命令那么就是可以被替换的。当我们执行 <code>docker run [OPTIONS] IMAGE [COMMAND] [ARG...]</code> 镜像后面的<code>command</code>和<code>arg</code>会覆盖掉镜像的CMD。如果ENTRYPOINT和CMD指令同时存在一个dockerfile中，则ENTRYPOINT优先级高于CMD，CMD指令将被作为参数传递给ENTRYPOINT。最终运行的是 <code>&lt;ENTRYPOINT&gt; &lt;CMD&gt;</code>。</p>
 <p><img src="/images/init-10.png" alt="init-10"></p>
 <p>1、首先<code>docker run</code>的时候我们替换掉了CMD里面的<code>&#39;-l&#39;</code>指令。变成了 <code>ls /root</code> 但是alpine的root目录是没有文件，所以<code>ls /root</code>没有输出。<br>2、我们用选项去覆盖住entrypoint可以看到输出了date。注意一点是覆盖entrypoint的时候镜像的CMD会被忽略。</p>
+<h2 id="Docker容器优雅终止方案"><a href="#Docker容器优雅终止方案" class="headerlink" title="Docker容器优雅终止方案"></a>Docker容器优雅终止方案</h2><p>作为一名系统重启工程师（SRE），你可能经常需要重启容器，毕竟 Kubernetes 的优势就是快速弹性伸缩和故障恢复，遇到问题先重启容器再说，几秒钟即可恢复，实在不行再重启系统，这就是系统重启工程师的杀手锏。然而现实并没有理论上那么美好，某些容器需要花费 10s 左右才能停止，这是为啥？有以下几种可能性：</p>
+<ol>
+<li>容器中的进程没有收到 SIGTERM 信号。</li>
+<li>容器中的进程收到了信号，但忽略了。</li>
+<li>容器中应用的关闭时间确实就是这么长。</li>
+</ol>
+<p>对于第 3 种可能性我们无能为力，本文主要解决 1 和 2。</p>
+<p>如果要构建一个新的 Docker 镜像，肯定希望镜像越小越好，这样它的下载和启动速度都很快，一般我们都会选择一个瘦了身的操作系统（例如 <code>Alpine</code>，<code>Busybox</code> 等）作为基础镜像。</p>
+<p><img src="/images/init-11.png" alt="init-11"></p>
+<p>问题就在这里，这些基础镜像的 <code>init 系统</code> 也被抹掉了，这就是问题的根源！</p>
+<p>init 系统有以下几个特点：</p>
+<ul>
+<li>它是系统的第一个进程，负责产生其他所有用户进程。</li>
+<li>init 以守护进程方式存在，是所有其他进程的祖先。</li>
+<li>它主要负责：<ul>
+<li>启动守护进程</li>
+<li>回收孤儿进程</li>
+<li>将操作系统信号转发给子进程</li>
+</ul>
+</li>
+</ul>
+<h3 id="Docker-容器停止过程"><a href="#Docker-容器停止过程" class="headerlink" title="Docker 容器停止过程"></a>Docker 容器停止过程</h3><p>对于容器来说，init 系统不是必须的，当你通过命令 <code>docker stop mycontainer</code> 来停止容器时，docker CLI 会将 <code>TERM</code> 信号发送给 <code>mycontainer</code> 的 <code>PID</code> 为 1 的进程。</p>
+<ul>
+<li>如果 PID 1 是 init 进程 - 那么 PID 1 会将 TERM 信号转发给子进程，然后子进程开始关闭，最后容器终止。</li>
+<li>如果没有 init 进程 - 那么容器中的应用进程（Dockerfile 中的 ENTRYPOINT 或 CMD 指定的应用）就是 PID 1，应用进程直接负责响应 TERM 信号。这时又分为三种情况：<ol>
+<li>应用不处理 SIGTERM - 如果应用没有监听 SIGTERM 信号，或者应用中没有实现处理 SIGTERM 信号的逻辑，应用就不会停止，容器也不会终止。</li>
+<li>应用收不到 SIGTERM 信号 - 在写dockerfile时ENTRYPOINT 或 CMD使用 <code>shell模式</code> 会导致应用无法收到SIGTERM信号，因为shell不会转发信号到子进程</li>
+<li>应用收到 SIGTERM 信号并处理信号</li>
+</ol>
+</li>
+</ul>
+<p>第一种和第二种会导致容器停止时间很长 运行命令 docker stop mycontainer 之后，Docker 会等待 10s，如果 10s 后容器还没有终止，Docker 就会绕过容器应用直接向内核发送 SIGKILL，内核会强行杀死应用，从而终止容器。</p>
+<h3 id="容器进程收不到-SIGTERM-信号？"><a href="#容器进程收不到-SIGTERM-信号？" class="headerlink" title="容器进程收不到 SIGTERM 信号？"></a>容器进程收不到 SIGTERM 信号？</h3><p>如果容器中的进程没有收到 SIGTERM 信号，很有可能是因为应用进程不是 PID 1，PID 1 是 shell，而应用进程只是 shell 的子进程。而 shell 不具备 init 系统的功能，也就不会将操作系统的信号转发到子进程上，这也是容器中的应用没有收到 SIGTERM 信号的常见原因。</p>
+<p>问题的根源就来自 Dockerfile，例如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">FROM alpine:3.7</span><br><span class="line">COPY popcorn.sh .</span><br><span class="line">RUN chmod +x popcorn.sh</span><br><span class="line">ENTRYPOINT ./popcorn.sh</span><br></pre></td></tr></table></figure>
+
+<p><code>ENTRYPOINT</code> 指令使用的是 <code>shell 模式</code>，这样 Docker 就会把应用放到 <code>shell</code> 中运行，因此 <code>shell</code> 是 PID 1。</p>
+<h4 id="解决方案-1：使用-exec-模式的-ENTRYPOINT-指令"><a href="#解决方案-1：使用-exec-模式的-ENTRYPOINT-指令" class="headerlink" title="解决方案 1：使用 exec 模式的 ENTRYPOINT 指令"></a>解决方案 1：使用 exec 模式的 ENTRYPOINT 指令</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">FROM alpine:3.7</span><br><span class="line">COPY popcorn.sh .</span><br><span class="line">RUN chmod +x popcorn.sh</span><br><span class="line">ENTRYPOINT [&quot;./popcorn.sh&quot;]</span><br></pre></td></tr></table></figure>
+
+<p>这样 PID 1 就是 <code>./popcorn.sh</code>，它将负责响应所有发送到容器的信号，至于 <code>./popcorn.sh</code> 是否真的能捕捉到系统信号，那是另一回事。</p>
+<p>举个例子，假设使用上面的 Dockerfile 来构建镜像，<code>popcorn.sh</code> 脚本每过一秒打印一次日期：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/sh</span><br><span class="line">while true</span><br><span class="line">do</span><br><span class="line">    date</span><br><span class="line">    sleep 1</span><br><span class="line">done</span><br></pre></td></tr></table></figure>
+
+<p>构建镜像并创建容器：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">docker build -t truek8s/popcorn .</span><br><span class="line">docker run -it --name corny --rm truek8s/popcorn</span><br></pre></td></tr></table></figure>
+
+<p>打开另外一个终端执行停止容器的命令，并计时：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">time docker stop corny</span><br></pre></td></tr></table></figure>
+
+<p>因为 <code>popcorn.sh</code> 并没有实现捕获和处理 <code>SIGTERM</code> 信号的逻辑，所以需要 10s 左右才能停止容器。要想解决这个问题，就要往脚本中添加信号处理代码，让它捕获到 <code>SIGTERM</code> 信号时就终止进程：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">#!/bin/sh</span><br><span class="line"># catch the TERM signal and then exit</span><br><span class="line">trap &quot;exit&quot; TERM</span><br><span class="line"> </span><br><span class="line">while true</span><br><span class="line">do</span><br><span class="line">    date</span><br><span class="line">    sleep 1</span><br><span class="line">done</span><br></pre></td></tr></table></figure>
+
+<h4 id="解决方案-2：使用-init-系统"><a href="#解决方案-2：使用-init-系统" class="headerlink" title="解决方案 2：使用 init 系统"></a>解决方案 2：使用 init 系统</h4><p>如果容器中的应用默认无法处理 SIGTERM 信号，又不能修改代码，这时候方案 1 和 2 都行不通了，只能在容器中添加一个 init 系统。init 系统有很多种，这里推荐使用 tini，它是专用于容器的轻量级 init 系统，使用方法也很简单：</p>
+<ol>
+<li>安装 tini</li>
+<li>将 tini 设为容器的默认应用</li>
+<li>将 <code>popcorn.sh</code> 作为 tini 的参数</li>
+</ol>
+<p>具体的 Dockerfile 如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">FROM alpine:3.7</span><br><span class="line">COPY popcorn.sh .</span><br><span class="line">RUN chmod +x popcorn.sh</span><br><span class="line">RUN apk add --no-cache tini</span><br><span class="line">ENTRYPOINT [&quot;/sbin/tini&quot;, &quot;--&quot;, &quot;./popcorn.sh&quot;]</span><br></pre></td></tr></table></figure>
+
+<p>现在 tini 就是 PID 1，它会将收到的系统信号转发给子进程 <code>popcorn.sh</code>。</p>
+<blockquote>
+<p>如果你想直接通过 docker 命令来运行容器，可以直接通过参数 <code>--init</code> 来使用 tini，不需要在镜像中安装 tini。如果是 Kubernetes 就不行了，还得老老实实安装 tini。</p>
+</blockquote>
+<h4 id="使用-tini-后应用还需要处理-SIGTERM-吗？"><a href="#使用-tini-后应用还需要处理-SIGTERM-吗？" class="headerlink" title="使用 tini 后应用还需要处理 SIGTERM 吗？"></a>使用 tini 后应用还需要处理 SIGTERM 吗？</h4><p>最后一个问题：如果移除 <code>popcorn.sh</code> 中对 <code>SIGTERM</code> 信号的处理逻辑，容器会在我们执行停止命令后立即终止吗？</p>
+<p>首先启动两个容器一个容器使用 <code>init</code> 一个容器不使用 <code>init</code>。<br><img src="/images/init-12.png" alt="init-12"></p>
+<p>停止两个容器查看耗时<br><img src="/images/init-13.png" alt="init-13"></p>
+<p>结果：可以优雅关闭容器</p>
 
       
     </div>
@@ -419,7 +491,7 @@
   <p><span>本文标题:</span>Docker容器你需要知道的</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2020年09月17日 - 09:54:16</p>
-  <p><span>最后更新:</span>2020年09月21日 - 15:44:50</p>
+  <p><span>最后更新:</span>2020年10月10日 - 09:39:03</p>
   <p><span>原始链接:</span><a href="/2020/09/17/docker-need-to-know/" title="Docker容器你需要知道的">https://system51.github.io/2020/09/17/docker-need-to-know/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/09/17/docker-need-to-know/" aria-label="复制成功！"></i></span>
   </p>
@@ -602,7 +674,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Docker容器的存活周期"><span class="nav-number">1.</span> <span class="nav-text">Docker容器的存活周期</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#僵尸进程"><span class="nav-number">1.1.</span> <span class="nav-text">僵尸进程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#孤儿进程"><span class="nav-number">1.2.</span> <span class="nav-text">孤儿进程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容器中的PID-1"><span class="nav-number">1.3.</span> <span class="nav-text">容器中的PID 1</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建一个docker-image"><span class="nav-number">1.3.1.</span> <span class="nav-text">创建一个docker image</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pid-为1-真的好吗"><span class="nav-number">1.4.</span> <span class="nav-text">pid 为1 真的好吗</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#JDK无法识别cgroup限制"><span class="nav-number">2.</span> <span class="nav-text">JDK无法识别cgroup限制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#测试用例-OPENJDK"><span class="nav-number">2.1.</span> <span class="nav-text">测试用例(OPENJDK)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#结论"><span class="nav-number">2.2.</span> <span class="nav-text">结论</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CMD和ENTRYPOINT指令的作用和区别"><span class="nav-number">3.</span> <span class="nav-text">CMD和ENTRYPOINT指令的作用和区别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#以SHELL风格示例"><span class="nav-number">3.1.</span> <span class="nav-text">以SHELL风格示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#以EXEC风格示例"><span class="nav-number">3.2.</span> <span class="nav-text">以EXEC风格示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ENTRYPOINT与CMD指令"><span class="nav-number">3.3.</span> <span class="nav-text">ENTRYPOINT与CMD指令</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Docker容器的存活周期"><span class="nav-number">1.</span> <span class="nav-text">Docker容器的存活周期</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#僵尸进程"><span class="nav-number">1.1.</span> <span class="nav-text">僵尸进程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#孤儿进程"><span class="nav-number">1.2.</span> <span class="nav-text">孤儿进程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容器中的PID-1"><span class="nav-number">1.3.</span> <span class="nav-text">容器中的PID 1</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#创建一个docker-image"><span class="nav-number">1.3.1.</span> <span class="nav-text">创建一个docker image</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#pid-为1-真的好吗"><span class="nav-number">1.4.</span> <span class="nav-text">pid 为1 真的好吗</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#JDK无法识别cgroup限制"><span class="nav-number">2.</span> <span class="nav-text">JDK无法识别cgroup限制</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#测试用例-OPENJDK"><span class="nav-number">2.1.</span> <span class="nav-text">测试用例(OPENJDK)</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#结论"><span class="nav-number">2.2.</span> <span class="nav-text">结论</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CMD和ENTRYPOINT指令的作用和区别"><span class="nav-number">3.</span> <span class="nav-text">CMD和ENTRYPOINT指令的作用和区别</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#以SHELL风格示例"><span class="nav-number">3.1.</span> <span class="nav-text">以SHELL风格示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#以EXEC风格示例"><span class="nav-number">3.2.</span> <span class="nav-text">以EXEC风格示例</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#ENTRYPOINT与CMD指令"><span class="nav-number">3.3.</span> <span class="nav-text">ENTRYPOINT与CMD指令</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Docker容器优雅终止方案"><span class="nav-number">4.</span> <span class="nav-text">Docker容器优雅终止方案</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#Docker-容器停止过程"><span class="nav-number">4.1.</span> <span class="nav-text">Docker 容器停止过程</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#容器进程收不到-SIGTERM-信号？"><span class="nav-number">4.2.</span> <span class="nav-text">容器进程收不到 SIGTERM 信号？</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案-1：使用-exec-模式的-ENTRYPOINT-指令"><span class="nav-number">4.2.1.</span> <span class="nav-text">解决方案 1：使用 exec 模式的 ENTRYPOINT 指令</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#解决方案-2：使用-init-系统"><span class="nav-number">4.2.2.</span> <span class="nav-text">解决方案 2：使用 init 系统</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#使用-tini-后应用还需要处理-SIGTERM-吗？"><span class="nav-number">4.2.3.</span> <span class="nav-text">使用 tini 后应用还需要处理 SIGTERM 吗？</span></a></li></ol></li></ol></li></ol></div>
             
 
           </div>
