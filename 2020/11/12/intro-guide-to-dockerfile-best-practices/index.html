@@ -79,13 +79,13 @@
 
 
 
-<meta name="description" content="如今 GitHub 仓库中已经包含了成千上万的 Dockerfile ，但并不是所有的 Dockerfile 都是高效的。本文将从四个方面来介绍 Dockerfile 的最佳实践，以此来帮助大家编写更优雅的 Dockerfile。  本文使用一个基于 Maven 的 Java 项目作为示例，然后不断改进 Dockerfile 的写法，直到最后写出一个最优雅的 Dockerfile。中间的所有步骤都">
+<meta name="description" content="如今 GitHub 仓库中已经包含了成千上万的 Dockerfile ，但并不是所有的 Dockerfile 都是高效的。很多新手一上来就是FROM centos然后RUN 一堆yum install的，这样还停留在虚拟机的角度。可以FROM alpine或者干脆拿官方的改，alpine初期的时候问题蛮多的，很多人建议使用alpine做基础镜像最好是测试好再上线，现在alpine的快速发展，这种现">
 <meta name="keywords" content="kubernetes,devops">
 <meta property="og:type" content="article">
 <meta property="og:title" content="你确定你会写 Dockerfile 吗？">
 <meta property="og:url" content="https://system51.github.io/2020/11/12/intro-guide-to-dockerfile-best-practices/index.html">
 <meta property="og:site_name" content="Mr.Ye Blogs">
-<meta property="og:description" content="如今 GitHub 仓库中已经包含了成千上万的 Dockerfile ，但并不是所有的 Dockerfile 都是高效的。本文将从四个方面来介绍 Dockerfile 的最佳实践，以此来帮助大家编写更优雅的 Dockerfile。  本文使用一个基于 Maven 的 Java 项目作为示例，然后不断改进 Dockerfile 的写法，直到最后写出一个最优雅的 Dockerfile。中间的所有步骤都">
+<meta property="og:description" content="如今 GitHub 仓库中已经包含了成千上万的 Dockerfile ，但并不是所有的 Dockerfile 都是高效的。很多新手一上来就是FROM centos然后RUN 一堆yum install的，这样还停留在虚拟机的角度。可以FROM alpine或者干脆拿官方的改，alpine初期的时候问题蛮多的，很多人建议使用alpine做基础镜像最好是测试好再上线，现在alpine的快速发展，这种现">
 <meta property="og:locale" content="zh-Hans">
 <meta property="og:image" content="https://system51.github.io/images/dockerfile-1.jpg">
 <meta property="og:image" content="https://system51.github.io/images/dockerfile-2.jpg">
@@ -99,10 +99,10 @@
 <meta property="og:image" content="https://system51.github.io/images/dockerfile-10.jpg">
 <meta property="og:image" content="https://system51.github.io/images/dockerfile-11.jpg">
 <meta property="og:image" content="https://system51.github.io/images/dockerfile-12.jpg">
-<meta property="og:updated_time" content="2020-11-13T00:54:00.930Z">
+<meta property="og:updated_time" content="2020-11-13T01:02:12.368Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="你确定你会写 Dockerfile 吗？">
-<meta name="twitter:description" content="如今 GitHub 仓库中已经包含了成千上万的 Dockerfile ，但并不是所有的 Dockerfile 都是高效的。本文将从四个方面来介绍 Dockerfile 的最佳实践，以此来帮助大家编写更优雅的 Dockerfile。  本文使用一个基于 Maven 的 Java 项目作为示例，然后不断改进 Dockerfile 的写法，直到最后写出一个最优雅的 Dockerfile。中间的所有步骤都">
+<meta name="twitter:description" content="如今 GitHub 仓库中已经包含了成千上万的 Dockerfile ，但并不是所有的 Dockerfile 都是高效的。很多新手一上来就是FROM centos然后RUN 一堆yum install的，这样还停留在虚拟机的角度。可以FROM alpine或者干脆拿官方的改，alpine初期的时候问题蛮多的，很多人建议使用alpine做基础镜像最好是测试好再上线，现在alpine的快速发展，这种现">
 <meta name="twitter:image" content="https://system51.github.io/images/dockerfile-1.jpg">
 
 
@@ -333,7 +333,7 @@
       
 
       
-        <p>如今 GitHub 仓库中已经包含了成千上万的 <code>Dockerfile</code> ，但并不是所有的 <code>Dockerfile</code> 都是高效的。本文将从四个方面来介绍 <code>Dockerfile</code> 的最佳实践，以此来帮助大家编写更优雅的 <code>Dockerfile</code>。</p>
+        <p>如今 GitHub 仓库中已经包含了成千上万的 <code>Dockerfile</code> ，但并不是所有的 <code>Dockerfile</code> 都是高效的。很多新手一上来就是FROM centos然后RUN 一堆yum install的，这样还停留在虚拟机的角度。可以FROM alpine或者干脆拿官方的改，alpine初期的时候问题蛮多的，很多人建议使用alpine做基础镜像最好是测试好再上线，现在alpine的快速发展，这种现象很少了。本文将从四个方面来介绍 <code>Dockerfile</code> 的最佳实践，以此来帮助大家编写更优雅的 <code>Dockerfile</code>。</p>
 <blockquote>
 <p>本文使用一个基于 Maven 的 Java 项目作为示例，然后不断改进 <code>Dockerfile</code> 的写法，直到最后写出一个最优雅的 <code>Dockerfile</code>。中间的所有步骤都是为了说明某一方面的最佳实践。</p>
 </blockquote>
@@ -388,7 +388,7 @@
   <p><span>本文标题:</span>你确定你会写 Dockerfile 吗？</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2020年11月12日 - 17:11:22</p>
-  <p><span>最后更新:</span>2020年11月13日 - 08:54:00</p>
+  <p><span>最后更新:</span>2020年11月13日 - 09:02:12</p>
   <p><span>原始链接:</span><a href="/2020/11/12/intro-guide-to-dockerfile-best-practices/" title="你确定你会写 Dockerfile 吗？">https://system51.github.io/2020/11/12/intro-guide-to-dockerfile-best-practices/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/11/12/intro-guide-to-dockerfile-best-practices/" aria-label="复制成功！"></i></span>
   </p>
