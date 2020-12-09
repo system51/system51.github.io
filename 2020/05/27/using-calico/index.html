@@ -93,7 +93,7 @@
 <meta property="og:image" content="https://system51.github.io/images/calico-cni-3.png">
 <meta property="og:image" content="https://system51.github.io/images/calico-cni-6.png">
 <meta property="og:image" content="https://system51.github.io/images/calico-cni-5.jpg">
-<meta property="og:updated_time" content="2020-06-24T06:01:16.000Z">
+<meta property="og:updated_time" content="2020-12-09T06:36:12.089Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Calico配置及原理">
 <meta name="twitter:description" content="Calico基本概念 Calico是针对容器，虚拟机和基于主机的本机工作负载的开源网络和网络安全解决方案。 Calico支持广泛的平台，包括Kubernetes，OpenShift，Docker EE，OpenStack和裸机服务。 Calico将灵活的网络功能与无处不在的安全性实施相结合，以提供具有本地Linux内核性能和真正的云原生可扩展性的解决方案。 Calico为开发人员和集群运营商提供了">
@@ -335,10 +335,10 @@
 </ul>
 <h2 id="Calico架构"><a href="#Calico架构" class="headerlink" title="Calico架构"></a>Calico架构</h2><p><img src="/images/calico-cni.png" alt="calico-cni"></p>
 <h3 id="Calico网络模型主要工作组件："><a href="#Calico网络模型主要工作组件：" class="headerlink" title="Calico网络模型主要工作组件："></a>Calico网络模型主要工作组件：</h3><ul>
-<li>Felix：运行在每一台 Host 的 agent 进程，主要负责网络接口管理和监听、路由、ARP 管理、ACL 管理和同步、状态上报等。</li>
+<li>Felix：运行在每一台 Host 的 agent 进程，主要负责编写路由和ACLs（访问控制列表）。以便为该主机上的 <code>endpoints</code> 资源正常运行提供所需的网络连接。</li>
 <li>etcd：分布式键值存储，主要负责网络元数据一致性，确保Calico网络状态的准确性，可以与kubernetes共用；</li>
-<li>BGP Client（BIRD）：Calico 为每一台 Host 部署一个 BGP Client，使用 BIRD 实现，BIRD 是一个单独的持续发展的项目，实现了众多动态路由协议比如 BGP、OSPF、RIP 等。在 Calico 的角色是监听 Host 上由 Felix 注入的路由信息，然后通过 BGP 协议广播告诉剩余 Host 节点，从而实现网络互通。</li>
-<li>BGP Route Reflector：在大型网络规模中，如果仅仅使用 BGP client 形成 mesh 全网互联的方案就会导致规模限制，因为所有节点之间俩俩互联，需要 N^2 个连接，为了解决这个规模问题，可以采用 BGP 的 Router Reflector 的方法，使所有 BGP Client 仅与特定 RR 节点互联并做路由同步，从而大大减少连接数。</li>
+<li>bird（BGP Client）：<code>Calico</code> 为每一台 <code>Host</code> 部署一个 <code>BGP Client</code>，当 <code>Felix</code> 将路由写入 <code>kernel</code> FIB中时 <code>BGP Client</code> 将通过 <code>BGP</code> 协议广播告诉剩余 <code>calico</code> 节点，从而实现网络互通。</li>
+<li>confd：通过监听etcd以了解BGP配置和全局默认值的更改（例如：AS number、日志级别、IPAM信息）。Confd根据ETCD中数据的更新，动态生成BIRD配置文件。当配置文件更改时，confd触发BIRD重新加载新文件。</li>
 </ul>
 <h2 id="Calico两种网络模式"><a href="#Calico两种网络模式" class="headerlink" title="Calico两种网络模式"></a>Calico两种网络模式</h2><p>&emsp;&emsp;Calico本身支持多种网络模式，从<code>overlay</code>和<code>underlay</code>上区分。<code>Calico overlay</code> 模式，一般也称Calico IPIP或VXLAN模式，不同Node间Pod使用IPIP或VXLAN隧道进行通信。<code>Calico underlay</code> 模式，一般也称calico BGP模式，不同Node Pod使用直接路由进行通信。在overlay和underlay都有<code>nodetonode mesh</code>(全网互联)和<code>Route Reflector</code>(路由反射器)。如果有安全组策略需要开放IPIP协议；要求Node允许BGP协议，如果有安全组策略需要开放TCP 179端口；官方推荐使用在Node小于100的集群，我们在使用的过程中已经通过IPIP模式支撑了100-200规模的集群稳定运行。</p>
 <h3 id="路由更新速率问题"><a href="#路由更新速率问题" class="headerlink" title="路由更新速率问题"></a>路由更新速率问题</h3><p>&emsp;&emsp;为什么要考虑路由更新速率？在Calico默认的使用模式中，Calico每个Node一个分配一个Block，每个Block默认为64个IP，当单个Node启动的Pod超过64时，才会分配下一个Block。Calico BGP client默认只向外通告聚合后的Block的路由，默认配置，只有在Node上下线、Node上Pod数量超过Block size的倍数才会出现路由的更新，路由的条目数量是Node级别的。<br>&emsp;&emsp;而实际业务在使用的过程中，会针对一个服务或者一个deployment分配一个IP Pool，这种使用模式会导致Calico的IP Pool没有办法按照Node聚合，出现一些零散的无法聚合的IP地址，最差的情况，会导致每个Pod产生一条路由，会导致路由的条目变为Pod级别。<br>&emsp;&emsp;在默认情况下，交换机设备为了防止路由震荡，会对BGP路由进行收敛保护。但是Kubernetes集群中，Pod生命周期短，变化频繁，需要关闭网络设备的路由变更保护机制才能满足Kubernetes的要求；对于不同的网络设备，路由收敛速度也是不同的，在大规模Pod扩容和迁移的场景，或者进行双数据中心切换，除了考虑Pod的调度时间、启动时间，还需要对网络设备的路由收敛速度进行性能评估和压测。</p>
@@ -384,9 +384,6 @@
 
 <h2 id="安装calicoctl"><a href="#安装calicoctl" class="headerlink" title="安装calicoctl"></a>安装calicoctl</h2><p>下载calicoctl客户端</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]# curl -O -L  https://github.com/projectcalico/calicoctl/releases/download/v3.14.0/calicoctl</span><br><span class="line">[root@devops010015001003 ~]# chmod 755 calicoctl</span><br><span class="line">[root@devops010015001003 ~]# chown root.root calicoctl</span><br><span class="line">[root@devops010015001003 ~]# mv calicoctl /usr/bin/</span><br></pre></td></tr></table></figure>
-
-<p>配置环境变量</p>
-<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]# vim /etc/profile.d/calico.sh </span><br><span class="line">alias calicoctl=&apos;KUBECONFIG=/root/.kube/config DATASTORE_TYPE=kubernetes /usr/bin/calicoctl&apos;</span><br></pre></td></tr></table></figure>
 
 <p>验证是否可用</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[root@devops010015001003 ~]# calicoctl get nodes</span><br><span class="line">NAME                 </span><br><span class="line">devops010015001003   </span><br><span class="line">devops010015001004   </span><br><span class="line">devops010015001005   </span><br><span class="line">devops010015001006   </span><br><span class="line">devops010015001007</span><br></pre></td></tr></table></figure>
@@ -444,10 +441,10 @@
 <p>关闭BGP的node-to-node模式（对全局生效）</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">calicoctl create -f - &lt;&lt;EOF</span><br><span class="line"> apiVersion: projectcalico.org/v3</span><br><span class="line"> kind: BGPConfiguration</span><br><span class="line"> metadata:</span><br><span class="line">   name: default</span><br><span class="line"> spec:</span><br><span class="line">   nodeToNodeMeshEnabled: false</span><br><span class="line">   asNumber: 64512</span><br><span class="line">EOF</span><br></pre></td></tr></table></figure>
 
-<h2 id="Calico-Overlay网络"><a href="#Calico-Overlay网络" class="headerlink" title="Calico Overlay网络"></a>Calico Overlay网络</h2><p>在Calico Overlay网络中有两种模式可选</p>
+<h2 id="Calico-Overlay网络"><a href="#Calico-Overlay网络" class="headerlink" title="Calico Overlay网络"></a>Calico Overlay网络</h2><p>在Calico Overlay网络中有两种模式可选（仅支持IPV4地址）</p>
 <ul>
-<li>IP-in-IP</li>
-<li>Vxlan</li>
+<li>IP-in-IP （使用BGP实现）</li>
+<li>Vxlan  （不使用BGP实现）</li>
 </ul>
 <p>两种模式均支持如下参数</p>
 <ul>
@@ -485,7 +482,7 @@
   <p><span>本文标题:</span>Calico配置及原理</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2020年05月27日 - 16:17:29</p>
-  <p><span>最后更新:</span>2020年06月24日 - 14:01:16</p>
+  <p><span>最后更新:</span>2020年12月09日 - 14:36:12</p>
   <p><span>原始链接:</span><a href="/2020/05/27/using-calico/" title="Calico配置及原理">https://system51.github.io/2020/05/27/using-calico/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/05/27/using-calico/" aria-label="复制成功！"></i></span>
   </p>
