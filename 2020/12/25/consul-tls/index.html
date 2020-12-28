@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="Consul架构图 首先Consul支持多数据中心，在上图中有两个DataCenter，他们通过Internet互联，同时请注意为了提高通信效率，只有Server节点才加入跨数据中心的通信。 在单个数据中心中，Consul分为Client和Server两种节点（所有的节点也被称为Agent），Server节点保存数据，Client负责健康检查及转发数据请求到Server；Server节点有一个Le">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="高可用的SSL consul cluster实践">
+<meta property="og:url" content="https://system51.github.io/2020/12/25/consul-tls/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Consul架构图 首先Consul支持多数据中心，在上图中有两个DataCenter，他们通过Internet互联，同时请注意为了提高通信效率，只有Server节点才加入跨数据中心的通信。 在单个数据中心中，Consul分为Client和Server两种节点（所有的节点也被称为Agent），Server节点保存数据，Client负责健康检查及转发数据请求到Server；Server节点有一个Le">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://system51.github.io/images/consul-1.png">
+<meta property="og:image" content="https://system51.github.io/images/consul-2.png">
+<meta property="og:updated_time" content="2020-12-28T01:18:59.295Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="高可用的SSL consul cluster实践">
+<meta name="twitter:description" content="Consul架构图 首先Consul支持多数据中心，在上图中有两个DataCenter，他们通过Internet互联，同时请注意为了提高通信效率，只有Server节点才加入跨数据中心的通信。 在单个数据中心中，Consul分为Client和Server两种节点（所有的节点也被称为Agent），Server节点保存数据，Client负责健康检查及转发数据请求到Server；Server节点有一个Le">
+<meta name="twitter:image" content="https://system51.github.io/images/consul-1.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2020/12/25/consul-tls/">
+
+
+
+
+
+  <title>高可用的SSL consul cluster实践 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2020/12/25/consul-tls/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">高可用的SSL consul cluster实践</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-12-25T09:39:11+08:00">
+                2020-12-25
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2020/12/25/consul-tls/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2020/12/25/consul-tls/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="Consul架构图"><a href="#Consul架构图" class="headerlink" title="Consul架构图"></a>Consul架构图</h2><p><img src="/images/consul-1.png" alt="consul-1"></p>
+<p>首先Consul支持多数据中心，在上图中有两个DataCenter，他们通过Internet互联，同时请注意为了提高通信效率，只有Server节点才加入跨数据中心的通信。</p>
+<p>在单个数据中心中，Consul分为Client和Server两种节点（所有的节点也被称为Agent），Server节点保存数据，Client负责健康检查及转发数据请求到Server；Server节点有一个Leader和多个Follower，Leader节点会将数据同步到Follower，Server的数量推荐是3个或者5个，在Leader挂掉的时候会启动选举机制产生一个新的Leader。</p>
+<p>集群内的Consul节点通过gossip协议（流言协议）维护成员关系，也就是说某个节点了解集群内现在还有哪些节点，这些节点是Client还是Server。单个数据中心的流言协议同时使用TCP和UDP通信，并且都使用8301端口。跨数据中心的流言协议也同时使用TCP和UDP通信，端口使用8302。</p>
+<p>集群内数据的读写请求既可以直接发到Server，也可以通过Client使用RPC转发到Server，请求最终会到达Leader节点，在允许数据轻微陈旧的情况下，读请求也可以在普通的Server节点完成，集群内数据的读写和复制都是通过TCP的8300端口完成。</p>
+<h2 id="Consul服务发现原理"><a href="#Consul服务发现原理" class="headerlink" title="Consul服务发现原理"></a>Consul服务发现原理</h2><p>下面这张图是自己画的，基本描述了服务发现的完整流程，先大致看一下。</p>
+<p><img src="/images/consul-2.png" alt="consul-2"></p>
+<p>首先需要有一个正常的Consul集群，有Server，有Leader。这里在服务器Server1、Server2、Server3上分别部署了Consul Server，假设他们选举了Server2上的Consul Server节点为Leader。这些服务器上最好只部署Consul程序，以尽量维护Consul Server的稳定。</p>
+<p>然后在服务器Server4和Server5上通过Consul Client分别注册Service A、B、C，这里每个Service分别部署在了两个服务器上，这样可以避免Service的单点问题。服务注册到Consul可以通过HTTP API（8500端口）的方式，也可以通过Consul配置文件的方式。Consul Client可以认为是无状态的，它将注册信息通过RPC转发到Consul Server，服务信息保存在Server的各个节点中，并且通过Raft实现了强一致性。</p>
+<p>最后在服务器Server6中Program D需要访问Service B，这时候Program D首先访问本机Consul Client提供的HTTP API，本机Client会将请求转发到Consul Server，Consul Server查询到Service B当前的信息返回，最终Program D拿到了Service B的所有部署的IP和端口，然后就可以选择Service B的其中一个部署并向其发起请求了。如果服务发现采用的是DNS方式，则Program D中直接使用Service B的服务发现域名，域名解析请求首先到达本机DNS代理，然后转发到本机Consul Client，本机Client会将请求转发到Consul Server，Consul Server查询到Service B当前的信息返回，最终Program D拿到了Service B的某个部署的IP和端口。</p>
+<h3 id="相关端口"><a href="#相关端口" class="headerlink" title="相关端口"></a>相关端口</h3><p>8300 – TCP agent server 使用的，用于处理其他agent发来的请求<br>8301 – TCP &amp; UDP agent使用此端口处理LAN中的gossip<br>8302 – TCP &amp; UDP agent server使用此端口处理WAN中的与其他server的gossip (-1 表示禁用)<br>8500 – TCP http API端口  (-1 表示禁用)<br>8501 – TCP https API端口  (-1 表示禁用)<br>8600 – TCP &amp; UDP dns解析  (-1 表示禁用)</p>
+<h2 id="部署前准备"><a href="#部署前准备" class="headerlink" title="部署前准备"></a>部署前准备</h2><table>
+<thead>
+<tr>
+<th align="center">IP</th>
+<th align="center">nodeName</th>
+<th align="center">CPU</th>
+<th align="center">Memory</th>
+<th align="center">role</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="center">10.15.1.46</td>
+<td align="center">consul-server-1</td>
+<td align="center">4</td>
+<td align="center">8G</td>
+<td align="center">server</td>
+</tr>
+<tr>
+<td align="center">10.15.1.48</td>
+<td align="center">consul-server-1</td>
+<td align="center">4</td>
+<td align="center">8G</td>
+<td align="center">server</td>
+</tr>
+<tr>
+<td align="center">10.15.1.49</td>
+<td align="center">consul-server-1</td>
+<td align="center">4</td>
+<td align="center">8G</td>
+<td align="center">server</td>
+</tr>
+<tr>
+<td align="center">10.15.1.7</td>
+<td align="center">consul-client-1</td>
+<td align="center">4</td>
+<td align="center">8G</td>
+<td align="center">client</td>
+</tr>
+</tbody></table>
+<h3 id="修改hosts文件"><a href="#修改hosts文件" class="headerlink" title="修改hosts文件"></a>修改hosts文件</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">10.15.1.46 consul-server-1</span><br><span class="line">10.15.1.48 consul-server-2</span><br><span class="line">10.15.1.49 consul-server-3</span><br><span class="line">10.15.1.7 consul-client-1</span><br></pre></td></tr></table></figure>
+
+<h2 id="部署安装"><a href="#部署安装" class="headerlink" title="部署安装"></a>部署安装</h2><p>下载最新版本并解压</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">wget https://releases.hashicorp.com/consul/1.9.0/consul_1.9.0_linux_amd64.zip</span><br><span class="line">unzip consul_1.9.0_linux_amd64.zip</span><br><span class="line">chown root:root consul</span><br><span class="line">mv consul /usr/bin/</span><br><span class="line">consul --version</span><br></pre></td></tr></table></figure>
+
+<p>设置tab自动补全</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">consul -autocomplete-install</span><br><span class="line">complete -C /usr/bin/consul consul</span><br></pre></td></tr></table></figure>
+
+<p>创建一个无特权的系统用户来运行Consul并创建其数据目录。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">useradd --system --home /etc/consul.d --shell /bin/false consul</span><br><span class="line">mkdir -p /var/lib/consul</span><br><span class="line">chown -R consul:consul /var/lib/consul</span><br></pre></td></tr></table></figure>
+
+<h2 id="创建TLS证书"><a href="#创建TLS证书" class="headerlink" title="创建TLS证书"></a>创建TLS证书</h2><h3 id="step-1-创建ca"><a href="#step-1-创建ca" class="headerlink" title="step 1: 创建ca"></a>step 1: 创建ca</h3><p>为了简单起见，这里我使用Consul的内置TLS助手来创建基本的CA。您只需为数据中心创建一个CA。您应该在用于创建CA的同一服务器上生成所有证书。<br>ca默认五年，其他的证书默认1年，这里需要带参数-days=设置长点的日期</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">consul tls ca create -days=36500</span><br><span class="line">==&gt; Saved consul-agent-ca.pem</span><br><span class="line">==&gt; Saved consul-agent-ca-key.pem</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li>CA证书consul-agent-ca.pem包含验证Consul证书所需的公钥，因此必须分发给运行consul代理的每个节点。</li>
+<li>CA密钥，consul-agent-ca-key.pem将用于为Consul节点签署证书，并且必须保持私有。拥有此密钥，任何人都可以将Consul作为受信任的服务器运行，并访问所有Consul数据，包括ACL令牌。</li>
+</ul>
+</blockquote>
+<h3 id="step2-创建server角色的证书"><a href="#step2-创建server角色的证书" class="headerlink" title="step2: 创建server角色的证书"></a>step2: 创建server角色的证书</h3><p>这里数据中心默认名字为dc1，其他的自行选项赋值。在创建CA的同一台服务器上重复此过程，直到每台服务器都有一个单独的证书。该命令可以反复调用，它将自动增加证书和密钥号。您将需要将证书分发到服务器。<br>因为我有三个consul server，所以执行三次</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">$ consul tls cert create -server -dc=dc1 -days=36500</span><br><span class="line">==&gt; WARNING: Server Certificates grants authority to become a</span><br><span class="line">    server and access all state in the cluster including root keys</span><br><span class="line">    and all ACL tokens. Do not distribute them to production hosts</span><br><span class="line">    that are not server nodes. Store them as securely as CA keys.</span><br><span class="line">==&gt; Using consul-agent-ca.pem and consul-agent-ca-key.pem</span><br><span class="line">==&gt; Saved dc1-server-consul-0.pem</span><br><span class="line">==&gt; Saved dc1-server-consul-0-key.pem</span><br><span class="line">$ consul tls cert create -server -dc=dc1 -days=36500</span><br><span class="line">==&gt; WARNING: Server Certificates grants authority to become a</span><br><span class="line">    server and access all state in the cluster including root keys</span><br><span class="line">    and all ACL tokens. Do not distribute them to production hosts</span><br><span class="line">    that are not server nodes. Store them as securely as CA keys.</span><br><span class="line">==&gt; Using consul-agent-ca.pem and consul-agent-ca-key.pem</span><br><span class="line">==&gt; Saved dc1-server-consul-1.pem</span><br><span class="line">==&gt; Saved dc1-server-consul-1-key.pem</span><br><span class="line">$ consul tls cert create -server -dc=dc1 -days=36500</span><br><span class="line">==&gt; WARNING: Server Certificates grants authority to become a</span><br><span class="line">    server and access all state in the cluster including root keys</span><br><span class="line">    and all ACL tokens. Do not distribute them to production hosts</span><br><span class="line">    that are not server nodes. Store them as securely as CA keys.</span><br><span class="line">==&gt; Using consul-agent-ca.pem and consul-agent-ca-key.pem</span><br><span class="line">==&gt; Saved dc1-server-consul-2.pem</span><br><span class="line">==&gt; Saved dc1-server-consul-2-key.pem</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li>为了对Consul服务器进行身份验证，服务器会提供一种特殊的证书-包含server.dc1.consul在中Subject Alternative Name。如果启用verify_server_hostname，则仅允许提供此类证书的代理作为服务器引导。没有verify_server_hostname = true攻击者，可能会破坏Consul客户端代理，并以server身份重新启动该agent，以便访问您数据中心中的所有数据！这就是服务器证书很特殊的原因。</li>
+</ul>
+</blockquote>
+<h3 id="step3-创建client角色的证书"><a href="#step3-创建client角色的证书" class="headerlink" title="step3: 创建client角色的证书"></a>step3: 创建client角色的证书</h3><p>Consul 1.5.2中引入的自动加密方法减轻了运维生成和分发client证书步骤。这里我是高于1.5.2的，不需要为每个客户端创建证书，客户端只需要拥有consul-agent-ca.pem这个ca下，会自动从server获取client证书存在内存中，并不会持久化到本地。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&quot;verify_incoming&quot;: false,</span><br><span class="line">&quot;verify_outgoing&quot;: true,</span><br><span class="line">&quot;verify_server_hostname&quot;: true,</span><br><span class="line">&quot;ca_file&quot;: &quot;/etc/consul.d/consul-agent-ca.pem&quot;,</span><br><span class="line">&quot;auto_encrypt&quot;: &#123;</span><br><span class="line">   &quot;tls&quot;: true</span><br><span class="line"> &#125;,</span><br></pre></td></tr></table></figure>
+
+<h3 id="step4-创建cli的证书"><a href="#step4-创建cli的证书" class="headerlink" title="step4: 创建cli的证书"></a>step4: 创建cli的证书</h3><p>用于连接管理consul server</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">$ consul tls cert create -cli -dc=dc1 -days=36500</span><br><span class="line">==&gt; Using consul-agent-ca.pem and consul-agent-ca-key.pem</span><br><span class="line">==&gt; Saved dc1-cli-consul-0.pem</span><br><span class="line">==&gt; Saved dc1-cli-consul-0-key.pem</span><br></pre></td></tr></table></figure>
+
+<p>文件列表</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">$ ll</span><br><span class="line">-rw-r--r-- 1 root root      227 Oct 11 10:36 consul-agent-ca-key.pem</span><br><span class="line">-rw-r--r-- 1 root root     1249 Oct 11 10:36 consul-agent-ca.pem</span><br><span class="line">-rw-r--r-- 1 root root      227 Oct 11 11:47 dc1-cli-consul-0-key.pem</span><br><span class="line">-rw-r--r-- 1 root root     1082 Oct 11 11:47 dc1-cli-consul-0.pem</span><br><span class="line">-rw-r--r-- 1 root root      227 Oct 11 10:42 dc1-server-consul-0-key.pem</span><br><span class="line">-rw-r--r-- 1 root root     1139 Oct 11 10:42 dc1-server-consul-0.pem</span><br><span class="line">-rw-r--r-- 1 root root      227 Oct 11 10:43 dc1-server-consul-1-key.pem</span><br><span class="line">-rw-r--r-- 1 root root     1139 Oct 11 10:43 dc1-server-consul-1.pem</span><br><span class="line">-rw-r--r-- 1 root root      227 Oct 11 10:43 dc1-server-consul-2-key.pem</span><br><span class="line">-rw-r--r-- 1 root root     1139 Oct 11 10:43 dc1-server-consul-2.pem</span><br></pre></td></tr></table></figure>
+
+<h2 id="server和client以及cli的配置"><a href="#server和client以及cli的配置" class="headerlink" title="server和client以及cli的配置"></a>server和client以及cli的配置</h2><p>consul配置可以采用HCL或JSON格式。HCL支持在Consul 1.0和更高版本中可用，现在需要在所有配置文件上使用.hcl或 .json扩展名以指定其格式。<br>consul默认从路径<code>/consul/config</code>读取配置信息，为了规范，配置文件我路径定义为<code>/etc/consul.d/</code>，数据目录定义为<code>/var/lib/consul/</code><br>consul的参数可以命令行指定，也可以写json文件里，为了规范，命令行参数尽量少写，大体的配置信息都写json文件里。总体目录结构为下面。<br>server:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">$ tree /etc/consul.d/</span><br><span class="line">/etc/consul.d/</span><br><span class="line">├── cli</span><br><span class="line">│   └── ssl</span><br><span class="line">│       ├── dc1-cli-consul-0-key.pem</span><br><span class="line">│       └── dc1-cli-consul-0.pem</span><br><span class="line">├── consul-agent-ca.pem</span><br><span class="line">└── server</span><br><span class="line">    ├── conf.json</span><br><span class="line">    └── ssl</span><br><span class="line">        ├── dc1-server-consul-0-key.pem //第一台server对应0的证书,第二个就是1</span><br><span class="line">        └── dc1-server-consul-0.pem     //同上，下面的配置文件里指定的文件名也要一致</span><br></pre></td></tr></table></figure>
+
+<p>client:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">[root@k8s-n2 client]# tree /etc/consul.d</span><br><span class="line">/etc/consul.d</span><br><span class="line">├── client</span><br><span class="line">│   ├── conf.json</span><br><span class="line">│   └── ssl</span><br><span class="line">└── consul-agent-ca.pem</span><br></pre></td></tr></table></figure>
+
+<h3 id="server"><a href="#server" class="headerlink" title="server"></a>server</h3><p><code>node_name</code> 注意按照文章最开始的标题写，每个不一样<br><code>/etc/consul.d/server/conf.json</code> 配置内容为，缺省<code>client_addr</code>为<code>127.0.0.1</code>，如果是专门的机器跑 consul 这里需要修改为 <code>bind</code> 住<code>0.0.0.0</code>或者多网卡下专门指定的ip</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line">    &quot;data_dir&quot;: &quot;/var/lib/consul&quot;,</span><br><span class="line">    &quot;node_name&quot;: &quot;consul-server-1&quot;,</span><br><span class="line">    &quot;bootstrap_expect&quot;: 3, </span><br><span class="line">    &quot;bind_addr&quot;: &quot;10.15.1.46&quot;,</span><br><span class="line">    &quot;client_addr&quot;: &quot;0.0.0.0&quot;,</span><br><span class="line">    &quot;datacenter&quot;: &quot;dc1&quot;,</span><br><span class="line">    &quot;domain&quot;: &quot;consul&quot;,</span><br><span class="line">    &quot;leave_on_terminate&quot;: true,</span><br><span class="line">    &quot;log_level&quot;: &quot;INFO&quot;,</span><br><span class="line">    &quot;start_join&quot;: [</span><br><span class="line">        &quot;10.15.1.46&quot;,</span><br><span class="line">        &quot;10.15.1.48&quot;,</span><br><span class="line">        &quot;10.15.1.49&quot;</span><br><span class="line">    ],</span><br><span class="line">    &quot;retry_interval&quot;: &quot;2s&quot;,</span><br><span class="line">    &quot;verify_incoming&quot;: true,</span><br><span class="line">    &quot;verify_outgoing&quot;: true,</span><br><span class="line">    &quot;verify_server_hostname&quot;: true,</span><br><span class="line">    &quot;ca_file&quot;: &quot;/etc/consul.d/consul-agent-ca.pem&quot;,</span><br><span class="line">    &quot;cert_file&quot;: &quot;/etc/consul.d/server/ssl/dc1-server-consul-0.pem&quot;,</span><br><span class="line">    &quot;key_file&quot;: &quot;/etc/consul.d/server/ssl/dc1-server-consul-0-key.pem&quot;,</span><br><span class="line">    &quot;auto_encrypt&quot;: &#123;</span><br><span class="line">      &quot;allow_tls&quot;: true</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;ports&quot;: &#123;</span><br><span class="line">      &quot;http&quot;: 8500,</span><br><span class="line">      &quot;dns&quot;: 8600,</span><br><span class="line">      &quot;https&quot;: 8501</span><br><span class="line">    &#125;,</span><br><span class="line">    &quot;server&quot;: true</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>请注意：如果需要自动颁发client端证书需要设置<code>&quot;allow_tls&quot;: true</code></p>
+</blockquote>
+<h3 id="client"><a href="#client" class="headerlink" title="client"></a>client</h3><p><code>node_name</code> 注意按照文章最开始的标题写，每个不一样</p>
+<p>client的配置 <code>/etc/consul.d/client/conf.json</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">&#123;</span><br><span class="line"> &quot;data_dir&quot;: &quot;/var/lib/consul/client&quot;,</span><br><span class="line"> &quot;node_name&quot;: &quot;consul-client-1&quot;,</span><br><span class="line"> &quot;datacenter&quot;: &quot;dc1&quot;,</span><br><span class="line"> &quot;bind_addr&quot;: &quot;10.15.1.7&quot;,</span><br><span class="line"> &quot;client_addr&quot;: &quot;0.0.0.0&quot;,</span><br><span class="line"> &quot;retry_join&quot;: [</span><br><span class="line">        &quot;10.15.1.46&quot;,</span><br><span class="line">        &quot;10.15.1.48&quot;,</span><br><span class="line">        &quot;10.15.1.49&quot;</span><br><span class="line"> ],</span><br><span class="line"> &quot;retry_interval&quot;: &quot;3s&quot;,</span><br><span class="line"> &quot;rejoin_after_leave&quot;: true,</span><br><span class="line"> &quot;verify_incoming&quot;: false,</span><br><span class="line"> &quot;verify_outgoing&quot;: true,</span><br><span class="line"> &quot;verify_server_hostname&quot;: true,</span><br><span class="line"> &quot;ca_file&quot;: &quot;/etc/consul.d/consul-agent-ca.pem&quot;,</span><br><span class="line"> &quot;auto_encrypt&quot;: &#123;</span><br><span class="line">    &quot;tls&quot;: true</span><br><span class="line">  &#125;,</span><br><span class="line">  &quot;ports&quot;: &#123;</span><br><span class="line">    &quot;http&quot;: 8500,</span><br><span class="line">    &quot;dns&quot;: 8600,</span><br><span class="line">    &quot;https&quot;: 8501</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>请注意：要使用自动加密功能，您将需要配置client以自动从server获取证书，必须配置 <code>&quot;tls&quot;: true</code> 。</p>
+</blockquote>
+<h3 id="cli"><a href="#cli" class="headerlink" title="cli"></a>cli</h3><p>consul当作cli使用的时候也得走tls,不然会下面报错</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">$ consul members</span><br><span class="line">Error retrieving members: Get http://127.0.0.1:8500/v1/agent/members?segment=_all: dial tcp 127.0.0.1:8500: connect: connection refused</span><br></pre></td></tr></table></figure>
+
+<p>路径根据实际来，证书最好是绝对路径，cli默认操作localhost上运行的consul，例如能够使用consul leave会让当前的consul退出集群，环境变量我们写子配置文件<code>/etc/profile.d/consul-cli.sh</code></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">export CONSUL_HTTP_ADDR=https://localhost:8501</span><br><span class="line">export CONSUL_CACERT=/etc/consul.d/consul-agent-ca.pem</span><br><span class="line">export CONSUL_CLIENT_CERT=/etc/consul.d/cli/ssl/dc1-cli-consul-0.pem</span><br><span class="line">export CONSUL_CLIENT_KEY=/etc/consul.d/cli/ssl/dc1-cli-consul-0-key.pem</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>CONSUL_HTTP_ADDR是Consul代理的URL，并设置的默认值 -http-addr。</li>
+<li>CONSUL_CACERT是CA证书的位置，并将设置为默认值-ca-file。</li>
+<li>CONSUL_CLIENT_CERT是CLI证书的位置，并将设置为默认值-client-cert。</li>
+<li>CONSUL_CLIENT_KEY是CLI键的位置，并将设置为默认值 -client-key。</li>
+</ul>
+<h2 id="启动"><a href="#启动" class="headerlink" title="启动"></a>启动</h2><p>编辑 <code>/usr/lib/systemd/system/consul.service</code></p>
+<h3 id="server启动参数"><a href="#server启动参数" class="headerlink" title="server启动参数"></a>server启动参数</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line">[Unit]</span><br><span class="line">Description=&quot;Consul Startup process for server&quot;</span><br><span class="line">Documentation=https://www.consul.io/</span><br><span class="line">Requires=network-online.target</span><br><span class="line">After=network-online.target</span><br><span class="line">ConditionDirectoryNotEmpty=/etc/consul.d/server/conf.json</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">User=consul</span><br><span class="line">Group=consul</span><br><span class="line">EnvironmentFile=-/etc/sysconfig/consul</span><br><span class="line">PIDFile=/var/run/consul/consul.pid</span><br><span class="line">PermissionsStartOnly=true</span><br><span class="line">ExecStartPre=/usr/bin/consul validate /etc/consul.d/server</span><br><span class="line">ExecStart=/usr/bin/consul agent -config-dir=/etc/consul.d/server</span><br><span class="line">ExecReload=/bin/kill --signal HUP $MAINPID</span><br><span class="line">KillMode=process</span><br><span class="line">KillSignal=SIGTERM</span><br><span class="line">RestartSec=15s</span><br><span class="line">Restart=on-failure</span><br><span class="line">LimitNOFILE=65536</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br></pre></td></tr></table></figure>
+
+<h3 id="client启动参数"><a href="#client启动参数" class="headerlink" title="client启动参数"></a>client启动参数</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">[Unit]</span><br><span class="line">Description=&quot;Consul Startup process for client&quot;</span><br><span class="line">Documentation=https://www.consul.io/</span><br><span class="line">Requires=network-online.target</span><br><span class="line">After=network-online.target</span><br><span class="line">ConditionDirectoryNotEmpty=/etc/consul.d/client/conf.json</span><br><span class="line"></span><br><span class="line">[Service]</span><br><span class="line">Type=notify</span><br><span class="line">User=consul</span><br><span class="line">Group=consul</span><br><span class="line">EnvironmentFile=-/etc/sysconfig/consul</span><br><span class="line">PIDFile=/var/run/consul/consul.pid</span><br><span class="line">PermissionsStartOnly=true</span><br><span class="line">ExecStartPre=/usr/bin/consul validate /etc/consul.d/client</span><br><span class="line">ExecStart=/usr/bin/consul agent -config-dir=/etc/consul.d/client</span><br><span class="line">ExecReload=/bin/kill --signal HUP $MAINPID</span><br><span class="line">KillMode=process</span><br><span class="line">KillSignal=SIGTERM</span><br><span class="line">RestartSec=15s</span><br><span class="line">Restart=on-failure</span><br><span class="line">LimitNOFILE=65536</span><br><span class="line"></span><br><span class="line">[Install]</span><br><span class="line">WantedBy=multi-user.target</span><br></pre></td></tr></table></figure>
+
+<h2 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ consul members</span><br><span class="line">Node             Address          Status  Type    Build  Protocol  DC   Segment</span><br><span class="line">consul-server-1  10.15.1.46:8301  alive   server  1.9.0  2         dc1  &lt;all&gt;</span><br><span class="line">consul-server-2  10.15.1.48:8301  alive   server  1.9.0  2         dc1  &lt;all&gt;</span><br><span class="line">consul-server-3  10.15.1.49:8301  alive   server  1.9.0  2         dc1  &lt;all&gt;</span><br><span class="line">consul-client-1  10.15.1.7:8301   alive   client  1.9.0  2         dc1  &lt;default&gt;</span><br></pre></td></tr></table></figure>
+
+<p>日志中有显示是否启用加密</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">Dec 25 16:56:38 k8s-n2 consul[27090]: ==&gt; Starting Consul agent...</span><br><span class="line">Dec 25 16:56:38 k8s-n2 consul[27090]:           Version: &apos;1.9.0&apos;</span><br><span class="line">Dec 25 16:56:38 k8s-n2 consul[27090]:           Node ID: &apos;780b3ba9-f466-8d43-dc55-b52a686118bf&apos;</span><br><span class="line">Dec 25 16:56:38 k8s-n2 consul[27090]:         Node name: &apos;consul-client-1&apos;</span><br><span class="line">Dec 25 16:56:38 k8s-n2 consul[27090]:        Datacenter: &apos;dc1&apos; (Segment: &apos;&apos;)</span><br><span class="line">Dec 25 16:56:38 k8s-n2 consul[27090]:            Server: false (Bootstrap: false)</span><br><span class="line">Dec 25 16:56:38 k8s-n2 consul[27090]:       Client Addr: [0.0.0.0] (HTTP: 8500, HTTPS: 8501, gRPC: -1, DNS: 8600)</span><br><span class="line">Dec 25 16:56:38 k8s-n2 consul[27090]:      Cluster Addr: 10.15.1.7 (LAN: 8301, WAN: 8302)</span><br><span class="line">Dec 25 16:56:38 k8s-n2 consul[27090]:           Encrypt: Gossip: false, TLS-Outgoing: true, TLS-Incoming: false, Auto-Encrypt-TLS: true</span><br></pre></td></tr></table></figure>
+
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>高可用的SSL consul cluster实践</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2020年12月25日 - 09:39:11</p>
+  <p><span>最后更新:</span>2020年12月28日 - 09:18:59</p>
+  <p><span>原始链接:</span><a href="/2020/12/25/consul-tls/" title="高可用的SSL consul cluster实践">https://system51.github.io/2020/12/25/consul-tls/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/12/25/consul-tls/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/11/12/intro-guide-to-dockerfile-best-practices/" rel="next" title="你确定你会写 Dockerfile 吗？">
+                <i class="fa fa-chevron-left"></i> 你确定你会写 Dockerfile 吗？
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">56</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Consul架构图"><span class="nav-number">1.</span> <span class="nav-text">Consul架构图</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Consul服务发现原理"><span class="nav-number">2.</span> <span class="nav-text">Consul服务发现原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#相关端口"><span class="nav-number">2.1.</span> <span class="nav-text">相关端口</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#部署前准备"><span class="nav-number">3.</span> <span class="nav-text">部署前准备</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#修改hosts文件"><span class="nav-number">3.1.</span> <span class="nav-text">修改hosts文件</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#部署安装"><span class="nav-number">4.</span> <span class="nav-text">部署安装</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#创建TLS证书"><span class="nav-number">5.</span> <span class="nav-text">创建TLS证书</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#step-1-创建ca"><span class="nav-number">5.1.</span> <span class="nav-text">step 1: 创建ca</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#step2-创建server角色的证书"><span class="nav-number">5.2.</span> <span class="nav-text">step2: 创建server角色的证书</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#step3-创建client角色的证书"><span class="nav-number">5.3.</span> <span class="nav-text">step3: 创建client角色的证书</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#step4-创建cli的证书"><span class="nav-number">5.4.</span> <span class="nav-text">step4: 创建cli的证书</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#server和client以及cli的配置"><span class="nav-number">6.</span> <span class="nav-text">server和client以及cli的配置</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#server"><span class="nav-number">6.1.</span> <span class="nav-text">server</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#client"><span class="nav-number">6.2.</span> <span class="nav-text">client</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#cli"><span class="nav-number">6.3.</span> <span class="nav-text">cli</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#启动"><span class="nav-number">7.</span> <span class="nav-text">启动</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#server启动参数"><span class="nav-number">7.1.</span> <span class="nav-text">server启动参数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#client启动参数"><span class="nav-number">7.2.</span> <span class="nav-text">client启动参数</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#测试"><span class="nav-number">8.</span> <span class="nav-text">测试</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
