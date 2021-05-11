@@ -93,7 +93,7 @@
 <meta property="og:image" content="https://system51.github.io/images/calico-cni-3.png">
 <meta property="og:image" content="https://system51.github.io/images/calico-cni-6.png">
 <meta property="og:image" content="https://system51.github.io/images/calico-cni-5.jpg">
-<meta property="og:updated_time" content="2021-05-10T09:29:08.995Z">
+<meta property="og:updated_time" content="2021-05-11T06:56:51.152Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Calico配置及原理">
 <meta name="twitter:description" content="Calico基本概念 Calico是针对容器，虚拟机和基于主机的本机工作负载的开源网络和网络安全解决方案。 Calico支持广泛的平台，包括Kubernetes，OpenShift，Docker EE，OpenStack和裸机服务。 Calico将灵活的网络功能与无处不在的安全性实施相结合，以提供具有本地Linux内核性能和真正的云原生可扩展性的解决方案。 Calico为开发人员和集群运营商提供了">
@@ -383,6 +383,9 @@
 <p>发现pod <code>busybox</code> 中的另一端设备编号和<code>k8s-n1</code>宿主机上看到的 <code>cali12d4a061371</code> 编号 <code>66</code> 是一样的</p>
 <p>所以，<code>k8s-n1</code>上的路由，发送 <code>cali12d4a061371</code> 网卡设备的数据其实就是发送到了 <code>busybox</code> 的这个pod中去了。到这里ping包就到了目的地。最粗暴的办法是使用 <code>ip link del cali12d4a061371@if4</code> 删除网卡看是否还能ping通就知道了。</p>
 <p>&emsp;&emsp;我们看到不管是容器也好还是主机也好都有一些奇怪的地方，从容器路由表可以知道 <code>169.254.1.1</code> 是容器的默认网关，MAC地址也是一个无效的MAC地址<code>ee:ee:ee:ee:ee:ee</code> 为什么会这这样呢，其实这些都是calico写死了的。Calico利用了网卡的proxy_arp功能，具体的，是将<code>/proc/sys/net/ipv4/conf/calic9aa42a3793/proxy_arp</code>置为<code>1</code>。当设置这个标志之后，就开启了proxy_arp功能。主机就会看起来像一个网关，会响应所有的ARP请求，并将自己的MAC地址告诉客户端。<br>&emsp;&emsp;也就是说，当容器发送ARP请求时，<code>calic9aa42a3793</code>网卡会告诉容器，我拥有169.254.1.1这个IP，我的MAC地址是XXX，这样当容器去访问外部服务时其实是访问的是<code>calic9aa42a3793</code>。然后在由<code>calic9aa42a3793</code>代替容器去访问外部服务然后把结果返回给容器这样就看起来网络就通了。</p>
+<p>通过tcpdump抓包可以看到首先容器会发送一个arp广播问<code>169.254.1.1</code>的MAC地址是多少，告诉<code>10.244.215.81</code> 这IP。其实这个IP就是当前Pod自己的IP，也就是告诉自己。然后<code>cali03d85d58f77</code>这个ARP请求，并回复告诉容器我拥有这个IP的MAC，他的MAC地址是<code>ee:ee:ee:ee:ee:ee</code>。如果你想验证你可以使用<code>ip link set dev cali03d85d58f77 address ee:ee:ee:ee:11:11</code>修改<code>cali03d85d58f77</code>网卡的MAC地址，然后你在抓包看看效果。</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">tcpdump -i cali03d85d58f77 -e -nn</span><br><span class="line">tcpdump: verbose output suppressed, use -v or -vv for full protocol decode</span><br><span class="line">listening on cali03d85d58f77, link-type EN10MB (Ethernet), capture size 262144 bytes</span><br><span class="line">14:36:35.204394 72:f0:91:25:10:ce &gt; ff:ff:ff:ff:ff:ff, ethertype ARP (0x0806), length 42: Request who-has 169.254.1.1 tell 10.244.215.81, length 28</span><br><span class="line">14:36:35.204428 ee:ee:ee:ee:ee:ee &gt; 72:f0:91:25:10:ce, ethertype ARP (0x0806), length 42: Reply 169.254.1.1 is-at ee:ee:ee:ee:ee:ee, length 28</span><br><span class="line">14:36:35.204433 72:f0:91:25:10:ce &gt; ee:ee:ee:ee:ee:ee, ethertype IPv4 (0x0800), length 98: 10.244.215.81 &gt; 10.244.111.204: ICMP echo request, id 11520, seq 0, length 64</span><br><span class="line">14:36:35.205018 ee:ee:ee:ee:ee:ee &gt; 72:f0:91:25:10:ce, ethertype IPv4 (0x0800), length 98: 10.244.111.204 &gt; 10.244.215.81: ICMP echo reply, id 11520, seq 0, length 64</span><br></pre></td></tr></table></figure>
+
 <h2 id="部署安装"><a href="#部署安装" class="headerlink" title="部署安装"></a>部署安装</h2><p>1）确保Calico可以在主机上进行管理cali和tunl接口，如果主机上存在NetworkManage，请配置NetworkManager。</p>
 <p>NetworkManager会为默认网络名称空间中的接口操纵路由表，在该默认名称空间中，固定了Calico veth对以连接到容器，这可能会干扰Calico代理正确路由的能力。</p>
 <p>在以下位置创建以下配置文件，以防止NetworkManager干扰接口：</p>
@@ -502,7 +505,7 @@
   <p><span>本文标题:</span>Calico配置及原理</p>
   <p><span>文章作者:</span>Mr.Ye</p>
   <p><span>发布时间:</span>2020年05月27日 - 16:17:29</p>
-  <p><span>最后更新:</span>2021年05月10日 - 17:29:08</p>
+  <p><span>最后更新:</span>2021年05月11日 - 14:56:51</p>
   <p><span>原始链接:</span><a href="/2020/05/27/using-calico/" title="Calico配置及原理">https://system51.github.io/2020/05/27/using-calico/</a>
     <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2020/05/27/using-calico/" aria-label="复制成功！"></i></span>
   </p>
