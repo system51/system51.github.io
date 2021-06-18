@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next mist use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.9.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="Prometheus 聚合函数一般说来，单个指标的价值不大，监控场景中往往需要将一些具有相同指标名的指标值进行聚合计算（这些指标名很有可能来自不同target只是拥有同样的指标名，也有可能是某一个target上某一个指标的多个维度，例如：有的一个指标名有多个时间序列）。例如计数、求和、平均值、分位数、标准 差及方差等。 什么是聚合计算：对查询结果事先按照某种分类机制进行分组(group by)并将">
+<meta name="keywords" content="kubernetes,devops">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PromQL进阶">
+<meta property="og:url" content="https://system51.github.io/2021/06/15/Use-advanced-PromQL/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Prometheus 聚合函数一般说来，单个指标的价值不大，监控场景中往往需要将一些具有相同指标名的指标值进行聚合计算（这些指标名很有可能来自不同target只是拥有同样的指标名，也有可能是某一个target上某一个指标的多个维度，例如：有的一个指标名有多个时间序列）。例如计数、求和、平均值、分位数、标准 差及方差等。 什么是聚合计算：对查询结果事先按照某种分类机制进行分组(group by)并将">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-18.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-19.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-20.jpg">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-11.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-12.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-13.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-14.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-15.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-16.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-17.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-21.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-22.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-23.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-24.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-25.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-26.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-27.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-28.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-29.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-30.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-31.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-34.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-32.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-35.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-33.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-36.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-37.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-38.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-39.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-40.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-41.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-42.png">
+<meta property="og:updated_time" content="2021-06-18T03:38:12.563Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="PromQL进阶">
+<meta name="twitter:description" content="Prometheus 聚合函数一般说来，单个指标的价值不大，监控场景中往往需要将一些具有相同指标名的指标值进行聚合计算（这些指标名很有可能来自不同target只是拥有同样的指标名，也有可能是某一个target上某一个指标的多个维度，例如：有的一个指标名有多个时间序列）。例如计数、求和、平均值、分位数、标准 差及方差等。 什么是聚合计算：对查询结果事先按照某种分类机制进行分组(group by)并将">
+<meta name="twitter:image" content="https://system51.github.io/images/Prometheus-PromQL-18.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Mist',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://system51.github.io/2021/06/15/Use-advanced-PromQL/">
+
+
+
+
+
+  <title>PromQL进阶 | Mr.Ye Blogs</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Mr.Ye Blogs</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-about">
+          <a href="/about/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-user"></i> <br>
+            
+            关于
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="https://system51.github.io/2021/06/15/Use-advanced-PromQL/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Mr.Ye">
+      <meta itemprop="description" content>
+      <meta itemprop="image" content="/images/touxiang.png">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Mr.Ye Blogs">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">PromQL进阶</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2021-06-15T14:20:00+08:00">
+                2021-06-15
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+                <span class="post-meta-divider">|</span>
+                <span class="post-meta-item-icon">
+                  <i class="fa fa-comment-o"></i>
+                </span>
+                <a href="/2021/06/15/Use-advanced-PromQL/#comments" itemprop="discussionUrl">
+                  <span class="post-comments-count valine-comment-count" data-xid="/2021/06/15/Use-advanced-PromQL/" itemprop="commentCount"></span>
+                </a>
+              </span>
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h2 id="Prometheus-聚合函数"><a href="#Prometheus-聚合函数" class="headerlink" title="Prometheus 聚合函数"></a>Prometheus 聚合函数</h2><p>一般说来，单个指标的价值不大，监控场景中往往需要将一些具有相同指标名的指标值进行聚合计算（这些指标名很有可能来自不同target只是拥有同样的指标名，也有可能是某一个target上某一个指标的多个维度，例如：有的一个指标名有多个时间序列）。例如计数、求和、平均值、分位数、标准 差及方差等。</p>
+<p>什么是聚合计算：对查询结果事先按照某种分类机制进行分组(group by)并将查询结果按组进行计算，例如分组统计、分组求平均值、分组求和等;</p>
+<p>下图我们首先通过PromQL过滤出来具有指标名为<code>node_disk_free</code>的所有节点，然后可以看到有很多target都有这个指标名，这也就跟上面提到的<code>有可能来自不同target只是拥有同样的指标名</code>，也可以看到其中每个target有两个时间序列就例如<code>10.191.184.164</code>这个IP。这也就符合了我们上面说的<code>也有可能是某一个target上某一个指标的多个维度</code><br><img src="/images/Prometheus-PromQL-18.png" alt="Prometheus-PromQL-18"></p>
+<p>下图是用<code>instance</code>作为分组，且做了标签匹配仅符合条件的才会被过滤出来。然后在进行求和运算。以IP<code>10.191.184.164</code>为例计算方式如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">0.9446315040088761+0.738403637258654=1.6830351413</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-PromQL-19.png" alt="Prometheus-PromQL-19"></p>
+<p><img src="/images/Prometheus-PromQL-20.jpg" alt="Prometheus-PromQL-20"></p>
+<p>聚合操作由聚合函数针对一组值进行计算并返回单个值或少量几值作为结果（聚合是越聚越少，不会越聚越多）：</p>
+<ul>
+<li>Prometheus内置提供的11个聚合函数也称为聚合运算符</li>
+<li>这些运算符仅支持应用于单个<code>即时向量</code>的元素，其返回值也是具有少量元素的新向量或标量</li>
+<li>这些聚合运行符既可以基于向量表达式返回结果中的时间序列的所有标签维度进行分组聚合，也可以仅基于指定的标签维度分组后再进行分组聚合</li>
+</ul>
+<h3 id="聚合表达式"><a href="#聚合表达式" class="headerlink" title="聚合表达式"></a>聚合表达式</h3><p>PromQL中的聚合操作语法格式可采用如下面两种格式之一：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&lt;aggr-op&gt;([parameter,] &lt;vector expression&gt;) [without|by (&lt;label list&gt;)] </span><br><span class="line">&lt;aggr-op&gt; [without|by (&lt;label list&gt;)] ([parameter,] &lt;vector expression&gt;)</span><br></pre></td></tr></table></figure>
+
+<p>分组聚合:先分组、后聚合</p>
+<ul>
+<li>without:从结果向量中删除由without子句指定的标签，未指定的那部分标签则用作分组标准;</li>
+<li>by:功能与without刚好相反，它仅使用by子句中指定的标签进行聚合，结果向量中出现但未被by子句指定的标签则会被忽略;<ul>
+<li>为了保留上下文信息，使用by子句时需要显式指定其结果中原本出现的job、instance等一类的标签</li>
+</ul>
+</li>
+</ul>
+<h3 id="11个聚合函数"><a href="#11个聚合函数" class="headerlink" title="11个聚合函数"></a>11个聚合函数</h3><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">sum():对样本值求和;</span><br><span class="line">avg():对样本值求平均值，这是进行指标数据分析的标准方法;</span><br><span class="line">count():对分组内的时间序列进行数量统计;</span><br><span class="line">stddev():对样本值求标准差，以帮助用户了解数据的波动大小(或称之为波动程度);</span><br><span class="line">stdvar():对样本值求方差，它是求取标准差过程中的中间状态;</span><br><span class="line">min():求取样本值中的最小者;</span><br><span class="line">max():求取样本值中的最大者;</span><br><span class="line">topk():逆序返回分组内的样本值最大的前k个时间序列及其值;</span><br><span class="line">bottomk():顺序返回分组内的样本值最小的前k个时间序列及其值;</span><br><span class="line">quantile():分位数用于评估数据的分布状态，该函数会返回分组内指定的分位数的值，即 数值落在小于等于指定的分位区间的比例;</span><br><span class="line">count_values():对分组内的时间序列的样本值进行数量统计;</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>注意：其中只有<code>count_values</code>, <code>quantile</code>, <code>topk</code>, <code>bottomk</code>支持参数(parameter)。事实上，各函数工作机制的不同之处也仅在于计算操作本身，PromQL对于它们的执行逻辑相似;</p>
+</blockquote>
+<h3 id="示例讲解"><a href="#示例讲解" class="headerlink" title="示例讲解"></a>示例讲解</h3><p><img src="/images/Prometheus-PromQL-11.png" alt="Prometheus-PromQL-11"></p>
+<p>通过上面的语句过滤出来所有节点上指标名 <code>node_filesystem_avail_bytes</code> 的值，我们可以用聚合函数进行直接聚合。</p>
+<h4 id="sum-求和"><a href="#sum-求和" class="headerlink" title="sum() 求和"></a>sum() 求和</h4><p>他会把所有节点的<code>node_filesystem_avail_bytes</code>的值全部相加<br><img src="/images/Prometheus-PromQL-12.png" alt="Prometheus-PromQL-12"></p>
+<p>我们也可以指定标签进行聚合，指定<code>instance</code>则是以<code>instance</code>进行分组聚合，这样就计算出每台主机可用空间。<br><img src="/images/Prometheus-PromQL-13.png" alt="Prometheus-PromQL-13"></p>
+<p>我们可以看到有一些<code>device=&quot;rootfs&quot;</code> 和 <code>device=&quot;tmpfs&quot;</code> 这样的标签。这种标签如果我们不想统计应该怎么写呢？<br><img src="/images/Prometheus-PromQL-14.png" alt="Prometheus-PromQL-14"></p>
+<p>过滤掉我们不想统计的标签后在做分组聚合<br><img src="/images/Prometheus-PromQL-15.png" alt="Prometheus-PromQL-15"></p>
+<h4 id="avg-求平均值"><a href="#avg-求平均值" class="headerlink" title="avg() 求平均值"></a>avg() 求平均值</h4><p>首先我们先找一个值少一些的等会好手动计算，我们注意看下面有这些标签。我们使用service标签做分组聚合。<br><img src="/images/Prometheus-PromQL-16.png" alt="Prometheus-PromQL-16"></p>
+<p>分组集合后的结果<br><img src="/images/Prometheus-PromQL-17.png" alt="Prometheus-PromQL-17"></p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">计算方式：(9661+17171+15679)/3=14,170.3333333333</span><br></pre></td></tr></table></figure>
+
+<h2 id="PromQL运算符"><a href="#PromQL运算符" class="headerlink" title="PromQL运算符"></a>PromQL运算符</h2><p>当用户需要使用不同的监控指标进行更多操作时，PromQL聚合操作会出现无法满足使用的情况。这时Prometheus提供了多种运算符。这些运算符不仅允许对即时向量进行简单的算术运算，还可以将运算符应用于两个基于标签分组的即时向量。下面我们对Prometheus查询语言提供的算术运算符、关系运算符、向量匹配模式和逻辑运算符进行介绍。</p>
+<h2 id="算术运算符"><a href="#算术运算符" class="headerlink" title="算术运算符"></a>算术运算符</h2><p>Prometheus提供的所有算术运算的工作原理都是类似的，有编程基础的读者可以看到其语义与其他编程语言的语义也相同。Prometheus的6种算术运算符如下：</p>
+<table>
+<thead>
+<tr>
+<th>运算符</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>+</td>
+<td>加</td>
+</tr>
+<tr>
+<td>-</td>
+<td>减</td>
+</tr>
+<tr>
+<td>*</td>
+<td>乘</td>
+</tr>
+<tr>
+<td>/</td>
+<td>除</td>
+</tr>
+<tr>
+<td>%</td>
+<td>取模</td>
+</tr>
+<tr>
+<td>^</td>
+<td>幂运算</td>
+</tr>
+</tbody></table>
+<h3 id="运算操作符支持三类操作："><a href="#运算操作符支持三类操作：" class="headerlink" title="运算操作符支持三类操作："></a>运算操作符支持三类操作：</h3><ul>
+<li>scalar/scalar（标量/标量）之间的操作；</li>
+<li>vector/scalar（即时向量/标量）之间的操作；</li>
+<li>vector/vector（即时向量/即时向量）之间的操作；</li>
+</ul>
+<p>下面我们分别对表达式进行调试，通过Prometheus Web UI上直观的输出信息观察三类操作。</p>
+<h3 id="两个标量之间"><a href="#两个标量之间" class="headerlink" title="两个标量之间"></a>两个标量之间</h3><p>在两个标量之间进行算术运算，得到的结果还是标量<br><img src="/images/Prometheus-PromQL-21.png" alt="Prometheus-PromQL-21"></p>
+<h3 id="时向量与标量之间"><a href="#时向量与标量之间" class="headerlink" title="时向量与标量之间"></a>时向量与标量之间</h3><p>当即时向量与标量之间进行算术运算时，算术运算符会依次作用于即时向量中的每一个样本值，从而得到一组新的时间序列。</p>
+<p>例如，我们可以通过监控指标<code>node_memory_MemTotal_bytes</code>获取主机内存总空间的大小，其样本单位为byte。现在把样本单位换算为MB时，表达式为 <code>node_memory_MemTotal_bytes/(1024*1024)</code>，如下图：<br><img src="/images/Prometheus-PromQL-22.png" alt="Prometheus-PromQL-22"></p>
+<h3 id="即时向量与即时向量之间"><a href="#即时向量与即时向量之间" class="headerlink" title="即时向量与即时向量之间"></a>即时向量与即时向量之间</h3><p>即时向量与即时向量进行算术运算的过程相对复杂一些。</p>
+<p>例如，<code>node_disk_read_time_ms</code> 和 <code>node_disk_write_time_ms</code> 获取磁盘读写时间使用表达式：<code>node_disk_write_time_ms + node_disk_read_time_ms</code> 如下图所示：</p>
+<p><img src="/images/Prometheus-PromQL-23.png" alt="Prometheus-PromQL-23"></p>
+<p>该表达式工作过程是依次找到与左边向量元素匹配（标签完全一致）的右边向量元素进行运算，如果没找到匹配元素，则直接丢弃，同时，计算后新的时间序列将不会包含指标名称。</p>
+<p><img src="/images/Prometheus-PromQL-24.png" alt="Prometheus-PromQL-24"></p>
+<p><img src="/images/Prometheus-PromQL-25.png" alt="Prometheus-PromQL-25"></p>
+<h2 id="关系运算符"><a href="#关系运算符" class="headerlink" title="关系运算符"></a>关系运算符</h2><p>Prometheus同样提供了关系运算符，也称为比较运算符，其语义很容易理解。Prometheus的6种关系运算符如下所示：</p>
+<table>
+<thead>
+<tr>
+<th>运算符</th>
+<th>描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>==</td>
+<td>等值比较</td>
+</tr>
+<tr>
+<td>!=</td>
+<td>不等</td>
+</tr>
+<tr>
+<td>&gt;</td>
+<td>大于</td>
+</tr>
+<tr>
+<td>&lt;</td>
+<td>小于</td>
+</tr>
+<tr>
+<td>&gt;=</td>
+<td>大于等于</td>
+</tr>
+<tr>
+<td>&lt;=</td>
+<td>小于等于</td>
+</tr>
+</tbody></table>
+<p>关系运算符同样被应用于scalar/scalar（标量/标量）、vector/scalar（即时向量/标量），和vector/vector（即时向量/即时向量）之间。默认情况下，运算符用于对时序数据进行过滤。但是在有些情况下，可以通过在运算符之后使用bool修饰符，从而不对时间序列进行过滤，直接返回0（false）或者1（true）。</p>
+<p>下面我们使用Prometheus Web UI分别对表达式进行调试后，通过直观的输出信息观察三类操作</p>
+<h3 id="两个标量之间-1"><a href="#两个标量之间-1" class="headerlink" title="两个标量之间"></a>两个标量之间</h3><p>在两个标量之间进行关系运算，必须使用bool修饰符，并且这些运算符会产生另一个标量，即0（false）或者1（true），如图</p>
+<p><img src="/images/Prometheus-PromQL-26.png" alt="Prometheus-PromQL-26"></p>
+<h3 id="即时向量与标量之间"><a href="#即时向量与标量之间" class="headerlink" title="即时向量与标量之间"></a>即时向量与标量之间</h3><p>当即时向量与标量之间进行关系运算时，这个运算符会应用到某个当前时刻的每个时间序列数据上，如果一个时间序列数据值与这个标量的比较结果是false，则这个时间序列数据被丢弃，如果是true，则这个时间序列数据被保留在结果中。</p>
+<p>例如，通过监控指标<code>node_netstat_Tcp_CurrEstab</code>获取主机网络状态为<code>ESTABLISHED</code>，数量大于30的表达式为：<code>node_netstat_Tcp_CurrEstab ≥ 30</code><br><img src="/images/Prometheus-PromQL-27.png" alt="Prometheus-PromQL-27"></p>
+<p>还有我们经常使用的被监控主机告警表达式，例如，<code>up{job=&quot;node_exporter&quot;}==0</code></p>
+<h3 id="即时向量与即时向量之间-1"><a href="#即时向量与即时向量之间-1" class="headerlink" title="即时向量与即时向量之间"></a>即时向量与即时向量之间</h3><p>在即时向量与即时向量之间进行关系运算时，运算符默认情况下是过滤的，用于匹配条目。表达式不是true或在表达式的另一侧找不到匹配项的向量元素将被从结果中删除，不在结果中显示；否则将保留左侧的度量指标和标签的样本数据写入即时向量。如果提供了bool修饰符，则删除的向量元素的值为0，而保留的向量元素的值为1，左侧标签值为1。</p>
+<h2 id="向量匹配"><a href="#向量匹配" class="headerlink" title="向量匹配"></a>向量匹配</h2><p>在标量和即时向量之间使用运算符可以满足很多需求，但是在两个即时向量之间使用运算符时PromQL会为左侧向量中的每个元素找到匹配的元素，如果没找到匹配元素则直接丢弃，其匹配行为有两种基本类型：</p>
+<ul>
+<li>一对一 (One-to-One)</li>
+<li>一对多或多对一 (Many-to-One, One-to-Many)</li>
+</ul>
+<h3 id="one-to-one（一对一）"><a href="#one-to-one（一对一）" class="headerlink" title="one-to-one（一对一）"></a>one-to-one（一对一）</h3><p>即一对一向量匹配模式，它从运算符的两侧表达式中获取即时向量，依次比较并找到唯一匹配(标签完全一致)的样本值，如果两个条目具有完全相同的标签和对应的值，则它们匹配。一般默认表达式格式为 <code>vector1 &lt;运算符&gt; vector2</code></p>
+<p>如：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">process_open_fds&#123;instance=&quot;192.168.3.21:9100&quot;,job=&quot;centos8&quot;&#125;    </span><br><span class="line">/</span><br><span class="line">process_max_fds&#123;instance=&quot;192.168.3.21:9100&quot;,job=&quot;centos8&quot;&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-PromQL-28.png" alt="Prometheus-PromQL-28"></p>
+<p>从上图看到，除了标签<code>__name__</code>中的指标名称之外，他们具有完全相同标签名和标签值，这样他们就被匹配到了一起。也就是说，该示例中都有标签{instance=”192.168.3.21:9100”,job=”centos8”}将匹配在一起。</p>
+<p>如果运算符两侧表达式标签不一致，可以使用关键字on或ignoring修改标签间的匹配行为。其中，on用于在指定标签上进行匹配，ignoring可以忽略指定标签进行匹配。表达格式分别为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">&lt;vector expr&gt; &lt;bin-op&gt; ignoring(&lt;label list&gt;) &lt;vector expr&gt;</span><br><span class="line">&lt;vector expr&gt; &lt;bin-op&gt; on(&lt;label list&gt;) &lt;vector expr&gt;</span><br><span class="line"></span><br><span class="line">ignore:定义匹配检测时要忽略的标签;</span><br><span class="line">on:定义匹配检测时只使用的标签;</span><br></pre></td></tr></table></figure>
+
+<h4 id="这里我们列举一个表达式："><a href="#这里我们列举一个表达式：" class="headerlink" title="这里我们列举一个表达式："></a>这里我们列举一个表达式：</h4><p>我们希望下面两个<code>node_disk_read_time_ms</code>相加，但显然是不行的。因为他们两个标签不完全匹配一个<code>device=sda</code>一个标签是<code>device=sdb</code>，除此别的标签可以完全一致。</p>
+<p><img src="/images/Prometheus-PromQL-29.png" alt="Prometheus-PromQL-29"></p>
+<p>计算<code>node_disk_read_time_ms{device=&quot;sda&quot;} + node_disk_read_time_ms{device=&quot;sdb&quot;}</code> 可以看到无数据，这是因为他们两个的标签不能匹配。<br><img src="/images/Prometheus-PromQL-30.png" alt="Prometheus-PromQL-30"></p>
+<p>我们使用<code>ignoring</code>忽略掉他们不一样的标签后他们就能完全匹配了，这样就能计算了。（总之记住一句话两个向量之间做运算必须两边的标签名和标签值必须匹配才能做计算）<br><img src="/images/Prometheus-PromQL-31.png" alt="Prometheus-PromQL-31"></p>
+<h4 id="在来一个稍微复杂一点的表达式："><a href="#在来一个稍微复杂一点的表达式：" class="headerlink" title="在来一个稍微复杂一点的表达式："></a>在来一个稍微复杂一点的表达式：</h4><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">#表达式中使用到了rate()函数，即计算某个时间序列范围内的平均增长率</span><br><span class="line"></span><br><span class="line">sum (rate(node_cpu_seconds_total&#123;mode=&quot;idle&quot;&#125;[5m])) by (instance) / sum (rate(node_cpu_seconds_total[5m])) by (instance)</span><br></pre></td></tr></table></figure>
+
+<p>以下表达式是过滤出来标签<code>mode=&quot;idle&quot;</code>的并计算出他们5分钟的一个平均值<br><img src="/images/Prometheus-PromQL-34.png" alt="Prometheus-PromQL-34"></p>
+<p>然后可以看到一个节点有多个核心，那在把他们几个核心的值相加，所以我们需要用到 sum()函数做聚合运算，而且必须基于主机做聚合所以用<code>instance</code>标签<br><img src="/images/Prometheus-PromQL-32.png" alt="Prometheus-PromQL-32"></p>
+<p>这里我们计算整个CPU 5分钟的一个平均值<br><img src="/images/Prometheus-PromQL-35.png" alt="Prometheus-PromQL-35"></p>
+<p>可以看到下面有很多<code>mode</code>标签不一样的，所以我们也需要聚合一下<br><img src="/images/Prometheus-PromQL-33.png" alt="Prometheus-PromQL-33"></p>
+<p>最终计算结果<br><img src="/images/Prometheus-PromQL-36.png" alt="Prometheus-PromQL-36"></p>
+<p>但是我们注意到左边表达式和右边表达式中标签完全一致，所以能计算，如果稍微修改一下呢，多一个Job标签</p>
+<p><img src="/images/Prometheus-PromQL-37.png" alt="Prometheus-PromQL-37"></p>
+<p>此时我们需要使用<code>on</code>关键字 仅使用某一个或多个标签做匹配<br><img src="/images/Prometheus-PromQL-38.png" alt="Prometheus-PromQL-38"></p>
+<h3 id="many-to-one-（多对一）and-one-to-many（一对多）"><a href="#many-to-one-（多对一）and-one-to-many（一对多）" class="headerlink" title="many-to-one （多对一）and one-to-many（一对多）"></a>many-to-one （多对一）and one-to-many（一对多）</h3><p>多对一和一对多的匹配模式，可以理解为向量元素中的一个样本数据匹配到了多个样本数据标签。在使用该匹配模式时，需要使用group_left或group_right修饰符明确指定哪一个向量具有更高的基数，也就是说左或者右决定了哪边的向量具有较高的子集。此表达格式为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">&lt;vector expr&gt; &lt;bin-op&gt; ignoring(&lt;label list&gt;) group_left(&lt;label list&gt;) &lt;vector expr&gt;</span><br><span class="line">&lt;vector expr&gt; &lt;bin-op&gt; ignoring(&lt;label list&gt;) group_right(&lt;label list&gt;) &lt;vector expr&gt;</span><br><span class="line">&lt;vector expr&gt; &lt;bin-op&gt; on(&lt;label list&gt;) group_left(&lt;label list&gt;) &lt;vector expr&gt;</span><br><span class="line">&lt;vector expr&gt; &lt;bin-op&gt; on(&lt;label list&gt;) group_right(&lt;label list&gt;) &lt;vector expr&gt;</span><br></pre></td></tr></table></figure>
+
+<p>这里我们使用group_left指定左侧操作数组中可以有多个匹配样本。表达式示例如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sum without(cpu)(rate(node_cpu_seconds_total[5m]))</span><br><span class="line">/ ignoring(mode) group_left</span><br><span class="line">sum without(mode, cpu)(rate(node_cpu_seconds_total[5m]))</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-PromQL-39.png" alt="Prometheus-PromQL-39"></p>
+<p>从以上输出信息可以看到，为左侧每组中的每个不同模式标签生成了一个输出样本。我们可以使用这种方法来确定指标中每个标签值代表的比例。</p>
+<blockquote>
+<p>通常情况下不需要这些操作，在大多数情况下，一对一的匹配可以基本满足大家的需求。</p>
+</blockquote>
+<h2 id="逻辑运算符"><a href="#逻辑运算符" class="headerlink" title="逻辑运算符"></a>逻辑运算符</h2><p>Prometheus提供了三种逻辑运算符：and、or和unless。逻辑运算符仅用于向量与向量之间。所有逻辑运算符都以多对多的方式工作，它们是唯一能工作于多对多方式的运算符。不同于算术运算符和比较运算符，因为没有执行任何数学计算，所以重点是描述一个组是否包含样本。下面我们根据官方提供的内容分别对三种逻辑运算进行介绍。</p>
+<h3 id="vector1-and-vector2"><a href="#vector1-and-vector2" class="headerlink" title="vector1 and vector2"></a>vector1 and vector2</h3><p>and逻辑运算会产生一个由vector1的元素组成的新的向量。该向量包含vector1中完全匹配vector2中的元素。表达式示例如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">node_cpu_seconds_total&#123;job=&quot;centos8&quot;&#125; </span><br><span class="line">and </span><br><span class="line">node_cpu_seconds_total&#123;mode=&quot;idle&quot;&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-PromQL-40.png" alt="Prometheus-PromQL-40"></p>
+<h3 id="vector1-or-vector2"><a href="#vector1-or-vector2" class="headerlink" title="vector1 or vector2"></a>vector1 or vector2</h3><p>or逻辑运算会产生一个新的向量，该向量包含vector1的所有原始元素（标签集+值）的向量，以及vector2中没有与vector1匹配标签集的所有元素。假设判断node_test_metric指标是否存在，如果指标不存在则返回0。在这种情况下，我们可以使用与每个目标关联的up指标进行表达式操作：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">node_test_metric</span><br><span class="line">or</span><br><span class="line">(up&#123;job=&quot;centos8&quot;&#125; == 1) * 0</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-PromQL-41.png" alt="Prometheus-PromQL-41"></p>
+<h3 id="vector1-unless-vector2"><a href="#vector1-unless-vector2" class="headerlink" title="vector1 unless vector2"></a>vector1 unless vector2</h3><p>unless逻辑运算会产生一个由vector1的元素组成的向量，而这些元素在vector2中没有与标签集完全匹配的元素，两个向量中的所有匹配元素都被删除。表达式示例如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">node_cpu_seconds_total&#123;job=&quot;centos8&quot;&#125; </span><br><span class="line">and </span><br><span class="line">node_cpu_seconds_total&#123;mode=&quot;idle&quot;&#125;</span><br><span class="line">#把master节点去掉</span><br><span class="line">unless</span><br><span class="line">node_cpu_seconds_total&#123;instance=&quot;192.168.3.82:9100&quot;&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-PromQL-42.png" alt="Prometheus-PromQL-42"></p>
+<h2 id="运算符优先级"><a href="#运算符优先级" class="headerlink" title="运算符优先级"></a>运算符优先级</h2><table>
+<thead>
+<tr>
+<th>编号</th>
+<th>运算符</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>^</td>
+</tr>
+<tr>
+<td>2</td>
+<td>*，/，%</td>
+</tr>
+<tr>
+<td>3</td>
+<td>+，-</td>
+</tr>
+<tr>
+<td>4</td>
+<td>==，!=，&lt;=，&lt;，&gt;=，&gt;</td>
+</tr>
+<tr>
+<td>5</td>
+<td>and，unless</td>
+</tr>
+<tr>
+<td>6</td>
+<td>or</td>
+</tr>
+</tbody></table>
+
+      
+    </div>
+    
+    
+    
+
+
+    <div>
+        
+            
+<div class="my_post_copyright">
+  <script src="//cdn.bootcss.com/clipboard.js/1.5.10/clipboard.min.js"></script>
+
+  <!-- JS库 sweetalert 可修改路径 -->
+  <script type="text/javascript" src="http://jslibs.wuxubj.cn/sweetalert_mini/jquery-1.7.1.min.js"></script>
+  <script src="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="http://jslibs.wuxubj.cn/sweetalert_mini/sweetalert.mini.css">
+
+  <p><span>本文标题:</span>PromQL进阶</p>
+  <p><span>文章作者:</span>Mr.Ye</p>
+  <p><span>发布时间:</span>2021年06月15日 - 14:20:00</p>
+  <p><span>最后更新:</span>2021年06月18日 - 11:38:12</p>
+  <p><span>原始链接:</span><a href="/2021/06/15/Use-advanced-PromQL/" title="PromQL进阶">https://system51.github.io/2021/06/15/Use-advanced-PromQL/</a>
+    <span class="copy-path" title="点击复制文章链接"><i class="fa fa-clipboard" data-clipboard-text="https://system51.github.io/2021/06/15/Use-advanced-PromQL/" aria-label="复制成功！"></i></span>
+  </p>
+  <p><span>许可协议:</span><i class="fa fa-creative-commons"></i>本文采用<a rel="license" href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank" title="Attribution-NonCommercial-NoDerivatives 4.0 International (CC BY-NC-ND 4.0)">知识共享署名-非商业性使用 4.0 国际许可协议</a>进行许可</p>
+</div>
+<script>
+    var clipboard = new Clipboard('.fa-clipboard');
+    clipboard.on('success', $(function(){
+      $(".fa-clipboard").click(function(){
+        swal({
+          title: "",
+          text: '复制成功',
+          html: false,
+          timer: 500,
+          showConfirmButton: false
+        });
+      });
+    }));
+</script>
+
+        
+    </div>
+
+
+
+
+
+
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2021/05/27/PromQL/" rel="next" title="探索PromQL">
+                <i class="fa fa-chevron-left"></i> 探索PromQL
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+    <div class="comments" id="comments">
+    </div>
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+            
+              <img class="site-author-image" itemprop="image" src="/images/touxiang.png" alt="Mr.Ye">
+            
+              <p class="site-author-name" itemprop="name">Mr.Ye</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">59</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-categories">
+                
+                  <span class="site-state-item-count">1</span>
+                  <span class="site-state-item-name">分类</span>
+                
+              </div>
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Prometheus-聚合函数"><span class="nav-number">1.</span> <span class="nav-text">Prometheus 聚合函数</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#聚合表达式"><span class="nav-number">1.1.</span> <span class="nav-text">聚合表达式</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#11个聚合函数"><span class="nav-number">1.2.</span> <span class="nav-text">11个聚合函数</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#示例讲解"><span class="nav-number">1.3.</span> <span class="nav-text">示例讲解</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#sum-求和"><span class="nav-number">1.3.1.</span> <span class="nav-text">sum() 求和</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#avg-求平均值"><span class="nav-number">1.3.2.</span> <span class="nav-text">avg() 求平均值</span></a></li></ol></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#PromQL运算符"><span class="nav-number">2.</span> <span class="nav-text">PromQL运算符</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#算术运算符"><span class="nav-number">3.</span> <span class="nav-text">算术运算符</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#运算操作符支持三类操作："><span class="nav-number">3.1.</span> <span class="nav-text">运算操作符支持三类操作：</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#两个标量之间"><span class="nav-number">3.2.</span> <span class="nav-text">两个标量之间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#时向量与标量之间"><span class="nav-number">3.3.</span> <span class="nav-text">时向量与标量之间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#即时向量与即时向量之间"><span class="nav-number">3.4.</span> <span class="nav-text">即时向量与即时向量之间</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#关系运算符"><span class="nav-number">4.</span> <span class="nav-text">关系运算符</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#两个标量之间-1"><span class="nav-number">4.1.</span> <span class="nav-text">两个标量之间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#即时向量与标量之间"><span class="nav-number">4.2.</span> <span class="nav-text">即时向量与标量之间</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#即时向量与即时向量之间-1"><span class="nav-number">4.3.</span> <span class="nav-text">即时向量与即时向量之间</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#向量匹配"><span class="nav-number">5.</span> <span class="nav-text">向量匹配</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#one-to-one（一对一）"><span class="nav-number">5.1.</span> <span class="nav-text">one-to-one（一对一）</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#这里我们列举一个表达式："><span class="nav-number">5.1.1.</span> <span class="nav-text">这里我们列举一个表达式：</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#在来一个稍微复杂一点的表达式："><span class="nav-number">5.1.2.</span> <span class="nav-text">在来一个稍微复杂一点的表达式：</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#many-to-one-（多对一）and-one-to-many（一对多）"><span class="nav-number">5.2.</span> <span class="nav-text">many-to-one （多对一）and one-to-many（一对多）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#逻辑运算符"><span class="nav-number">6.</span> <span class="nav-text">逻辑运算符</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#vector1-and-vector2"><span class="nav-number">6.1.</span> <span class="nav-text">vector1 and vector2</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#vector1-or-vector2"><span class="nav-number">6.2.</span> <span class="nav-text">vector1 or vector2</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#vector1-unless-vector2"><span class="nav-number">6.3.</span> <span class="nav-text">vector1 unless vector2</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#运算符优先级"><span class="nav-number">7.</span> <span class="nav-text">运算符优先级</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2021</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Mr.Ye</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Mist</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+  <script src="//cdn1.lncld.net/static/js/3.0.4/av-min.js"></script>
+  <script src="//unpkg.com/valine/dist/Valine.min.js"></script>
+  
+  <script type="text/javascript">
+    var GUEST = ['nick','mail','link'];
+    var guest = 'nick,mail,link';
+    guest = guest.split(',').filter(item=>{
+      return GUEST.indexOf(item)>-1;
+    });
+    new Valine({
+        el: '#comments' ,
+        verify: false,
+        notify: false,
+        appId: 'iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz',
+        appKey: '7Ygc8VJFwvSe7p1k0zEjJAQC',
+        placeholder: 'ヾﾉ≧∀≦)o 来呀！吐槽一番吧！',
+        avatar:'mm',
+        guest_info:guest,
+        pageSize:'10' || 10,
+    });
+  </script>
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>
