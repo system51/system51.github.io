@@ -20,7 +20,7 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="ingress-nginx多实例部署">
 <meta property="og:url" content="https://system51.github.io/2019/08/26/ingress-nginx-Multi-instance/index.html">
-<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:site_name" content="Mr.Ye Blog">
 <meta property="og:description" content="由于业务需求希望一个项目一个ingress-nginx以方便后期管理。为此我把ingress-nginx的所有Yaml文件读了一遍了解了其中的创建过程以及权限设置。想要实现多实例我们需要对如下几个地方做出适当的修改。   此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2019-08-26T06:05:08.000Z">
@@ -31,7 +31,7 @@
   
   
   
-  <title>ingress-nginx多实例部署 - Mr.Ye Blogs</title>
+  <title>ingress-nginx多实例部署 - Mr.Ye Blog</title>
 
   <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
 
@@ -95,7 +95,7 @@
   <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
   <div class="container">
     <a class="navbar-brand" href="/">
-      <strong>Mr.Ye Blogs</strong>
+      <strong>Mr.Ye Blog</strong>
     </a>
 
     <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
