@@ -1,0 +1,841 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="我们知道kube-proxy支持 iptables 和 ipvs 两种模式， 在kubernetes v1.8 中引入了 ipvs 模式，在 v1.9 中处于 beta 阶段，在 v1.11 中已经正式可用了。iptables 模式在 v1.1 中就添加支持了，从 v1.2 版本开始 iptables 就是 kube-proxy 默认的操作模式，ipvs 和 iptables 都是基于netfi">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kube-proxy 工作模式分析">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/kube-proxy/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="我们知道kube-proxy支持 iptables 和 ipvs 两种模式， 在kubernetes v1.8 中引入了 ipvs 模式，在 v1.9 中处于 beta 阶段，在 v1.11 中已经正式可用了。iptables 模式在 v1.1 中就添加支持了，从 v1.2 版本开始 iptables 就是 kube-proxy 默认的操作模式，ipvs 和 iptables 都是基于netfi">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-08-26T06:11:12.000Z">
+<meta property="article:modified_time" content="2019-09-10T06:37:06.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>kube-proxy 工作模式分析 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="kube-proxy 工作模式分析"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 14:11" pubdate>
+          2019年8月26日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          20k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          34 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">kube-proxy 工作模式分析</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <blockquote>
+<p>我们知道kube-proxy支持 iptables 和 ipvs 两种模式， 在kubernetes v1.8 中引入了 ipvs 模式，在 v1.9 中处于 beta 阶段，在 v1.11 中已经正式可用了。iptables 模式在 v1.1 中就添加支持了，从 v1.2 版本开始 iptables 就是 kube-proxy 默认的操作模式，ipvs 和 iptables 都是基于netfilter的，那么 ipvs 模式和 iptables 模式之间有哪些差异呢？</p>
+</blockquote>
+<ul>
+<li>ipvs 为大型集群提供了更好的可扩展性和性能</li>
+<li>ipvs 支持比 iptables 更复杂的复制均衡算法（最小负载、最少连接、加权等等）</li>
+<li>ipvs 支持服务器健康检查和连接重试等功能</li>
+<li>可以动态修改ipset集合。即使iptables的规则正在使用这个集合。</li>
+</ul>
+<h3 id="ipvs-依赖-iptables"><a href="#ipvs-依赖-iptables" class="headerlink" title="ipvs 依赖 iptables"></a>ipvs 依赖 iptables</h3><blockquote>
+<p>由于ipvs 无法提供包过滤、SNAT、masquared(伪装)等功能。因此在某些场景（如Nodeport的实现）下还是要与iptables搭配使用，ipvs 将使用ipset来存储需要DROP或masquared的流量的源或目标地址，以确保 iptables 规则的数量是恒定的。假设要禁止上万个IP访问我们的服务器，则用iptables的话，就需要一条一条地添加规则，会在iptables中生成大量的规则；但是使用ipset的话，只需要将相关的IP地址（网段）加入到ipset集合中即可，这样只需要设置少量的iptables规则即可实现目标。</p>
+</blockquote>
+<h3 id="kube-proxy使用ipvs模式"><a href="#kube-proxy使用ipvs模式" class="headerlink" title="kube-proxy使用ipvs模式"></a>kube-proxy使用ipvs模式</h3><h4 id="在每台机器上安装依赖包："><a href="#在每台机器上安装依赖包：" class="headerlink" title="在每台机器上安装依赖包："></a>在每台机器上安装依赖包：</h4><figure class="highlight coffeescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs coffeescript">[root@k8s-m1 ~]<span class="hljs-comment"># yum install ipvsadm ipset sysstat conntrack libseccomp -y</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="所有机器选择需要开机加载的内核模块-以下是-ipvs-模式需要加载的模块并设置开机自动加载"><a href="#所有机器选择需要开机加载的内核模块-以下是-ipvs-模式需要加载的模块并设置开机自动加载" class="headerlink" title="所有机器选择需要开机加载的内核模块,以下是 ipvs 模式需要加载的模块并设置开机自动加载"></a>所有机器选择需要开机加载的内核模块,以下是 ipvs 模式需要加载的模块并设置开机自动加载</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs bash">[root@k8s-m1 ~]<span class="hljs-comment"># :&gt; /etc/modules-load.d/ipvs.conf</span><br>module=(<br>ip_vs<br>ip_vs_rr<br>ip_vs_wrr<br>ip_vs_sh<br>nf_conntrack<br>br_netfilter<br>  )<br><span class="hljs-keyword">for</span> kernel_module <span class="hljs-keyword">in</span> <span class="hljs-variable">$&#123;module[@]&#125;</span>;<span class="hljs-keyword">do</span><br>    /sbin/modinfo -F filename <span class="hljs-variable">$kernel_module</span> |&amp; grep -qv ERROR &amp;&amp; <span class="hljs-built_in">echo</span> <span class="hljs-variable">$kernel_module</span> &gt;&gt; /etc/modules-load.d/ipvs.conf || :<br><span class="hljs-keyword">done</span><br>systemctl <span class="hljs-built_in">enable</span> --now systemd-modules-load.service<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>上面如果<code>systemctl enable</code>命令报错可以<code>systemctl status -l systemd-modules-load.service</code>看看哪个内核模块加载不了,在<code>/etc/modules-load.d/ipvs.conf</code>里注释掉它再enable试试</p>
+</blockquote>
+<h4 id="所有机器需要设定-x2F-etc-x2F-sysctl-d-x2F-k8s-conf的系统参数。"><a href="#所有机器需要设定-x2F-etc-x2F-sysctl-d-x2F-k8s-conf的系统参数。" class="headerlink" title="所有机器需要设定&#x2F;etc&#x2F;sysctl.d&#x2F;k8s.conf的系统参数。"></a>所有机器需要设定&#x2F;etc&#x2F;sysctl.d&#x2F;k8s.conf的系统参数。</h4><figure class="highlight vim"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><code class="hljs vim">[root@k8s-m1 ~]# <span class="hljs-keyword">cat</span> &lt;&lt;EOF &gt; /etc/sysctl.d/k8s.<span class="hljs-keyword">conf</span><br># https://github.<span class="hljs-keyword">com</span>/moby/moby/issues/<span class="hljs-number">31208</span> <br># ipvsadm -<span class="hljs-keyword">l</span> --timout<br># 修复ipvs模式下长连接timeout问题 小于<span class="hljs-number">900</span>即可<br>net.ipv4.tcp_keepalive_time = <span class="hljs-number">600</span><br>net.ipv4.tcp_keepalive_intvl = <span class="hljs-number">30</span><br>net.ipv4.tcp_keepalive_probes = <span class="hljs-number">10</span><br>net.ipv6.<span class="hljs-keyword">conf</span>.<span class="hljs-keyword">all</span>.disable_ipv6 = <span class="hljs-number">1</span><br>net.ipv6.<span class="hljs-keyword">conf</span>.default.disable_ipv6 = <span class="hljs-number">1</span><br>net.ipv6.<span class="hljs-keyword">conf</span>.<span class="hljs-keyword">lo</span>.disable_ipv6 = <span class="hljs-number">1</span><br>net.ipv4.neigh.default.gc_stale_time = <span class="hljs-number">120</span><br>net.ipv4.<span class="hljs-keyword">conf</span>.<span class="hljs-keyword">all</span>.rp_filter = <span class="hljs-number">0</span><br>net.ipv4.<span class="hljs-keyword">conf</span>.default.rp_filter = <span class="hljs-number">0</span><br>net.ipv4.<span class="hljs-keyword">conf</span>.default.arp_announce = <span class="hljs-number">2</span><br>net.ipv4.<span class="hljs-keyword">conf</span>.<span class="hljs-keyword">lo</span>.arp_announce = <span class="hljs-number">2</span><br>net.ipv4.<span class="hljs-keyword">conf</span>.<span class="hljs-keyword">all</span>.arp_announce = <span class="hljs-number">2</span><br>net.ipv4.ip_forward = <span class="hljs-number">1</span><br>net.ipv4.tcp_max_tw_buckets = <span class="hljs-number">5000</span><br>net.ipv4.tcp_syncookies = <span class="hljs-number">1</span><br>net.ipv4.tcp_max_syn_backlog = <span class="hljs-number">1024</span><br>net.ipv4.tcp_synack_retries = <span class="hljs-number">2</span><br># 要求iptables不对bridge的数据进行处理<br>net.bridge.bridge-nf-<span class="hljs-keyword">call</span>-ip6tables = <span class="hljs-number">1</span><br>net.bridge.bridge-nf-<span class="hljs-keyword">call</span>-iptables = <span class="hljs-number">1</span><br>net.bridge.bridge-nf-<span class="hljs-keyword">call</span>-arptables = <span class="hljs-number">1</span><br>net.netfilter.nf_conntrack_max = <span class="hljs-number">2310720</span><br>fs.inotify.max_user_watches=<span class="hljs-number">89100</span><br>fs.may_detach_mounts = <span class="hljs-number">1</span><br>fs.<span class="hljs-keyword">file</span>-<span class="hljs-built_in">max</span> = <span class="hljs-number">52706963</span><br>fs.nr_open = <span class="hljs-number">52706963</span><br><span class="hljs-keyword">vm</span>.swappiness = <span class="hljs-number">0</span><br><span class="hljs-keyword">vm</span>.overcommit_memory=<span class="hljs-number">1</span><br><span class="hljs-keyword">vm</span>.panic_on_oom=<span class="hljs-number">0</span><br>EOF<br><br><br>[root@k8s-m1 ~]# sysctl --<span class="hljs-built_in">system</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="修改Kube-proxy配置文件将mode设置为ipvs"><a href="#修改Kube-proxy配置文件将mode设置为ipvs" class="headerlink" title="修改Kube-proxy配置文件将mode设置为ipvs"></a>修改Kube-proxy配置文件将mode设置为ipvs</h3><figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">hostnameOverride:</span> k8s-m1<br><span class="hljs-symbol">iptables:</span><br><span class="hljs-symbol">    masqueradeAll:</span> true<br><span class="hljs-symbol">    masqueradeBit:</span> <span class="hljs-number">14</span><br><span class="hljs-symbol">    minSyncPeriod:</span> <span class="hljs-number">0</span>s<br><span class="hljs-symbol">    syncPeriod:</span> <span class="hljs-number">30</span>s<br><span class="hljs-symbol">ipvs:</span><br><span class="hljs-symbol">    excludeCIDRs:</span> null<br><span class="hljs-symbol">    minSyncPeriod:</span> <span class="hljs-number">0</span>s<br><span class="hljs-symbol">    scheduler:</span> <span class="hljs-string">&quot;&quot;</span><br><span class="hljs-symbol">    syncPeriod:</span> <span class="hljs-number">30</span>s<br><span class="hljs-symbol">kind:</span> KubeProxyConfiguration<br><span class="hljs-symbol">metricsBindAddress:</span> <span class="hljs-number">192.168</span><span class="hljs-number">.0</span><span class="hljs-number">.200</span>:<span class="hljs-number">10249</span><br><span class="hljs-symbol">mode:</span> <span class="hljs-string">&quot;ipvs&quot;</span><br><span class="hljs-symbol">nodePortAddresses:</span> null<br><span class="hljs-symbol">oomScoreAdj:</span> <span class="hljs-number">-999</span><br><span class="hljs-symbol">portRange:</span> <span class="hljs-string">&quot;&quot;</span><br><span class="hljs-symbol">resourceContainer:</span> /kube-proxy<br><span class="hljs-symbol">udpIdleTimeout:</span> <span class="hljs-number">250</span>ms<br></code></pre></td></tr></table></figure>
+
+
+
+<blockquote>
+<h3 id="创建-ClusterIP-类型服务时，IPVS-proxier-将执行以下三项操作："><a href="#创建-ClusterIP-类型服务时，IPVS-proxier-将执行以下三项操作：" class="headerlink" title="创建 ClusterIP 类型服务时，IPVS proxier 将执行以下三项操作："></a>创建 ClusterIP 类型服务时，IPVS proxier 将执行以下三项操作：</h3></blockquote>
+<ul>
+<li>确保节点中存在虚拟接口，默认为 kube-ipvs0</li>
+<li>将Service IP 地址绑定到虚拟接口</li>
+<li>分别为每个Service IP 地址创建 IPVS virtual servers</li>
+</ul>
+<h4 id="这是一个例子"><a href="#这是一个例子" class="headerlink" title="这是一个例子:"></a>这是一个例子:</h4><figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs makefile">[root@k8s-m1 ~]<span class="hljs-comment"># kubectl describe svc tomcat-service</span><br><span class="hljs-section">Name:              tomcat-service</span><br><span class="hljs-section">Namespace:         default</span><br><span class="hljs-section">Labels:            &lt;none&gt;</span><br><span class="hljs-section">Annotations:       kubectl.kubernetes.io/last-applied-configuration:</span><br>                     &#123;<span class="hljs-string">&quot;apiVersion&quot;</span>:<span class="hljs-string">&quot;v1&quot;</span>,<span class="hljs-string">&quot;kind&quot;</span>:<span class="hljs-string">&quot;Service&quot;</span>,<span class="hljs-string">&quot;metadata&quot;</span>:&#123;<span class="hljs-string">&quot;annotations&quot;</span>:&#123;&#125;,<span class="hljs-string">&quot;name&quot;</span>:<span class="hljs-string">&quot;tomcat-service&quot;</span>,<span class="hljs-string">&quot;namespace&quot;</span>:<span class="hljs-string">&quot;default&quot;</span>&#125;,<span class="hljs-string">&quot;spec&quot;</span>:&#123;<span class="hljs-string">&quot;ports&quot;</span>:[&#123;<span class="hljs-string">&quot;port&quot;</span>:8...<br><span class="hljs-section">Selector:          app=tomcat</span><br><span class="hljs-section">Type:              ClusterIP</span><br><span class="hljs-section">IP:                10.106.88.77</span><br><span class="hljs-section">Port:              &lt;unset&gt;  8080/TCP</span><br><span class="hljs-section">TargetPort:        8080/TCP</span><br><span class="hljs-section">Endpoints:         10.244.0.48:8080</span><br>Session Affinity:  None<br><span class="hljs-section">Events:            &lt;none&gt;</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs pf">[root@k8s-m1 ~]<span class="hljs-comment"># ip -4 a</span><br><span class="hljs-number">8</span>: kube-ipvs0: <span class="hljs-variable">&lt;BROADCAST,NOARP&gt;</span> mtu <span class="hljs-number">1500</span> qdisc noop <span class="hljs-keyword">state</span> DOWN <span class="hljs-keyword">group</span> <span class="hljs-keyword">default</span><br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">10.96</span>.<span class="hljs-number">0.10</span>/<span class="hljs-number">32</span> brd <span class="hljs-number">10.96</span>.<span class="hljs-number">0.10</span> scope <span class="hljs-keyword">global</span> kube-ipvs0<br>       valid_lft forever preferred_lft forever<br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">10.101</span>.<span class="hljs-number">68.42</span>/<span class="hljs-number">32</span> brd <span class="hljs-number">10.101</span>.<span class="hljs-number">68.42</span> scope <span class="hljs-keyword">global</span> kube-ipvs0<br>       valid_lft forever preferred_lft forever<br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">10.96</span>.<span class="hljs-number">0.1</span>/<span class="hljs-number">32</span> brd <span class="hljs-number">10.96</span>.<span class="hljs-number">0.1</span> scope <span class="hljs-keyword">global</span> kube-ipvs0<br>       valid_lft forever preferred_lft forever<br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">10.107</span>.<span class="hljs-number">7.203</span>/<span class="hljs-number">32</span> brd <span class="hljs-number">10.107</span>.<span class="hljs-number">7.203</span> scope <span class="hljs-keyword">global</span> kube-ipvs0<br>       valid_lft forever preferred_lft forever<br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">10.106</span>.<span class="hljs-number">88.77</span>/<span class="hljs-number">32</span> brd <span class="hljs-number">10.106</span>.<span class="hljs-number">88.77</span> scope <span class="hljs-keyword">global</span> kube-ipvs0<br>       valid_lft forever preferred_lft forever<br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">10.98</span>.<span class="hljs-number">230.124</span>/<span class="hljs-number">32</span> brd <span class="hljs-number">10.98</span>.<span class="hljs-number">230.124</span> scope <span class="hljs-keyword">global</span> kube-ipvs0<br>       valid_lft forever preferred_lft forever<br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">10.103</span>.<span class="hljs-number">49.63</span>/<span class="hljs-number">32</span> brd <span class="hljs-number">10.103</span>.<span class="hljs-number">49.63</span> scope <span class="hljs-keyword">global</span> kube-ipvs0<br>       valid_lft forever preferred_lft forever<br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight tap"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs tap">[root@k8s-m1 ~]<span class="hljs-comment"># ipvsadm -ln</span><br>IP Virtual Server version 1.2.1 (size=4096)<br>Prot LocalAddress:Port Scheduler Flags<br>  -&gt; RemoteAddress:Port           Forward Weight ActiveConn InActConn<br>TCP  172.17.0.1:30024 rr<br>  -&gt; 10.244.4.21:3000             Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>TCP  192.168.0.200:30024 rr<br>  -&gt; 10.244.4.21:3000             Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>TCP  192.168.0.200:30040 rr<br>  -&gt; 10.244.4.28:9090             Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>TCP  10.96.0.1:443 rr<br>  -&gt; 192.168.0.200:6443           Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>  -&gt; 192.168.0.201:6443           Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 1 </span>         0<br>  -&gt; 192.168.0.202:6443           Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>删除 Kubernetes Service将触发删除相应的 IPVS 虚拟服务器，IPVS 物理服务器及其绑定到虚拟接口的 IP 地址。</p>
+</blockquote>
+<h3 id="端口映射："><a href="#端口映射：" class="headerlink" title="端口映射："></a>端口映射：</h3><blockquote>
+<p>IPVS 中有三种代理模式：NAT（masq），IPIP 和 DR。 只有 NAT 模式支持端口映射。 Kube-proxy 利用 NAT 模式进行端口映射。 以下示例显示 IPVS 服务端口8080到Pod端口80的映射。</p>
+</blockquote>
+<figure class="highlight tap"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs tap">TCP  10.107.7.203:8080 rr<br>  -&gt; 10.244.4.14:80               Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>  -&gt; 10.244.4.15:80               Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>  -&gt; 10.244.4.16:80               Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>  -&gt; 10.244.4.20:80               Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>  -&gt; 10.244.4.22:80               Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>  -&gt; 10.244.4.23:80               Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br>  -&gt; 10.244.4.24:80               Masq   <span class="hljs-number"> 1 </span>    <span class="hljs-number"> 0 </span>         0<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="会话关系："><a href="#会话关系：" class="headerlink" title="会话关系："></a>会话关系：</h3><blockquote>
+<p>IPVS 支持客户端 IP 会话关联（持久连接）。 当服务指定会话关系时，IPVS 代理将在 IPVS 虚拟服务器中设置超时值（默认为180分钟&#x3D; 10800秒）。 例如：</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-m1</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># kubectl describe svc nginx-service</span><br><span class="hljs-attr">Name:</span>           <span class="hljs-string">nginx-service</span><br><span class="hljs-string">...</span><br><span class="hljs-attr">IP:</span>             <span class="hljs-number">10.102</span><span class="hljs-number">.128</span><span class="hljs-number">.4</span><br><span class="hljs-attr">Port:</span>           <span class="hljs-string">http</span>    <span class="hljs-number">3080</span><span class="hljs-string">/TCP</span><br><span class="hljs-attr">Session Affinity:</span>   <span class="hljs-string">ClientIP</span><br><br><br>[<span class="hljs-string">root@k8s-m1</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># ipvsadm -ln</span><br><span class="hljs-string">IP</span> <span class="hljs-string">Virtual</span> <span class="hljs-string">Server</span> <span class="hljs-string">version</span> <span class="hljs-number">1.2</span><span class="hljs-number">.1</span> <span class="hljs-string">(size=4096)</span><br><span class="hljs-string">Prot</span> <span class="hljs-string">LocalAddress:Port</span> <span class="hljs-string">Scheduler</span> <span class="hljs-string">Flags</span><br>  <span class="hljs-string">-&gt;</span> <span class="hljs-string">RemoteAddress:Port</span>           <span class="hljs-string">Forward</span> <span class="hljs-string">Weight</span> <span class="hljs-string">ActiveConn</span> <span class="hljs-string">InActConn</span><br><span class="hljs-string">TCP</span>  <span class="hljs-number">10.102</span><span class="hljs-number">.128</span><span class="hljs-number">.4</span><span class="hljs-string">:3080</span> <span class="hljs-string">rr</span> <span class="hljs-string">persistent</span> <span class="hljs-number">10800</span><br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<h3 id="ipvs-proxier-将在以下5种情况下依赖于-iptables："><a href="#ipvs-proxier-将在以下5种情况下依赖于-iptables：" class="headerlink" title="ipvs proxier 将在以下5种情况下依赖于 iptables："></a>ipvs proxier 将在以下5种情况下依赖于 iptables：</h3></blockquote>
+<ul>
+<li>kube-proxy 设置 <code>--masquerade-all = true </code></li>
+<li>kube-proxy 设置 <code>--cluster-cidr=&lt;cidr&gt;</code></li>
+<li>Load Balancer 类型的 Service</li>
+<li>NodePort 类型的 Service</li>
+<li>指定 externalIPs 的 Service</li>
+</ul>
+<h3 id="kube-proxy-配置参数-–masquerade-all-x3D-true"><a href="#kube-proxy-配置参数-–masquerade-all-x3D-true" class="headerlink" title="kube-proxy 配置参数 –masquerade-all&#x3D;true"></a>kube-proxy 配置参数 –masquerade-all&#x3D;true</h3><blockquote>
+<p>如果 kube-proxy 配置了<code>--masquerade-all=true</code>参数，则 ipvs 将伪装所有访问 Service 的 Cluster IP 的流量，此时的行为和 iptables 是一致的，由 ipvs 添加的 iptables 规则如下：</p>
+</blockquote>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs gradle"><br>[root@k8s-m1 ~]# iptables -t nat -nL<br><br>Chain PREROUTING (policy ACCEPT)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>KUBE-SERVICES  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes service portals */</span><br><br>Chain OUTPUT (policy ACCEPT)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>KUBE-SERVICES  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes service portals */</span><br><br>Chain POSTROUTING (policy ACCEPT)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>KUBE-POSTROUTING  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes postrouting rules */</span><br><br>Chain KUBE-MARK-MASQ (<span class="hljs-number">2</span> references)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>MARK       all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            MARK or <span class="hljs-number">0</span>x4000<br><br>Chain KUBE-POSTROUTING (<span class="hljs-number">1</span> references)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>MASQUERADE  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes service traffic requiring SNAT */</span> mark match <span class="hljs-number">0</span>x4000/<span class="hljs-number">0</span>x4000<br>MASQUERADE  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            match-set KUBE-LOOP-BACK dst,dst,src<br><br>Chain KUBE-SERVICES (<span class="hljs-number">2</span> references)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>KUBE-MARK-MASQ  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            match-set KUBE-CLUSTER-IP dst,dst<br>ACCEPT     all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            match-set KUBE-CLUSTER-IP dst,dst<br></code></pre></td></tr></table></figure>
+
+
+
+
+
+<h3 id="在-kube-proxy-启动时指定集群-CIDR"><a href="#在-kube-proxy-启动时指定集群-CIDR" class="headerlink" title="在 kube-proxy 启动时指定集群 CIDR"></a>在 kube-proxy 启动时指定集群 CIDR</h3><blockquote>
+<p>如果 kube-proxy 配置了–cluster-cidr&#x3D;<cidr>参数，则 ipvs 会伪装所有访问 Service Cluster IP 的外部流量，其行为和 iptables 相同，假设 kube-proxy 提供的集群 CIDR 值为：10.244.16.0&#x2F;24，那么 ipvs 添加的 iptables 规则应该如下所示：</p>
+</blockquote>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs gradle">[root@k8s-m1 ~]# iptables -t nat -nL<br><br>Chain PREROUTING (policy ACCEPT)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>KUBE-SERVICES  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes service portals */</span><br><br>Chain OUTPUT (policy ACCEPT)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>KUBE-SERVICES  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes service portals */</span><br><br>Chain POSTROUTING (policy ACCEPT)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>KUBE-POSTROUTING  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes postrouting rules */</span><br><br>Chain KUBE-MARK-MASQ (<span class="hljs-number">3</span> references)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>MARK       all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            MARK or <span class="hljs-number">0</span>x4000<br><br>Chain KUBE-POSTROUTING (<span class="hljs-number">1</span> references)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>MASQUERADE  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes service traffic requiring SNAT */</span> mark match <span class="hljs-number">0</span>x4000/<span class="hljs-number">0</span>x4000<br>MASQUERADE  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            match-set KUBE-LOOP-BACK dst,dst,src<br><br>Chain KUBE-SERVICES (<span class="hljs-number">2</span> references)<br>target     prot opt <span class="hljs-keyword">source</span>               destination<br>KUBE-MARK-MASQ  all  -- !<span class="hljs-number">10.244</span>.<span class="hljs-number">16.0</span><span class="hljs-regexp">/24       0.0.0.0/</span><span class="hljs-number">0</span>            match-set KUBE-CLUSTER-IP dst,dst<br>ACCEPT     all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            match-set KUBE-CLUSTER-IP dst,dst<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="Load-Balancer-类型的-Service"><a href="#Load-Balancer-类型的-Service" class="headerlink" title="Load Balancer 类型的 Service"></a>Load Balancer 类型的 Service</h3><blockquote>
+<p>对于loadBalancer类型的服务，ipvs 将安装匹配 KUBE-LOAD-BALANCER 的 ipset 的 iptables 规则。特别当服务的 LoadBalancerSourceRanges 被指定或指定 externalTrafficPolicy&#x3D;local 的时候，ipvs 将创建 ipset 集合KUBE-LOAD-BALANCER-LOCAL&#x2F;KUBE-LOAD-BALANCER-FW&#x2F;KUBE-LOAD-BALANCER-SOURCE-CIDR，并添加相应的 iptables 规则，如下所示规则：</p>
+</blockquote>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><code class="hljs apache"><br><span class="hljs-comment"># iptables -t nat -nL</span><br><br><span class="hljs-attribute">Chain</span> PREROUTING (policy ACCEPT)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-SERVICES  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes service portals */<br><br><span class="hljs-attribute">Chain</span> OUTPUT (policy ACCEPT)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-SERVICES  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes service portals */<br><br><span class="hljs-attribute">Chain</span> POSTROUTING (policy ACCEPT)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-POSTROUTING  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes postrouting rules */<br><br><span class="hljs-attribute">Chain</span> KUBE-FIREWALL (<span class="hljs-number">1</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">RETURN</span>     <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-LOAD-BALANCER-SOURCE-CIDR dst,dst,src<br><span class="hljs-attribute">KUBE</span>-MARK-DROP  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span><br><br><span class="hljs-attribute">Chain</span> KUBE-LOAD-BALANCER (<span class="hljs-number">1</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-FIREWALL  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-LOAD-BALANCER-FW dst,dst<br><span class="hljs-attribute">RETURN</span>     <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-LOAD-BALANCER-LOCAL dst,dst<br><span class="hljs-attribute">KUBE</span>-MARK-MASQ  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span><br><br><span class="hljs-attribute">Chain</span> KUBE-MARK-DROP (<span class="hljs-number">1</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">MARK</span>       <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            MARK or <span class="hljs-number">0</span>x8000<br><br><span class="hljs-attribute">Chain</span> KUBE-MARK-MASQ (<span class="hljs-number">2</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">MARK</span>       <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            MARK or <span class="hljs-number">0</span>x4000<br><br><span class="hljs-attribute">Chain</span> KUBE-POSTROUTING (<span class="hljs-number">1</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">MASQUERADE</span>  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes service traffic requiring SNAT */ mark match <span class="hljs-number">0</span>x4000/<span class="hljs-number">0</span>x4000<br><span class="hljs-attribute">MASQUERADE</span>  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-LOOP-BACK dst,dst,src<br><br><span class="hljs-attribute">Chain</span> KUBE-SERVICES (<span class="hljs-number">2</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-LOAD-BALANCER  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-LOAD-BALANCER dst,dst<br><span class="hljs-attribute">ACCEPT</span>     <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-LOAD-BALANCER dst,dst<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="NodePort-类型的-Service"><a href="#NodePort-类型的-Service" class="headerlink" title="NodePort 类型的 Service"></a>NodePort 类型的 Service</h3><blockquote>
+<p>对于 NodePort 类型的服务，ipvs 将添加匹配KUBE-NODE-PORT-TCP&#x2F;KUBE-NODE-PORT-UDP的 ipset 的iptables 规则。当指定externalTrafficPolicy&#x3D;local时，ipvs 将创建 ipset 集KUBE-NODE-PORT-LOCAL-TC&#x2F;KUBE-NODE-PORT-LOCAL-UDP并安装相应的 iptables 规则，如下所示：(假设服务使用 TCP 类型 nodePort)</p>
+</blockquote>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-comment"># iptables -t nat -nL</span><br><br><span class="hljs-attribute">Chain</span> PREROUTING (policy ACCEPT)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-SERVICES  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes service portals */<br><br><span class="hljs-attribute">Chain</span> OUTPUT (policy ACCEPT)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-SERVICES  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes service portals */<br><br><span class="hljs-attribute">Chain</span> POSTROUTING (policy ACCEPT)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-POSTROUTING  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes postrouting rules */<br><br><span class="hljs-attribute">Chain</span> KUBE-MARK-MASQ (<span class="hljs-number">2</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">MARK</span>       <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            MARK or <span class="hljs-number">0</span>x4000<br><br><span class="hljs-attribute">Chain</span> KUBE-NODE-PORT (<span class="hljs-number">1</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">RETURN</span>     <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-NODE-PORT-LOCAL-TCP dst<br><span class="hljs-attribute">KUBE</span>-MARK-MASQ  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span><br><br><span class="hljs-attribute">Chain</span> KUBE-POSTROUTING (<span class="hljs-number">1</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">MASQUERADE</span>  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes service traffic requiring SNAT */ mark match <span class="hljs-number">0</span>x4000/<span class="hljs-number">0</span>x4000<br><span class="hljs-attribute">MASQUERADE</span>  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-LOOP-BACK dst,dst,src<br><br><span class="hljs-attribute">Chain</span> KUBE-SERVICES (<span class="hljs-number">2</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-NODE-PORT  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-NODE-PORT-TCP dst<br></code></pre></td></tr></table></figure>
+
+<h3 id="指定-externalIPs-的-Service"><a href="#指定-externalIPs-的-Service" class="headerlink" title="指定 externalIPs 的 Service"></a>指定 externalIPs 的 Service</h3><blockquote>
+<p>对于指定了externalIPs的 Service，ipvs 会安装匹配KUBE-EXTERNAL-IP ipset 集的 iptables 规则，假设我们有指定了 externalIPs 的 Service，则 iptables 规则应该如下所示：</p>
+</blockquote>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-comment"># iptables -t nat -nL</span><br><br><span class="hljs-attribute">Chain</span> PREROUTING (policy ACCEPT)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-SERVICES  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes service portals */<br><br><span class="hljs-attribute">Chain</span> OUTPUT (policy ACCEPT)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-SERVICES  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes service portals */<br><br><span class="hljs-attribute">Chain</span> POSTROUTING (policy ACCEPT)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-POSTROUTING  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes postrouting rules */<br><br><span class="hljs-attribute">Chain</span> KUBE-MARK-MASQ (<span class="hljs-number">2</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">MARK</span>       <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            MARK or <span class="hljs-number">0</span>x4000<br><br><span class="hljs-attribute">Chain</span> KUBE-POSTROUTING (<span class="hljs-number">1</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">MASQUERADE</span>  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* kubernetes service traffic requiring SNAT */ mark match <span class="hljs-number">0</span>x4000/<span class="hljs-number">0</span>x4000<br><span class="hljs-attribute">MASQUERADE</span>  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-LOOP-BACK dst,dst,src<br><br><span class="hljs-attribute">Chain</span> KUBE-SERVICES (<span class="hljs-number">2</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination<br><span class="hljs-attribute">KUBE</span>-MARK-MASQ  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-EXTERNAL-IP dst,dst<br><span class="hljs-attribute">ACCEPT</span>     <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-EXTERNAL-IP dst,dst PHYSDEV match ! --physdev-is-in ADDRTYPE match src-type !LOCAL<br><span class="hljs-attribute">ACCEPT</span>     <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-EXTERNAL-IP dst,dst ADDRTYPE match dst-type LOCAL<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="IPVS-模式"><a href="#IPVS-模式" class="headerlink" title="IPVS 模式"></a>IPVS 模式</h3><h4 id="入流量"><a href="#入流量" class="headerlink" title="入流量"></a>入流量</h4><blockquote>
+<p>入流量是指由集群外部访问 service 的流量。<br>Iptables 入流量的 chain 路径是 PREROUTING@nat -&gt; INPUT@nat。</p>
+</blockquote>
+<h4 id="ClusterIP"><a href="#ClusterIP" class="headerlink" title="ClusterIP"></a>ClusterIP</h4><blockquote>
+<p>Iptables 入流量的 chain 路径是 PREROUTING@nat -&gt; INPUT@nat。<br>在 PREROUTING 阶段，流量跳转到 KUBE-SERVICES target chain:</p>
+</blockquote>
+<figure class="highlight ada"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs ada">[root@k8s-n-<span class="hljs-number">1920168091021</span> overlord]# iptables -L -n -t nat<br>Chain PREROUTING (policy <span class="hljs-keyword">ACCEPT</span>)<br>target     prot opt source               destination         <br>KUBE-SERVICES  <span class="hljs-keyword">all</span>  <span class="hljs-comment">--  0.0.0.0/0            0.0.0.0/0            /* kubernetes service portals */</span><br>DOCKER     <span class="hljs-keyword">all</span>  <span class="hljs-comment">--  0.0.0.0/0            0.0.0.0/0            ADDRTYPE match dst-type LOCAL</span><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="KUBE-SERVICES-chain-如下："><a href="#KUBE-SERVICES-chain-如下：" class="headerlink" title="KUBE-SERVICES chain 如下："></a>KUBE-SERVICES chain 如下：</h4><figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">Chain</span> KUBE-SERVICES (<span class="hljs-number">2</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination         <br><span class="hljs-attribute">KUBE</span>-MARK-MASQ  <span class="hljs-literal">all</span>  -- !<span class="hljs-number">10.244.0.0</span>/<span class="hljs-number">16</span>        <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            /* Kubernetes service cluster ip + port for masquerade purpose */ match-set KUBE-CLUSTER-IP dst,dst<br><span class="hljs-attribute">KUBE</span>-NODE-PORT  <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            ADDRTYPE match dst-type LOCAL<br><span class="hljs-attribute">ACCEPT</span>     <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            match-set KUBE-CLUSTER-IP dst,dst<br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>ClusterIP service 的访问流量会交由 KUBE-MARK-MASQ处理，其匹配规则是匹配内核中名为 KUBE-CLUSTER-IP 的 ipset（将源地址不是10.244.0.0&#x2F;16的IP交由KUBE-MARK-MASQ）。</p>
+</blockquote>
+<h4 id="下一步就是为这些包打上标记："><a href="#下一步就是为这些包打上标记：" class="headerlink" title="下一步就是为这些包打上标记："></a>下一步就是为这些包打上标记：</h4><figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">Chain</span> KUBE-MARK-MASQ (<span class="hljs-number">3</span> references)<br><span class="hljs-attribute">target</span>     prot opt source               destination         <br><span class="hljs-attribute">MARK</span>       <span class="hljs-literal">all</span>  --  <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0.0.0</span>/<span class="hljs-number">0</span>            MARK or <span class="hljs-number">0</span>x4000<br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>此时封包在 iptables 的路径已经走完，并没有后续的 DNAT 到后端 endpoint 的流程，这一步的工作交由 IPVS 来完成。（这步是仅仅给ipset list中的KUBE-CLUSTER-IP 添加了一个标签0x4000，有此标记的数据包会在KUBE-POSTROUTING chain中统一做MASQUERADE）</p>
+</blockquote>
+<h4 id="检查-ipvs-代理规则"><a href="#检查-ipvs-代理规则" class="headerlink" title="检查 ipvs 代理规则"></a>检查 ipvs 代理规则</h4><blockquote>
+<p>用户可以使用ipvsadm工具检查 kube-proxy 是否维护正确的 ipvs 规则，比如，我们在集群中有以下一些服务：</p>
+</blockquote>
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs pgsql"># kubectl <span class="hljs-keyword">get</span> svc <span class="hljs-comment">--all-namespaces</span><br>NAMESPACE     <span class="hljs-type">NAME</span>         <span class="hljs-keyword">TYPE</span>        <span class="hljs-keyword">CLUSTER</span>-IP   <span class="hljs-keyword">EXTERNAL</span>-IP   PORT(S)         AGE<br><span class="hljs-keyword">default</span>       kubernetes   ClusterIP   <span class="hljs-number">10.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>     &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">443</span>/TCP         <span class="hljs-number">1</span>d<br>kube-<span class="hljs-keyword">system</span>   kube-dns     ClusterIP   <span class="hljs-number">10.0</span><span class="hljs-number">.0</span><span class="hljs-number">.10</span>    &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">53</span>/UDP,<span class="hljs-number">53</span>/TCP   <span class="hljs-number">1</span>d<br></code></pre></td></tr></table></figure>
+
+
+<h4 id="我们可以得到如下的一些-ipvs-代理规则："><a href="#我们可以得到如下的一些-ipvs-代理规则：" class="headerlink" title="我们可以得到如下的一些 ipvs 代理规则："></a>我们可以得到如下的一些 ipvs 代理规则：</h4><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs nginx"> <span class="hljs-comment"># ipvsadm -ln</span><br><span class="hljs-attribute">IP</span> Virtual Server version <span class="hljs-number">1</span>.<span class="hljs-number">2</span>.<span class="hljs-number">1</span> (size=<span class="hljs-number">4096</span>)<br>Prot LocalAddress:Port Scheduler Flags<br>  -&gt; RemoteAddress:Port           Forward Weight ActiveConn InActConn<br>TCP  <span class="hljs-number">10.0.0.1:443</span> rr persistent <span class="hljs-number">10800</span><br>  -&gt; <span class="hljs-number">192.168.0.1:6443</span>             Masq    <span class="hljs-number">1</span>      <span class="hljs-number">1</span>          <span class="hljs-number">0</span><br>TCP  <span class="hljs-number">10.0.0.10:53</span> rr<br>  -&gt; <span class="hljs-number">172.17.0.2:53</span>                Masq    <span class="hljs-number">1</span>      <span class="hljs-number">0</span>          <span class="hljs-number">0</span><br>UDP  <span class="hljs-number">10.0.0.10:53</span> rr<br>  -&gt; <span class="hljs-number">172.17.0.2:53</span>                Masq    <span class="hljs-number">1</span>      <span class="hljs-number">0</span>          <span class="hljs-number">0</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<h3 id="出流量"><a href="#出流量" class="headerlink" title="出流量"></a>出流量</h3><blockquote>
+<p>出流量是指由集群内的 pod 访问 service 的流量。<br>Iptables 出流量的 chain 路径是 OUTPUT@nat -&gt; POSTROUTING@nat。<br>OUTPUT chain 如下，与入流量情形一样，也是所有流量跳转到 KUBE-SERVICES chain：</p>
+</blockquote>
+<figure class="highlight ada"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs ada">[root@k8s-n-<span class="hljs-number">1920168091021</span> overlord]# iptables -L -n -t nat<br>Chain OUTPUT (policy <span class="hljs-keyword">ACCEPT</span>)<br>target     prot opt source               destination         <br>KUBE-SERVICES  <span class="hljs-keyword">all</span>  <span class="hljs-comment">--  0.0.0.0/0            0.0.0.0/0            /* kubernetes service portals */</span><br>DOCKER     <span class="hljs-keyword">all</span>  <span class="hljs-comment">--  0.0.0.0/0           !127.0.0.0/8          ADDRTYPE match dst-type LOCAL</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>而后的动作与入流量一致，不论 ClusterIP service 还是 NodePort service，都是为封包打上 0x4000 的标记。区别是至此入流量的 iptables 流程走完，而出流量还需要经过 nat 表的 POSTROUTING chain，其定义如下：</p>
+</blockquote>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs gradle">[root@k8s-n-<span class="hljs-number">1920168091021</span> overlord]# iptables -L -n -t nat<br>Chain POSTROUTING (policy ACCEPT)<br>target     prot opt <span class="hljs-keyword">source</span>               destination         <br>KUBE-POSTROUTING  all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes postrouting rules */</span><br>MASQUERADE  all  --  <span class="hljs-number">172.17</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/16        0.0.0.0/</span><span class="hljs-number">0</span>           <br>MASQUERADE  all  --  <span class="hljs-number">233.233</span>.<span class="hljs-number">5.0</span><span class="hljs-regexp">/24       0.0.0.0/</span><span class="hljs-number">0</span>           <br><span class="hljs-keyword">RETURN</span>     all  --  <span class="hljs-number">10.244</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/16        10.244.0.0/</span><span class="hljs-number">16</span>       <br>MASQUERADE  all  --  <span class="hljs-number">10.244</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/16       !224.0.0.0/</span><span class="hljs-number">4</span>         <br><span class="hljs-keyword">RETURN</span>     all  -- !<span class="hljs-number">10.244</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/16        10.244.16.0/</span><span class="hljs-number">24</span>      <br>MASQUERADE  all  -- !<span class="hljs-number">10.244</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/16        10.244.0.0/</span><span class="hljs-number">16</span>       <br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>进一步跳转到 KUBE-POSTROUTING chain：Chain KUBE-POSTROUTING (1 references)</p>
+</blockquote>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs css"><span class="hljs-selector-attr">[root@k8s-n-1920168091021 overlord]</span># iptables -L -n -t nat<br>Chain KUBE-POSTROUTING (<span class="hljs-number">1</span> references)<br>target     prot opt source               destination         <br>MASQUERADE  <span class="hljs-attribute">all</span>  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes service traffic requiring SNAT */</span> <span class="hljs-selector-tag">mark</span> match <span class="hljs-number">0</span>x4000/<span class="hljs-number">0</span>x4000<br>MASQUERADE  <span class="hljs-attribute">all</span>  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span>/<span class="hljs-number">0</span>            <span class="hljs-comment">/* Kubernetes endpoints dst ip:port, source ip for solving hairpin purpose */</span> match-set KUBE-LOOP-BACK dst,dst,<span class="hljs-attribute">src</span><br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>在这里，会为之前打上 0x4000 标记的出流量封包执行 MASQUERADE target，即类似于 SNAT 的一种操作，将其来源 IP 变更为 ClusterIP 或 Node ip。</p>
+</blockquote>
+<h3 id="被打了标记的流量处理方式"><a href="#被打了标记的流量处理方式" class="headerlink" title="被打了标记的流量处理方式"></a>被打了标记的流量处理方式</h3><figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs gradle">[root@k8s-n-<span class="hljs-number">1920168091021</span> overlord]# iptables -L -n<br>       <br>Chain KUBE-FIREWALL (<span class="hljs-number">2</span> references)<br>target     prot opt <span class="hljs-keyword">source</span>               destination         <br>DROP       all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes firewall for dropping marked packets */</span> mark match <span class="hljs-number">0</span>x8000/<span class="hljs-number">0</span>x8000<br><br>Chain KUBE-FORWARD (<span class="hljs-number">1</span> references)<br>target     prot opt <span class="hljs-keyword">source</span>               destination         <br>ACCEPT     all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes forwarding rules */</span> mark match <span class="hljs-number">0</span>x4000/<span class="hljs-number">0</span>x4000<br>ACCEPT     all  --  <span class="hljs-number">10.244</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/16        0.0.0.0/</span><span class="hljs-number">0</span>            <span class="hljs-comment">/* kubernetes forwarding conntrack pod source rule */</span> ctstate RELATED,ESTABLISHED<br>ACCEPT     all  --  <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><span class="hljs-regexp">/0            10.244.0.0/</span><span class="hljs-number">16</span>        <span class="hljs-comment">/* kubernetes forwarding conntrack pod destination rule */</span> ctstate RELATED,ESTABLISHED<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="ipset命令使用（iptables-中-match-set-匹配的就是就这里的地址-）"><a href="#ipset命令使用（iptables-中-match-set-匹配的就是就这里的地址-）" class="headerlink" title="ipset命令使用（iptables 中 match-set 匹配的就是就这里的地址 ）"></a>ipset命令使用（iptables 中 match-set 匹配的就是就这里的地址 ）</h3><figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><code class="hljs accesslog"><span class="hljs-string">[root@k8s-n-1920168091021 overlord]</span># ipset list<br>Name: KUBE-CLUSTER-IP<br>Type: hash:ip,port<br>Revision: <span class="hljs-number">2</span><br>Header: family inet hashsize <span class="hljs-number">1024</span> maxelem <span class="hljs-number">65536</span><br>Size in memory: <span class="hljs-number">17584</span><br>References: <span class="hljs-number">2</span><br>Members:<br><span class="hljs-number">10.105.97.136</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.105.235.100</span>,tcp:<span class="hljs-number">8452</span><br><span class="hljs-number">10.98.53.160</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.97.204.141</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.108.115.91</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.98.118.117</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.96.0.1</span>,tcp:<span class="hljs-number">443</span><br><span class="hljs-number">10.101.26.124</span>,tcp:<span class="hljs-number">443</span><br><span class="hljs-number">10.98.88.140</span>,tcp:<span class="hljs-number">8080</span><br><span class="hljs-number">10.108.210.26</span>,tcp:<span class="hljs-number">3306</span><br><span class="hljs-number">10.96.0.10</span>,tcp:<span class="hljs-number">9153</span><br><span class="hljs-number">10.96.164.37</span>,tcp:<span class="hljs-number">443</span><br><span class="hljs-number">10.109.162.103</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.110.237.2</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.101.206.6</span>,tcp:<span class="hljs-number">7030</span><br><span class="hljs-number">10.111.154.57</span>,tcp:<span class="hljs-number">8451</span><br><span class="hljs-number">10.110.94.131</span>,tcp:<span class="hljs-number">1111</span><br><span class="hljs-number">10.98.146.210</span>,tcp:<span class="hljs-number">7020</span><br><span class="hljs-number">10.103.144.159</span>,tcp:<span class="hljs-number">44134</span><br><span class="hljs-number">10.96.0.10</span>,tcp:<span class="hljs-number">53</span><br><span class="hljs-number">10.98.88.140</span>,tcp:<span class="hljs-number">8081</span><br><span class="hljs-number">10.100.77.215</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.111.2.26</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.104.58.177</span>,tcp:<span class="hljs-number">2181</span><br><span class="hljs-number">10.97.58.7</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.111.11.67</span>,tcp:<span class="hljs-number">8080</span><br><span class="hljs-number">10.109.196.230</span>,tcp:<span class="hljs-number">9090</span><br><span class="hljs-number">10.98.39.12</span>,tcp:<span class="hljs-number">5672</span><br><span class="hljs-number">10.98.254.44</span>,tcp:<span class="hljs-number">6379</span><br><span class="hljs-number">10.96.0.10</span>,udp:<span class="hljs-number">53</span><br><span class="hljs-number">10.100.189.66</span>,tcp:<span class="hljs-number">80</span><br><span class="hljs-number">10.96.160.63</span>,tcp:<span class="hljs-number">7010</span><br><span class="hljs-number">10.97.217.217</span>,tcp:<span class="hljs-number">3306</span><br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>官方文档：<a target="_blank" rel="noopener" href="https://github.com/kubernetes/kubernetes/blob/master/pkg/proxy/ipvs/README.md">https://github.com/kubernetes/kubernetes/blob/master/pkg/proxy/ipvs/README.md</a></p>
+</blockquote>
+<h3 id="网友们遇到的坑："><a href="#网友们遇到的坑：" class="headerlink" title="网友们遇到的坑："></a>网友们遇到的坑：</h3><blockquote>
+<p>使用ab测试性能进行测试。结果ab跑了没几个请求，K8S的机器就报错了。<br>kernel: nf_conntrack: table full, dropping packet</p>
+</blockquote>
+<blockquote>
+<p>这也算经典的错误了，查了下nf_conntrack_max只有131072，肯定是不够的，CentOS7.3默认应该是65536*4&#x3D;262144。肯定是有地方改动这个值了，查了一圈没找到，最后看了下Kube-proxy的日志，结果还真是它改的！</p>
+</blockquote>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[root@k8s-m-1 ~]# kubectl logs kube-proxy-q2s4h -n kube-system<br>W0110 09:32:36.679540      1 server_others.go:263] Flag <span class="hljs-attribute">proxy-mode</span>=<span class="hljs-string">&quot;&quot;</span> unknown, assuming iptables<span class="hljs-built_in"> proxy</span><br><span class="hljs-built_in"></span>I0110 09:32:36.681946      1 server_others.go:117] Using iptables Proxier.<br>I0110 09:32:36.699112      1 server_others.go:152] Tearing down inactive rules.<br>I0110 09:32:36.860064      1 conntrack.go:98] <span class="hljs-built_in">Set</span> sysctl <span class="hljs-string">&#x27;net/netfilter/nf_conntrack_max&#x27;</span> <span class="hljs-keyword">to</span> 131072<br>I0110 09:32:36.860138      1 conntrack.go:52] Setting nf_conntrack_max <span class="hljs-keyword">to</span> 131072<br>I0110 09:32:36.860192      1 conntrack.go:98] <span class="hljs-built_in">Set</span> sysctl <span class="hljs-string">&#x27;net/netfilter/nf_conntrack_tcp_timeout_established&#x27;</span> <span class="hljs-keyword">to</span> 86400<br>I0110 09:32:36.860230      1 conntrack.go:98] <span class="hljs-built_in">Set</span> sysctl <span class="hljs-string">&#x27;net/netfilter/nf_conntrack_tcp_timeout_close_wait&#x27;</span> <span class="hljs-keyword">to</span> 3600<br>I0110 09:32:36.860480      1 config.go:102] Starting endpoints<span class="hljs-built_in"> config </span>controller<br></code></pre></td></tr></table></figure>
+
+<h3 id="寻找罪魁祸首"><a href="#寻找罪魁祸首" class="headerlink" title="寻找罪魁祸首"></a>寻找罪魁祸首</h3><blockquote>
+<p>翻看了一下源代码，发现这是一个预设值，在kube-proxy的参数里可以找到。</p>
+</blockquote>
+<ul>
+<li>–conntrack-max-per-core int32                Maximum number of NAT connections to track per CPU core (0 to leave the limit as-is and ignore conntrack-min). (default 32768) 每个核默认32768个，总数就是32768*CPU核数</li>
+<li>–conntrack-min int32                          Minimum number of conntrack entries to allocate, regardless of conntrack-max-per-core (set conntrack-max-per-core&#x3D;0 to leave the limit as-is). (default 131072) 最小值是131072个，CPU核数低于或者等于4，默认是131072</li>
+</ul>
+<h3 id="解决"><a href="#解决" class="headerlink" title="解决"></a>解决</h3><blockquote>
+<ul>
+<li>找到原因了，如何修改kube-proxy的参数呢？（kube-proxy参数）<br>–conntrack-min&#x3D;1048576</li>
+</ul>
+</blockquote>
+<ul>
+<li>增加如下值到 sysctl.conf中,kube-proxy 默认会调整到 131072（系统内核参数）<br>net.netfilter.nf_conntrack_max&#x3D;1048576<br>net.nf_conntrack_max&#x3D;1048576</li>
+</ul>
+<h3 id="IPVS引发的TCP超时问题定位"><a href="#IPVS引发的TCP超时问题定位" class="headerlink" title="IPVS引发的TCP超时问题定位"></a>IPVS引发的TCP超时问题定位</h3><figure class="highlight dns"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs dns">[root@k8s-n-<span class="hljs-number">192016801100151</span> overlord]# ipvsadm -Lnc       <br>IPVS connection entries<br>pro expire state       source             virtual            destination<br>TCP <span class="hljs-number">14</span>:<span class="hljs-number">46</span>  ESTABLISHED <span class="hljs-number">192.168.20.163</span>:<span class="hljs-number">38150 192.168</span>.<span class="hljs-number">110.151:30401</span> <span class="hljs-number">10.244.17.24</span>:<span class="hljs-number">80</span><br>TCP <span class="hljs-number">01</span>:<span class="hljs-number">46</span>  TIME_WAIT   <span class="hljs-number">192.168.20.163</span>:<span class="hljs-number">37798 192.168</span>.<span class="hljs-number">110.151:30401</span> <span class="hljs-number">10.244.17.24</span>:<span class="hljs-number">80</span><br>TCP <span class="hljs-number">00</span>:<span class="hljs-number">01</span>  TIME_WAIT   <span class="hljs-number">192.168.20.163</span>:<span class="hljs-number">37150 192.168</span>.<span class="hljs-number">110.151:30401</span> <span class="hljs-number">10.244.18.30</span>:<span class="hljs-number">80</span><br>TCP <span class="hljs-number">13</span>:<span class="hljs-number">57</span>  ESTABLISHED <span class="hljs-number">192.168.20.163</span>:<span class="hljs-number">37890 192.168</span>.<span class="hljs-number">110.151:30401</span> <span class="hljs-number">10.244.18.30</span>:<span class="hljs-number">80</span><br>TCP <span class="hljs-number">14</span>:<span class="hljs-number">59</span>  ESTABLISHED <span class="hljs-number">192.168.20.163</span>:<span class="hljs-number">38218 192.168</span>.<span class="hljs-number">110.151:30401</span> <span class="hljs-number">10.244.18.30</span>:<span class="hljs-number">80</span><br>TCP <span class="hljs-number">00</span>:<span class="hljs-number">51</span>  TIME_WAIT   <span class="hljs-number">192.168.20.163</span>:<span class="hljs-number">37442 192.168</span>.<span class="hljs-number">110.151:30401</span> <span class="hljs-number">10.244.18.30</span>:<span class="hljs-number">80</span><br>TCP <span class="hljs-number">00</span>:<span class="hljs-number">46</span>  TIME_WAIT   <span class="hljs-number">192.168.20.163</span>:<span class="hljs-number">37424 192.168</span>.<span class="hljs-number">110.151:30401</span> <span class="hljs-number">10.244.17.24</span>:<span class="hljs-number">80</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight scss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs scss"><span class="hljs-selector-attr">[root@k8s-n-192016801100151 overlord]</span># ipvsadm -l <span class="hljs-attr">--timeout</span><br>Timeout (tcp tcpfin udp): <span class="hljs-number">900</span> <span class="hljs-number">120</span> <span class="hljs-number">300</span><br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>基本确定了问题， 看起来是 ipvs 维护 VIP的这条链接存在15min左右的超时阈值设定，这个值是否跟系统默认的tcp_keepalive_timeout 有协同影响？ 那么系统的默认tcp超时时间是多少呢？<br>ipvs维护链接有个超时时间，默认为900s为15分钟；然后操作系统默认的tcp_keepalive_timeout 默认为7200s，当一个空闲 tcp连接达到900s时，首先他被ipvs断了，但是操作系统认为该链接还没有到保活超时，所以客户端还会使用之前的连接去发送查询请求，但是ipvs已经不维护该链接了，所以 Lost Connection。。所以只要减小系统的tcp_keepalive_timeout时间，比如到600，后发送一个心跳包，让tcp保活， 这样， ipvs的连接超时也会被重置计数为15min。</p>
+</blockquote>
+<h3 id="新增如下参数"><a href="#新增如下参数" class="headerlink" title="新增如下参数"></a>新增如下参数</h3><blockquote>
+<ul>
+<li>表示当Keepalive起用的时候，TCP发送keepalive消息的频繁度。预设值是2小时，这里我改为5分钟。<br>net.ipv4.tcp_keepalive_time &#x3D; 600</li>
+</ul>
+</blockquote>
+<ul>
+<li>总共发送keepalive的次数<br>net.ipv4.tcp_keepalive_probes &#x3D; 10</li>
+<li>每次发送keepalive间隔单位S<br>net.ipv4.tcp_keepalive_intvl &#x3D; 30</li>
+</ul>
+<blockquote>
+<p>当启用与内核参数或守护程序端配置或客户端配置相关的选项时，它将根据这些选项终止tcp会话。例如，当您将以上述内核参数选项视为示例时，首先将在600秒后开始发送keepalive数据包，之后每隔30秒发送一次下一个数据包10次。当客户端或服务器在这段时间内根本没有应答时，tcp会话将被视为已损坏，并将终止。为什么我们要设置为600s呢， 其实只要比 ipvs的默认值900小即可！</p>
+</blockquote>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>kube-proxy 工作模式分析</div>
+      <div>https://system51.github.io/2019/08/26/kube-proxy/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/installation-Kubernetes-v1-13-5/" title="二进制部署Kubernetes v1.13.5（一）">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">二进制部署Kubernetes v1.13.5（一）</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/pause/" title="K8s集群中pause容器是干嘛的">
+                        <span class="hidden-mobile">K8s集群中pause容器是干嘛的</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

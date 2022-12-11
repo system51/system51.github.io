@@ -1,0 +1,699 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="本文将描述如何使用sysctl接口在Kubernetes集群中配置和使用内核参数。 获取sysctl参数列表在Linux中，sysctl接口允许管理员在运行时修改内核参数。参数可以通过&#x2F;proc&#x2F;sys&#x2F; 虚拟进程文件系统获得。参数涵盖多个子系统，例如:  内核 (通用前缀：kernel.) 网络 (通用前缀：net.) 虚拟内存 (通用前缀：vm.) 设备专用 (通用前缀：dev.) 更多子系统">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在Kuberentes集群中使用sysctl">
+<meta property="og:url" content="https://system51.github.io/2020/01/14/using-sysctls-in-a-kubernetes-cluster/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="本文将描述如何使用sysctl接口在Kubernetes集群中配置和使用内核参数。 获取sysctl参数列表在Linux中，sysctl接口允许管理员在运行时修改内核参数。参数可以通过&#x2F;proc&#x2F;sys&#x2F; 虚拟进程文件系统获得。参数涵盖多个子系统，例如:  内核 (通用前缀：kernel.) 网络 (通用前缀：net.) 虚拟内存 (通用前缀：vm.) 设备专用 (通用前缀：dev.) 更多子系统">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-14T06:33:19.000Z">
+<meta property="article:modified_time" content="2020-01-15T03:04:17.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>在Kuberentes集群中使用sysctl - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="在Kuberentes集群中使用sysctl"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2020-01-14 14:33" pubdate>
+          2020年1月14日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          3.2k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          6 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">在Kuberentes集群中使用sysctl</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>本文将描述如何使用sysctl接口在Kubernetes集群中配置和使用内核参数。</p>
+<h2 id="获取sysctl参数列表"><a href="#获取sysctl参数列表" class="headerlink" title="获取sysctl参数列表"></a>获取sysctl参数列表</h2><p>在Linux中，sysctl接口允许管理员在运行时修改内核参数。参数可以通过<code>/proc/sys/</code> 虚拟进程文件系统获得。参数涵盖多个子系统，例如:</p>
+<ul>
+<li>内核 (通用前缀：kernel.)</li>
+<li>网络 (通用前缀：net.)</li>
+<li>虚拟内存 (通用前缀：vm.)</li>
+<li>设备专用 (通用前缀：dev.)</li>
+<li>更多子系统描述见 <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/Documentation/sysctl/README">Kernel docs</a>.</li>
+</ul>
+<p>要获取所有参数列表，你可以运行：</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs css">sysctl -<span class="hljs-selector-tag">a</span><br></code></pre></td></tr></table></figure>
+
+<h2 id="启用非安全的-Sysctl-参数"><a href="#启用非安全的-Sysctl-参数" class="headerlink" title="启用非安全的 Sysctl 参数"></a>启用非安全的 Sysctl 参数</h2><p>sysctl 参数分为 安全 和 非安全的。安全 sysctl 参数除了需要设置恰当的命名空间外，在同一 node 上的不同 Pod 之间也必须是相互隔离的。这意味着在 Pod 上设置 安全 sysctl 参数</p>
+<ul>
+<li>必须不能影响到节点上的其他 Pod</li>
+<li>必须不能损害节点的健康</li>
+<li>必须不允许使用超出 Pod 的资源限制的 CPU 或内存资源。</li>
+</ul>
+<p>至今为止，大多数 有命名空间的 sysctl 参数不一定被认为是 安全 的。以下几种 sysctl 参数是 安全的：</p>
+<ul>
+<li>kernel.shm_rmid_forced,</li>
+<li>net.ipv4.ip_local_port_range,</li>
+<li>net.ipv4.tcp_syncookies.</li>
+</ul>
+<p>注意: 示例中的 <code>net.ipv4.tcp_syncookies</code> 在Linux 内核 4.4 或更低的版本中是无命名空间的。</p>
+<p>在未来的 Kubernetes 版本中，若kubelet 支持更好的隔离机制，则上述列表中将会列出更多 安全的 sysctl 参数。</p>
+<p>所有 安全的 sysctl 参数都默认启用。</p>
+<p>所有 非安全的 sysctl 参数都默认禁用，且必须由集群管理员在每个节点上手动开启。那些设置了不安全 sysctl 参数的 Pod 仍会被调度，但无法正常启动。</p>
+<p>参考上述警告，集群管理员只有在一些非常特殊的情况下（如：高可用或实时应用调整），才可以启用特定的 非安全的 sysctl 参数。如需启用 非安全的 sysctl 参数，请您在每个节点上分别设置 kubelet 命令行参数，例如：</p>
+<figure class="highlight brainfuck"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs brainfuck"><span class="hljs-comment">KUBELET_EXTRA_ARGS=&quot;</span><span class="hljs-literal">--</span><span class="hljs-comment">v=4</span> <span class="hljs-literal">--</span><span class="hljs-comment">logtostderr=false</span> <span class="hljs-literal">--</span><span class="hljs-comment">log</span><span class="hljs-literal">-</span><span class="hljs-comment">dir=/var/log/kubernetes/kubelet</span> <span class="hljs-literal">--</span><span class="hljs-comment">cgroup</span><span class="hljs-literal">-</span><span class="hljs-comment">driver=cgroupfs</span> <span class="hljs-literal">--</span><span class="hljs-comment">allowed</span><span class="hljs-literal">-</span><span class="hljs-comment">unsafe</span><span class="hljs-literal">-</span><span class="hljs-comment">sysctls=ke</span><br><span class="hljs-comment">rnel</span><span class="hljs-string">.</span><span class="hljs-comment">msg*</span><span class="hljs-string">,</span><span class="hljs-comment">net</span><span class="hljs-string">.</span><span class="hljs-comment">*&quot;</span><br></code></pre></td></tr></table></figure>
+
+<p>只有有命名空间的sysctl可以通过这种方式启用。</p>
+<h2 id="设置-Pod-的-Sysctl-参数"><a href="#设置-Pod-的-Sysctl-参数" class="headerlink" title="设置 Pod 的 Sysctl 参数"></a>设置 Pod 的 Sysctl 参数</h2><p>目前，在 Linux 内核中，有许多的 sysctl 参数都是 有命名空间的 。 这就意味着可以为节点上的每个 Pod 分别去设置它们的 sysctl 参数。 在 Kubernetes 中，只有那些有命名空间的 sysctl 参数可以通过 Pod 的 securityContext 对其进行配置。</p>
+<p>以下列出有命名空间的 sysctl 参数，在未来的 Linux 内核版本中，此列表可能会发生变化。</p>
+<ul>
+<li>kernel.shm*,</li>
+<li>kernel.msg*,</li>
+<li>kernel.sem,</li>
+<li>fs.mqueue.*,</li>
+<li>net.*（内核中网络配置项相关参数），它可以在容器命名空间里被更改。然而，也有一些特例 (例如，net.netfilter.nf_conntrack_max 和 net.netfilter.nf_conntrack_expect_max 可以在容器命名空间里被更改，但它们是非命名空间的)。</li>
+</ul>
+<p>没有命名空间的 sysctl 参数称为 节点级别的 sysctl 参数。 如果需要对其进行设置，则必须在每个节点的操作系统上手动地去配置它们，或者通过在 DaemonSet 中运行特权模式容器来配置。</p>
+<p>可使用 pod 的 securityContext 来配置有命名空间的 sysctl 参数，securityContext 应用于同一个 pod 中的所有容器。</p>
+<p>此示例中，使用 Pod SecurityContext 来对一个安全的 sysctl 参数 <code>kernel.shm_rmid_forced</code> 以及两个非安全的 sysctl 参数 <code>net.core.somaxconn</code> 和 <code>kernel.msgmax</code> 进行设置。在 Pod 定义中对 安全的 和 非安全的 sysctl 参数不做区分。</p>
+<p>警告：为了避免破坏操作系统的稳定性，请您在了解变更后果之后再修改 sysctl 参数。</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> Pod<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> sysctl-example<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  securityContext:</span><br><span class="hljs-symbol">    sysctls:</span><br>    - name: kernel.shm_rmid_forced<br><span class="hljs-symbol">      value:</span> <span class="hljs-string">&quot;0&quot;</span><br>    - name: net.core.somaxconn<br><span class="hljs-symbol">      value:</span> <span class="hljs-string">&quot;1024&quot;</span><br>    - name: kernel.msgmax<br><span class="hljs-symbol">      value:</span> <span class="hljs-string">&quot;65536&quot;</span><br>  ...<br></code></pre></td></tr></table></figure>
+
+<p>最佳实践方案是将具有特殊sysctl设置的节点视为集群中的<code>污染节点</code>，并且只将需要使用到特殊 sysctl 设置的 Pod 调度到这些节点上。建议使用Kubernetes的污染和容忍特性来实现这一点。</p>
+<p>带有非安全sysctl的pod将无法在任何没有显式启用这两个不安全sysctl的节点上启动（启动将会失败）。与节点级sysctl一样，建议使用污染和容忍特性和节点污染将这些pod调度到正确的节点上。</p>
+<h2 id="PodSecurityPolicy"><a href="#PodSecurityPolicy" class="headerlink" title="PodSecurityPolicy"></a>PodSecurityPolicy</h2><p>您可以通过在 PodSecurityPolicy 的 <code>forbiddenSysctls</code> 和&#x2F;或 <code>allowedUnsafeSysctls</code> 字段中，指定 sysctl 或填写 sysctl 匹配模式来进一步为 Pod 设置 sysctl 参数。sysctl 参数匹配模式以 <code>*</code> 字符结尾，如 <code>kernel.*</code>。 单独的 <code>*</code> 字符匹配所有 sysctl 参数。</p>
+<p>所有 安全的 sysctl 参数都默认启用。</p>
+<p><code>forbiddenSysctls</code> 和 <code>allowedUnsafeSysctls</code> 的值都是字符串列表类型，可以添加 sysctl 参数名称，也可以添加 sysctl 参数匹配模式（以<code>*</code>结尾）。 只填写 <code>*</code> 则匹配所有的 sysctl 参数。</p>
+<p><code>forbiddenSysctls</code> 字段用于禁用特定的 sysctl 参数。 您可以在列表中禁用安全和非安全的 sysctl 参数的组合。 要禁用所有的 sysctl 参数，请设置为 <code>*</code>。</p>
+<p>如果要在 <code>allowedUnsafeSysctls</code> 字段中指定一个非安全的 sysctl 参数，并且它在<code>forbiddenSysctls</code> 字段中未被禁用，则可以在 Pod 中通过 PodSecurityPolicy 启用该 sysctl 参数。 若要在 PodSecurityPolicy 中开启所有非安全的 sysctl 参数，请设 <code>allowedUnsafeSysctls</code> 字段值为 <code>*</code>。</p>
+<p><code>allowedUnsafeSysctls</code> 与 <code>forbiddenSysctls</code> 两字段的配置不能重叠，否则这就意味着存在某个 sysctl 参数既被启用又被禁用。</p>
+<p>警告：如果您通过 PodSecurityPolicy 中的 <code>allowedUnsafeSysctls</code> 字段将非安全的 sysctl 参数列入白名单，但该 sysctl 参数未通过 kubelet 命令行参数 <code>--allowed-unsafe-sysctls</code> 在节点上将其列入白名单，则设置了这个 sysctl 参数的 Pod 将会启动失败。</p>
+<p>以下示例设置启用了以 <code>kernel.msg</code> 为前缀的非安全的 sysctl 参数，以及禁用了 sysctl 参数 <code>kernel.shm_rmid_forced</code>。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">policy/v1beta1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">PodSecurityPolicy</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">sysctl-psp</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">allowedUnsafeSysctls</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">kernel.msg*</span><br>  <span class="hljs-attribute">forbiddenSysctls</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">kernel.shm_rmid_forced</span><br> ...<br></code></pre></td></tr></table></figure>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>在Kuberentes集群中使用sysctl</div>
+      <div>https://system51.github.io/2020/01/14/using-sysctls-in-a-kubernetes-cluster/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2020年1月14日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2020/05/27/using-calico/" title="Calico配置及原理">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Calico配置及原理</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/01/13/reserve-compute-resources-for-system-daemons/" title="Kubernetes 资源预留">
+                        <span class="hidden-mobile">Kubernetes 资源预留</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

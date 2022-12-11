@@ -1,0 +1,734 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="由于业务需求希望一个项目一个ingress-nginx以方便后期管理。为此我把ingress-nginx的所有Yaml文件读了一遍了解了其中的创建过程以及权限设置。想要实现多实例我们需要对如下几个地方做出适当的修改。   此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ingress-nginx多实例部署">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/ingress-nginx-Multi-instance/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="由于业务需求希望一个项目一个ingress-nginx以方便后期管理。为此我把ingress-nginx的所有Yaml文件读了一遍了解了其中的创建过程以及权限设置。想要实现多实例我们需要对如下几个地方做出适当的修改。   此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-08-26T06:05:08.000Z">
+<meta property="article:modified_time" content="2019-09-06T02:03:09.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>ingress-nginx多实例部署 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="ingress-nginx多实例部署"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 14:05" pubdate>
+          2019年8月26日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          5.3k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          9 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">ingress-nginx多实例部署</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <blockquote>
+<p>由于业务需求希望一个项目一个ingress-nginx以方便后期管理。为此我把ingress-nginx的所有Yaml文件读了一遍了解了其中的创建过程以及权限设置。想要实现多实例我们需要对如下几个地方做出适当的修改。</p>
+</blockquote>
+<blockquote>
+<h4 id="此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）"><a href="#此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）" class="headerlink" title="此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）"></a>此段主要是允许访问一个叫ingress-controller-leader-iov-iov的configmap（通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）</h4></blockquote>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext">  <span class="hljs-bullet">-</span> <span class="hljs-string">apiGroups:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;&quot;</span><br>    <span class="hljs-attribute">resources</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">configmaps</span><br>    <span class="hljs-attribute">resourceNames</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-comment"># Defaults to &quot;&lt;election-id&gt;-&lt;ingress-class&gt;&quot;</span><br>      <span class="hljs-comment"># Here: &quot;&lt;ingress-controller-leader&gt;-&lt;nginx&gt;&quot;</span><br>      <span class="hljs-comment"># This has to be adapted if you change either parameter</span><br>      <span class="hljs-comment"># when launching the nginx-ingress-controller.</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;ingress-controller-leader-iov-iov&quot;</span><br>    <span class="hljs-attribute">verbs</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">get</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">update</span><br><br><span class="hljs-comment">#注意：这里的名称是&lt;election-id&gt;-&lt;ingress-class&gt;拼接而成</span><br><br></code></pre></td></tr></table></figure>
+
+
+
+
+<blockquote>
+<h4 id="在如下args段中我们新增了几个参数："><a href="#在如下args段中我们新增了几个参数：" class="headerlink" title="在如下args段中我们新增了几个参数："></a>在如下args段中我们新增了几个参数：</h4></blockquote>
+<ul>
+<li><code>--ingress-class=iov </code>          当设置这个参数后只会Watch Ingress class为 iov的</li>
+<li><code>--election-id=ingress-controller-leader-iov </code>  用于Ingress状态更新的选举ID。（默认<code>ingress-controller-leader</code>）</li>
+<li><code> --report-node-internal-ip-address</code>    默认情况下是–publish-service但是在裸机部署的时候要使用<code>kubectl get ingress</code>无法显示<code>ADDRESS</code>，所以我们需要使用–report-node-internal-ip-address参数</li>
+</ul>
+<blockquote>
+<h4 id="删除删除："><a href="#删除删除：" class="headerlink" title="删除删除："></a>删除删除：</h4></blockquote>
+<ul>
+<li><code>--publish-service=$(POD_NAMESPACE)/ingress-nginx</code>   非公有云情况下使用<code>kubectl get ingress</code>无法显示<code>ADDRESS</code></li>
+</ul>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">serviceAccountName</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx-ingress-serviceaccount</span><br><span class="hljs-attribute">nodeSelector</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">node</span><span class="hljs-punctuation">:</span> <span class="hljs-string">IOV</span><br><span class="hljs-attribute">containers</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">name: nginx-ingress-iov-controller</span><br>    <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">quay.io/kubernetes-ingress-controller/nginx-ingress-controller:0.24.1</span><br>    <span class="hljs-attribute">args</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">/nginx-ingress-controller</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">--configmap=$(POD_NAMESPACE)/nginx-configuration</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">--tcp-services-configmap=$(POD_NAMESPACE)/tcp-services</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">--udp-services-configmap=$(POD_NAMESPACE)/udp-services</span><br>     <span class="hljs-comment"># - --publish-service=$(POD_NAMESPACE)/ingress-nginx</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">--report-node-internal-ip-address</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">--annotations-prefix=nginx.ingress.kubernetes.io</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">--ingress-class=iov</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">--election-id=ingress-controller-leader-iov</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">--v=2</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="在创建ingress时我们需要注意"><a href="#在创建ingress时我们需要注意" class="headerlink" title="在创建ingress时我们需要注意"></a>在创建ingress时我们需要注意</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">extensions/v1beta1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Ingress</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">ingress-myapp</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attr">annotations:</span><br>    <span class="hljs-attr">kubernetes.io/ingress.class:</span> <span class="hljs-string">&quot;iov&quot;</span>                    <span class="hljs-comment"># 指定class类不然无法被ingress所选取到</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">rules:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">host:</span> <span class="hljs-string">nginx.testdomain.com</span><br>    <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">paths:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">path:</span><br>        <span class="hljs-attr">backend:</span><br>          <span class="hljs-attr">serviceName:</span> <span class="hljs-string">nginx-service</span><br>          <span class="hljs-attr">servicePort:</span> <span class="hljs-number">8080</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="Ingress-nginx使用："><a href="#Ingress-nginx使用：" class="headerlink" title="Ingress-nginx使用："></a>Ingress-nginx使用：</h3><blockquote>
+<h4 id="有三种方法可以自定义NGINX："><a href="#有三种方法可以自定义NGINX：" class="headerlink" title="有三种方法可以自定义NGINX："></a>有三种方法可以自定义NGINX：</h4></blockquote>
+<ul>
+<li>ConfigMap：使用Configmap在NGINX中设置全局配置。</li>
+<li>Annotations: 如果需要特定Ingress规则的特定配置，请使用此选项。</li>
+<li>自定义模板：当需要更具体的设置时，比如open_file_cache，将listen选项调整为rcvbuf，或者当无法通过ConfigMap更改配置时。</li>
+</ul>
+<h4 id="Annotations："><a href="#Annotations：" class="headerlink" title="Annotations："></a>Annotations：</h4><figure class="highlight axapta"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs axapta">将配置添加到<span class="hljs-keyword">server</span>作用域中：<br>nginx.ingress.kubernetes.io/<span class="hljs-keyword">server</span>-snippet: <br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs stylus">将配置添加到location作用域：<br>nginx<span class="hljs-selector-class">.ingress</span><span class="hljs-selector-class">.kubernetes</span>.io/configuration-snippet: <br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs stylus">指示Ingress上定义的路径是否使用正则表达式：<br>nginx<span class="hljs-selector-class">.ingress</span><span class="hljs-selector-class">.kubernetes</span>.io/use-regex:<br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs stylus">必须重定向流量的目标URI：<br>nginx<span class="hljs-selector-class">.ingress</span><span class="hljs-selector-class">.kubernetes</span>.io/rewrite-target:<br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs stylus">设置upstream server  proxy_set_header Host <span class="hljs-variable">$host</span>：<br>nginx<span class="hljs-selector-class">.ingress</span><span class="hljs-selector-class">.kubernetes</span>.io/upstream-vhost:<br></code></pre></td></tr></table></figure>
+
+
+
+<h4 id="ConfigMaps："><a href="#ConfigMaps：" class="headerlink" title="ConfigMaps："></a>ConfigMaps：</h4><blockquote>
+<p>使用ConfigMap配置NGINX将是对整个Nginx进行全局配置</p>
+</blockquote>
+<figure class="highlight tap"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs tap">[root@k8s-m-19201680111034 overlord]<span class="hljs-comment"># kubectl get configmap -n ingress-nginx</span><br>NAME                              DATA   AGE<br>ingress-controller-leader-nginx  <span class="hljs-number"> 0 </span>     22d<br>nginx-configuration              <span class="hljs-number"> 0 </span>     22d<br>tcp-services                     <span class="hljs-number"> 0 </span>     22d<br>udp-services                     <span class="hljs-number"> 0 </span>     22d<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>例如，如果我们想改变超时，我们需要创建一个ConfigMap:</p>
+</blockquote>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs dts">[root@k8s-m<span class="hljs-number">-19201680111034</span> overlord]<span class="hljs-meta"># cat configmap.yaml</span><br><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">data:</span><br>  proxy-connect-timeout: <span class="hljs-string">&quot;10&quot;</span><br>  proxy-read-timeout: <span class="hljs-string">&quot;120&quot;</span><br>  proxy-send-timeout: <span class="hljs-string">&quot;120&quot;</span><br><span class="hljs-symbol">kind:</span> ConfigMap<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> nginx-configuration<br>	<br>[root@k8s-m<span class="hljs-number">-19201680111034</span> overlord]<span class="hljs-meta"># kubectl apply -f configmap.yaml</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="自定义标题"><a href="#自定义标题" class="headerlink" title="自定义标题"></a>自定义标题</h3><blockquote>
+<p>本例演示了通过ConfigMap配置nginx ingress控制器，以便将自定义头列表传递给上游服务器。</p>
+</blockquote>
+<blockquote>
+<p>首先我们在ingress-nginx名称空间创建一个ConfigMap其中包含几个自定义的 X-prefixed HTTP头部。内容如下：</p>
+</blockquote>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">v1</span><br><span class="hljs-attribute">data</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">X-Different-Name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;true&quot;</span><br>  <span class="hljs-attribute">X-Request-Start</span><span class="hljs-punctuation">:</span> <span class="hljs-string">t=$&#123;msec&#125;</span><br>  <span class="hljs-attribute">X-Using-Nginx-Controller</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;true&quot;</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ConfigMap</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">custom-headers</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ingress-nginx</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>第二步我们修改ingres-nginx名称空间中一个名为nginx-configuration的ConfigMap。它控制ingress-controller的全局配置。nginx-ingress控制器将读取ingres-nginx&#x2F;nginx-configuration ConfigMap，找到proxy-set-headers键，然后从ingres-nginx&#x2F;custom-headers ConfigMap读取HTTP头部，并将这些HTTP头部包含在从nginx流到后端所有请求中。</p>
+</blockquote>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">v1</span><br><span class="hljs-attribute">data</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">proxy-set-headers</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;ingress-nginx/custom-headers&quot;</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ConfigMap</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx-configuration</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ingress-nginx</span><br>  <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">app.kubernetes.io/name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ingress-nginx</span><br>    <span class="hljs-attribute">app.kubernetes.io/part-of</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ingress-nginx</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="设置日志格式："><a href="#设置日志格式：" class="headerlink" title="设置日志格式："></a>设置日志格式：</h3><blockquote>
+<p>设置nginx日志格式，以json格式输出:</p>
+</blockquote>
+<figure class="highlight julia"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs julia">[root<span class="hljs-meta">@k8s</span>-m1 ~]<span class="hljs-comment"># cat log.yaml</span><br>apiVersion: v1<br>data:<br>  log-format-upstream: &#x27;&#123; <span class="hljs-string">&quot;time&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$time_iso8601</span>&quot;</span>, <span class="hljs-string">&quot;remote_addr&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$proxy_protocol_addr</span>&quot;</span>,<span class="hljs-string">&quot;x-forward-for&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$proxy_add_x_forwarded_for</span>&quot;</span>, <span class="hljs-string">&quot;request_id&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$req_id</span>&quot;</span>, <span class="hljs-string">&quot;remote_user&quot;</span>:<span class="hljs-string">&quot;<span class="hljs-variable">$remote_user</span>&quot;</span>, <span class="hljs-string">&quot;bytes_sent&quot;</span>: $bytes_sent, <span class="hljs-string">&quot;request_time&quot;</span>: $request_time, <span class="hljs-string">&quot;status&quot;</span>:$status, <span class="hljs-string">&quot;vhost&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$host</span>&quot;</span>, <span class="hljs-string">&quot;request_proto&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$server_protocol</span>&quot;</span>, <span class="hljs-string">&quot;path&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$uri</span>&quot;</span>,<span class="hljs-string">&quot;request_query&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$args</span>&quot;</span>, <span class="hljs-string">&quot;request_length&quot;</span>: $request_length, <span class="hljs-string">&quot;duration&quot;</span>: $request_time,<span class="hljs-string">&quot;method&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$request_method</span>&quot;</span>, <span class="hljs-string">&quot;http_referrer&quot;</span>: <span class="hljs-string">&quot;<span class="hljs-variable">$http_referer</span>&quot;</span>, <span class="hljs-string">&quot;http_user_agent&quot;</span>:<span class="hljs-string">&quot;<span class="hljs-variable">$http_user_agent</span>&quot;</span> &#125;&#x27;<br>kind: ConfigMap<br>metadata:<br>  name: nginx-configuration<br>  namespace: ingress-nginx<br></code></pre></td></tr></table></figure>
+
+<h3 id="调整工作进程和内存设置："><a href="#调整工作进程和内存设置：" class="headerlink" title="调整工作进程和内存设置："></a>调整工作进程和内存设置：</h3><blockquote>
+<p>Nginx 具有默认设置worker_processes auto，这意味着工作进程号与宿主机上的 CPU 核心数相同。 请注意，这里提到的是物理主机而不是容器资源！这是因为 Nginx 不是 cgroup-aware，而 Ingress 控制器将忽略以下 2 个约束：</p>
+</blockquote>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs stylus">resources<span class="hljs-selector-class">.limits</span><span class="hljs-selector-class">.cpu</span><br>resources<span class="hljs-selector-class">.requests</span>.cpu<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>当技术人员将集群中的宿主机节点从 4 个 vCPU 核心升级到 16 个 vCPU 核心时，Ingress 控制器的 Pod 在 Ingress 的更改期间会出现故障。这时，登录 Pod 并检查&#x2F;etc&#x2F;nginx&#x2F;nginx.conf后，你会发现每个 Ingress 控制器中的 Pod 有 16 个工作进程而不是 4 个。<br>当频繁的进行 Ingress 更改时，Nginx 将继续为这 16 个工作进程重新加载配置并消耗 Pod 中的所有内存，让他们死于 OOM。</p>
+</blockquote>
+<h4 id="注意：当node节点既有ingress-nginx-Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem"><a href="#注意：当node节点既有ingress-nginx-Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem" class="headerlink" title="注意：当node节点既有ingress-nginx Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem"></a>注意：当node节点既有ingress-nginx Pod，又有其他业务Pod时请限制ingress-nginx的资源利用CPU、mem</h4>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>ingress-nginx多实例部署</div>
+      <div>https://system51.github.io/2019/08/26/ingress-nginx-Multi-instance/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/pause/" title="K8s集群中pause容器是干嘛的">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">K8s集群中pause容器是干嘛的</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubelet-Status/" title="Kubelet 状态更新机制">
+                        <span class="hidden-mobile">Kubelet 状态更新机制</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

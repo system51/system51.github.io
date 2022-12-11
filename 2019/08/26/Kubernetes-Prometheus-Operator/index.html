@@ -1,0 +1,790 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="首先我们要理解：&amp;emsp;&amp;emsp;所有的监控的agent底层最终都是查询的&#x2F;proc和&#x2F;sys里的信息推送server端,因为Prometheus Operator收集宿主机信息方面也想用pod跑,会面临到问题&amp;emsp;&amp;emsp;常见的zabbix_agent默认读取fs的&#x2F;proc和&#x2F;sys,但容器跑agent会导">
+<meta property="og:type" content="article">
+<meta property="og:title" content="初探Prometheus Operator">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-Prometheus-Operator/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="首先我们要理解：&amp;emsp;&amp;emsp;所有的监控的agent底层最终都是查询的&#x2F;proc和&#x2F;sys里的信息推送server端,因为Prometheus Operator收集宿主机信息方面也想用pod跑,会面临到问题&amp;emsp;&amp;emsp;常见的zabbix_agent默认读取fs的&#x2F;proc和&#x2F;sys,但容器跑agent会导">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-1.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-2.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-3.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-4.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-5.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-6.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-7.png">
+<meta property="article:published_time" content="2019-08-26T05:39:38.000Z">
+<meta property="article:modified_time" content="2019-12-12T03:35:05.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/Prometheus-1.png">
+  
+  
+  
+  <title>初探Prometheus Operator - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="初探Prometheus Operator"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 13:39" pubdate>
+          2019年8月26日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          22k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          38 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">初探Prometheus Operator</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h3 id="首先我们要理解："><a href="#首先我们要理解：" class="headerlink" title="首先我们要理解："></a>首先我们要理解：</h3><p>&amp;emsp;&amp;emsp;所有的监控的agent底层最终都是查询的&#x2F;proc和&#x2F;sys里的信息推送server端,因为Prometheus Operator收集宿主机信息方面也想用pod跑,会面临到问题<br>&amp;emsp;&amp;emsp;常见的zabbix_agent默认读取fs的&#x2F;proc和&#x2F;sys,但容器跑agent会导致读取的不是宿主机的&#x2F;proc和&#x2F;sys<br>&amp;emsp;&amp;emsp;而prometheus的<code>node-exporter</code>有选项<code>--path.procfs</code>和<code>--path.sysfs</code>来指定从这俩选项的值的proc和sys读取,容器跑<code>node-exporter</code>只需要挂载宿主机的&#x2F;proc和&#x2F;sys到容器fs的某个路径挂载属性设置为readonly后用这两个选项指定即可。</p>
+<h3 id="需要看懂本文要具备一下知识点"><a href="#需要看懂本文要具备一下知识点" class="headerlink" title="需要看懂本文要具备一下知识点"></a>需要看懂本文要具备一下知识点</h3><ul>
+<li>svc实现原理和会应用以及svc和endpoint关系</li>
+<li>了解prometheus(不是operator的)工作机制</li>
+<li>知道什么是metrics(不过有了prometheus-operator似乎不是必须)</li>
+</ul>
+<h3 id="速补基础"><a href="#速补基础" class="headerlink" title="速补基础"></a>速补基础</h3><h4 id="什么是metrics"><a href="#什么是metrics" class="headerlink" title="什么是metrics"></a>什么是metrics</h4><p>&amp;emsp;&amp;emsp;这里来介绍啥什么是metrics,例如我们要查看etcd的metrics,先查看etcd的运行参数找到相关的值,这里我是kubeadm安装的所以需要查看pod的详细信息，非yml自行查看systemd文件或者运行参数找到相关参数和值即可。</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><code class="hljs gradle">[root@master-<span class="hljs-number">1</span> node-exporter]# kubectl get pod -n kube-system etcd-master-<span class="hljs-number">1</span> -o yaml<br>apiVersion: v1<br>kind: Pod<br>metadata:<br>  annotations:<br>    kubernetes.io/config.hash: <span class="hljs-number">4</span>e0989623c0d5b653b7d5f7693d23809<br>    kubernetes.io/config.mirror: <span class="hljs-number">4</span>e0989623c0d5b653b7d5f7693d23809<br>    kubernetes.io/config.seen: <span class="hljs-string">&quot;2019-01-22T18:08:00.166244667+08:00&quot;</span><br>    kubernetes.io/config.<span class="hljs-keyword">source</span>: <span class="hljs-keyword">file</span><br>    scheduler.alpha.kubernetes.io/critical-pod: <span class="hljs-string">&quot;&quot;</span><br>  creationTimestamp: <span class="hljs-string">&quot;2019-01-22T10:09:31Z&quot;</span><br>  labels:<br>    component: etcd<br>    tier: control-plane<br>  name: etcd-master-<span class="hljs-number">1</span><br>  namespace: kube-system<br>  resourceVersion: <span class="hljs-string">&quot;7304834&quot;</span><br>  selfLink: <span class="hljs-regexp">/api/</span>v1<span class="hljs-regexp">/namespaces/</span>kube-system<span class="hljs-regexp">/pods/</span>etcd-master-<span class="hljs-number">1</span><br>  uid: cf51f92d-<span class="hljs-number">1</span>e2d-<span class="hljs-number">11</span>e9-a8c7-d8490b8af3ae<br>spec:<br>  containers:<br>  - command:<br>    - etcd<br>    - --advertise-client-urls=https:<span class="hljs-comment">//172.19.0.203:2379</span><br>    - --cert-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd/server.crt<br>    - --client-cert-auth=<span class="hljs-keyword">true</span><br>    - --data-dir=<span class="hljs-regexp">/var/</span>lib/etcd<br>    - --initial-advertise-peer-urls=https:<span class="hljs-comment">//172.19.0.203:2380</span><br>    - --initial-cluster=master-<span class="hljs-number">1</span>=https:<span class="hljs-comment">//172.19.0.203:2380</span><br>    - --key-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd/server.key<br>    - --listen-client-urls=https:<span class="hljs-comment">//127.0.0.1:2379,https://172.19.0.203:2379</span><br>    - --listen-peer-urls=https:<span class="hljs-comment">//172.19.0.203:2380</span><br>    - --name=master-<span class="hljs-number">1</span><br>    - --peer-cert-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd/peer.crt<br>    - --peer-client-cert-auth=<span class="hljs-keyword">true</span><br>    - --peer-key-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd/peer.key<br>    - --peer-trusted-ca-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd/ca.crt<br>    - --snapshot-<span class="hljs-keyword">count</span>=<span class="hljs-number">10000</span><br>    - --trusted-ca-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd/ca.crt<br>    image: k8s.gcr.io/etcd:<span class="hljs-number">3.2</span>.<span class="hljs-number">24</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="我们需要两部分信息"><a href="#我们需要两部分信息" class="headerlink" title="我们需要两部分信息"></a>我们需要两部分信息</h3><ul>
+<li>listen-client-urls的httpsurl,我这里是<code>https://172.19.0.203:2379</code></li>
+<li>允许客户端证书信息</li>
+</ul>
+<h3 id="然后使用下面的curl，带上各自证书路径访问https的url执行"><a href="#然后使用下面的curl，带上各自证书路径访问https的url执行" class="headerlink" title="然后使用下面的curl，带上各自证书路径访问https的url执行"></a>然后使用下面的curl，带上各自证书路径访问https的url执行</h3><figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs gradle">[root@master-<span class="hljs-number">1</span> node-exporter]# curl --cacert <span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd<span class="hljs-regexp">/ca.crt --cert /</span>etc<span class="hljs-regexp">/kubernetes/</span>pki<span class="hljs-regexp">/etcd/</span>server.crt  --key <span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd<span class="hljs-regexp">/server.key  https:/</span><span class="hljs-regexp">/172.19.0.203:2379/m</span>etrics<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><code class="hljs stata">....<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;RoleList&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;RoleRevokePermission&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;Snapshot&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Maintenance&quot;</span>,grpc_type=<span class="hljs-string">&quot;server_stream&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;Status&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Maintenance&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;Txn&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.KV&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 259160<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;UserAdd&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;UserChangePassword&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;UserDelete&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;UserGet&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;UserGrantRole&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;UserList&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;UserRevokeRole&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; 0<br>grpc_server_started_total&#123;grpc_method=<span class="hljs-string">&quot;Watch&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Watch&quot;</span>,grpc_type=<span class="hljs-string">&quot;bidi_stream&quot;</span>&#125; 86<br># <span class="hljs-keyword">HELP</span> process_cpu_seconds_total <span class="hljs-keyword">Total</span> user and system CPU time spent <span class="hljs-keyword">in</span> seconds.<br># <span class="hljs-keyword">TYPE</span> process_cpu_seconds_total counter<br>process_cpu_seconds_total 28145.45<br># <span class="hljs-keyword">HELP</span> process_max_fds Maximum number of <span class="hljs-keyword">open</span> <span class="hljs-keyword">file</span> descriptors.<br># <span class="hljs-keyword">TYPE</span> process_max_fds gauge<br>process_max_fds 65536<br># <span class="hljs-keyword">HELP</span> process_open_fds Number of <span class="hljs-keyword">open</span> <span class="hljs-keyword">file</span> descriptors.<br># <span class="hljs-keyword">TYPE</span> process_open_fds gauge<br>process_open_fds 121<br># <span class="hljs-keyword">HELP</span> process_resident_memory_bytes Resident <span class="hljs-keyword">memory</span> size <span class="hljs-keyword">in</span> bytes.<br># <span class="hljs-keyword">TYPE</span> process_resident_memory_bytes gauge<br>process_resident_memory_bytes 1.46509824e+08<br># <span class="hljs-keyword">HELP</span> process_start_time_seconds Start time of the process since unix epoch <span class="hljs-keyword">in</span> seconds.<br># <span class="hljs-keyword">TYPE</span> process_start_time_seconds gauge<br>process_start_time_seconds 1.54557786888e+09<br># <span class="hljs-keyword">HELP</span> process_virtual_memory_bytes Virtual <span class="hljs-keyword">memory</span> size <span class="hljs-keyword">in</span> bytes.<br># <span class="hljs-keyword">TYPE</span> process_virtual_memory_bytes gauge<br>process_virtual_memory_bytes 1.0886217728e+10<br></code></pre></td></tr></table></figure>
+
+<h3 id="同理kube-apiserver也有metrics信息"><a href="#同理kube-apiserver也有metrics信息" class="headerlink" title="同理kube-apiserver也有metrics信息"></a>同理kube-apiserver也有metrics信息</h3><figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs accesslog"><span class="hljs-string">[root@master-1 node-exporter]</span>#  kubectl get --raw /metrics<br><br>...<br>rest_client_request_latency_seconds_bucket&#123;url=<span class="hljs-string">&quot;https://[::1]:6443/apis?timeout=32s&quot;</span>,verb=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,le=<span class="hljs-string">&quot;0.512&quot;</span>&#125; <span class="hljs-number">39423</span><br>rest_client_request_latency_seconds_bucket&#123;url=<span class="hljs-string">&quot;https://[::1]:6443/apis?timeout=32s&quot;</span>,verb=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,le=<span class="hljs-string">&quot;+Inf&quot;</span>&#125; <span class="hljs-number">39423</span><br>rest_client_request_latency_seconds_sum&#123;url=<span class="hljs-string">&quot;https://[::1]:6443/apis?timeout=32s&quot;</span>,verb=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>&#125; <span class="hljs-number">24</span>.<span class="hljs-number">781942557999795</span><br>rest_client_request_latency_seconds_count&#123;url=<span class="hljs-string">&quot;https://[::1]:6443/apis?timeout=32s&quot;</span>,verb=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>&#125; <span class="hljs-number">39423</span><br># HELP rest_client_requests_total Number of HTTP requests, partitioned by status code, method, and host.<br># TYPE rest_client_requests_total counter<br>rest_client_requests_total&#123;code=<span class="hljs-string">&quot;200&quot;</span>,host=<span class="hljs-string">&quot;[::1]:6443&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>&#125; <span class="hljs-number">2</span>.032031e+<span class="hljs-number">06</span><br>rest_client_requests_total&#123;code=<span class="hljs-string">&quot;200&quot;</span>,host=<span class="hljs-string">&quot;[::1]:6443&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">PUT</span>&quot;</span>&#125; <span class="hljs-number">1</span>.106921e+<span class="hljs-number">06</span><br>rest_client_requests_total&#123;code=<span class="hljs-string">&quot;201&quot;</span>,host=<span class="hljs-string">&quot;[::1]:6443&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">POST</span>&quot;</span>&#125; <span class="hljs-number">38</span><br>rest_client_requests_total&#123;code=<span class="hljs-string">&quot;401&quot;</span>,host=<span class="hljs-string">&quot;[::1]:6443&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>&#125; <span class="hljs-number">17378</span><br>rest_client_requests_total&#123;code=<span class="hljs-string">&quot;404&quot;</span>,host=<span class="hljs-string">&quot;[::1]:6443&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>&#125; <span class="hljs-number">3</span>.546509e+<span class="hljs-number">06</span><br>rest_client_requests_total&#123;code=<span class="hljs-string">&quot;409&quot;</span>,host=<span class="hljs-string">&quot;[::1]:6443&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">POST</span>&quot;</span>&#125; <span class="hljs-number">29</span><br>rest_client_requests_total&#123;code=<span class="hljs-string">&quot;409&quot;</span>,host=<span class="hljs-string">&quot;[::1]:6443&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">PUT</span>&quot;</span>&#125; <span class="hljs-number">20</span><br>rest_client_requests_total&#123;code=<span class="hljs-string">&quot;422&quot;</span>,host=<span class="hljs-string">&quot;[::1]:6443&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">POST</span>&quot;</span>&#125; <span class="hljs-number">1</span><br>rest_client_requests_total&#123;code=<span class="hljs-string">&quot;503&quot;</span>,host=<span class="hljs-string">&quot;[::1]:6443&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>&#125; <span class="hljs-number">5</span><br># HELP ssh_tunnel_open_count Counter of ssh tunnel total open attempts<br># TYPE ssh_tunnel_open_count counter<br>ssh_tunnel_open_count <span class="hljs-number">0</span><br># HELP ssh_tunnel_open_fail_count Counter of ssh tunnel failed open attempts<br># TYPE ssh_tunnel_open_fail_count counter<br>ssh_tunnel_open_fail_count <span class="hljs-number">0</span><br></code></pre></td></tr></table></figure>
+
+
+<p>&amp;emsp;&amp;emsp;这种就是prometheus的定义的metrics格式规范,缺省是在http(s)的url的&#x2F;metrics输出，而metrics要么程序定义输出(模块或者自定义开发),要么用官方的各种exporter(node-exporter,mysqld-exporter,memcached_exporter…)采集要监控的信息占用一个web端口然后输出成metrics格式的信息,prometheus server去收集各个target的metrics存储起来(tsdb)</p>
+<p>&amp;emsp;&amp;emsp;用户可以在prometheus的http页面上用promQL(prometheus的查询语言)或者(grafana数据来源就是用)api去查询一些信息,也可以利用pushgateway去统一采集然后prometheus从pushgateway采集(所以pushgateway类似于zabbix的proxy),prometheus的工作架构如下图</p>
+<p><img src="/images/Prometheus-1.png" srcset="/img/loading.gif" lazyload alt="Prometheus-1"></p>
+<p>&amp;emsp;&amp;emsp;由于本身prometheus属于第三方的 解决方案，原生的k8s系统并不能对Prometheus的自定义指标进行解析，就需要借助于prometheus的adapter将这些指标数据查询接口转换为标准的Kubernetes自定义指标。（当HPA使用自定义监控指标进行Pod扩容时需要用到adapter）</p>
+<p><img src="/images/Prometheus-2.png" srcset="/img/loading.gif" lazyload alt="Prometheus-2"></p>
+<h3 id="为什么需要prometheus-operator"><a href="#为什么需要prometheus-operator" class="headerlink" title="为什么需要prometheus-operator"></a>为什么需要prometheus-operator</h3><p>&amp;emsp;&amp;emsp;由于prometheus是主动去拉取数据,在加上k8s里pod调度的原因导致pod的ip会发生变化,人工不可能去维持,自动发现有基于DNS的,但是新增还是有点麻烦<br>&amp;emsp;&amp;emsp;Prometheus-operator的本质就是一组用户自定义的CRD资源以及Controller的实现，Prometheus Operator这个controller有BRAC权限下去负责监听这些自定义资源的变化，并且根据这些资源的定义自动化的完成如Prometheus Server自身以及配置的自动化管理工作<br>&amp;emsp;&amp;emsp;在Kubernetes中我们使用Deployment、DamenSet，StatefulSet来管理应用，使用Service，Ingress来管理应用的访问方式，使用ConfigMap和Secret来管理应用配置。我们在集群中对这些资源的创建，更新，删除的动作都会被转换为事件(Event)，Kubernetes的Controller Manager负责监听这些事件并触发相应的任务来满足用户的期望。这种方式我们成为声明式，用户只需要关心应用程序的最终状态，其它的都通过Kubernetes来帮助我们完成，通过这种方式可以大大简化应用的配置管理复杂度。<br>&amp;emsp;&amp;emsp;而除了这些原生的Resource资源以外，Kubernetes还允许用户添加自己的自定义资源(Custom Resource)。并且通过实现自定义Controller来实现对Kubernetes的扩展,不需要用户去二次开发k8s也能达到给k8s添加功能和对象<br>&amp;emsp;&amp;emsp;因为service是负载均衡,所以在K8S里监控metrics最小单位是service，而背后的pod为target。所以prometheus-operator创建了对应的CRD: kind: ServiceMonitor ,创建的ServiceMonitor里声明需要监控选中的svc的label以及metrics的url路径的和namespaces即可</p>
+<p><img src="/images/Prometheus-3.png" srcset="/img/loading.gif" lazyload alt="Prometheus-3"></p>
+<p>&amp;emsp;&amp;emsp;上图是Prometheus-Operator官方提供的架构图，其中Operator是最核心的部分，作为一个控制器，他会去创建Prometheus、ServiceMonitor、AlertManager以及PrometheusRule4个CRD资源对象，然后会一直监听并维持这4个资源对象的状态。用户可以利用kind: Prometheus这种声明式创建对应的资源。</p>
+<h3 id="这四个CRD作用如下："><a href="#这四个CRD作用如下：" class="headerlink" title="这四个CRD作用如下："></a>这四个CRD作用如下：</h3><ul>
+<li>Prometheus：由 Operator 依据一个自定义资源kind: Prometheus类型中，所描述的内容是部署的 Prometheus Server 集群，可以将这个自定义资源看作是一种特别用来管理Prometheus Server的StatefulSets资源。</li>
+<li>ServiceMonitor：一个Kubernetes自定义资源(和kind: Prometheus一样是CRD)，该资源描述了Prometheus Server的Target列表，Operator 会监听这个资源的变化来动态的更新Prometheus Server的Scrape targets并让prometheus server去reload配置(prometheus有对应reload的http接口&#x2F;-&#x2F;reload)。而该资源主要通过Selector来依据 Labels 选取对应的Service的endpoints，并让 Prometheus Server 通过 Service 进行拉取（拉）指标资料(也就是metrics信息),metrics信息要在http的url输出符合metrics格式的信息,ServiceMonitor也可以定义目标的metrics的url.</li>
+<li>Alertmanager：Prometheus Operator 不只是提供 Prometheus Server 管理与部署，也包含了 AlertManager，并且一样通过一个 kind: Alertmanager 自定义资源来描述信息，再由 Operator 依据描述内容部署 Alertmanager 集群。</li>
+<li>PrometheusRule：对于Prometheus而言，在原生的管理方式上，我们需要手动创建Prometheus的告警文件，并且通过在Prometheus配置中声明式的加载。而在Prometheus Operator模式中，告警规则也编程一个通过Kubernetes API 声明式创建的一个资源.告警规则创建成功后，通过在Prometheus中使用想servicemonitor那样用ruleSelector通过label匹配选择需要关联的PrometheusRule即可</li>
+</ul>
+<h3 id="部署官方的prometheus-operator"><a href="#部署官方的prometheus-operator" class="headerlink" title="部署官方的prometheus-operator"></a>部署官方的prometheus-operator</h3><h4 id="分类文件："><a href="#分类文件：" class="headerlink" title="分类文件："></a>分类文件：</h4><p>官方的github仓库迁移了，所有yaml转移了，clone部署文件</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">git clone https:<span class="hljs-regexp">//gi</span>thub.com<span class="hljs-regexp">/coreos/</span>kube-prometheus.git<br></code></pre></td></tr></table></figure>
+
+<p>官方把所有文件都放在一起,这里我复制了然后分类下</p>
+<figure class="highlight tap"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><code class="hljs tap">mkdir kube-prom<br>cp -a kube-prometheus/manifests/* kube-prom/<br>cd kube-prom/<br>mkdir -p node-exporter alertmanager grafana kube-state-metrics prometheus serviceMonitor adapter<br>mv *-serviceMonitor* serviceMonitor/<br>mv setup operator/<br>mv grafana-* grafana/<br>mv kube-state-metrics-* kube-state-metrics/<br>mv alertmanager-* alertmanager/<br>mv node-exporter-* node-exporter/<br>mv prometheus-adapter* adapter/<br>mv prometheus-* prometheus/<br><br>$ ll<br>total 32<br>drwxr-xr-x<span class="hljs-number"> 2 </span>root root<span class="hljs-number"> 4096 </span>Dec <span class="hljs-number"> 2 </span>09:53 adapter<br>drwxr-xr-x<span class="hljs-number"> 2 </span>root root<span class="hljs-number"> 4096 </span>Dec <span class="hljs-number"> 2 </span>09:53 alertmanager<br>drwxr-xr-x<span class="hljs-number"> 2 </span>root root<span class="hljs-number"> 4096 </span>Dec <span class="hljs-number"> 2 </span>09:53 grafana<br>drwxr-xr-x<span class="hljs-number"> 2 </span>root root<span class="hljs-number"> 4096 </span>Dec <span class="hljs-number"> 2 </span>09:53 kube-state-metrics<br>drwxr-xr-x<span class="hljs-number"> 2 </span>root root<span class="hljs-number"> 4096 </span>Dec <span class="hljs-number"> 2 </span>09:53 node-exporter<br>drwxr-xr-x<span class="hljs-number"> 2 </span>root root<span class="hljs-number"> 4096 </span>Dec <span class="hljs-number"> 2 </span>09:34 operator<br>drwxr-xr-x<span class="hljs-number"> 2 </span>root root<span class="hljs-number"> 4096 </span>Dec <span class="hljs-number"> 2 </span>09:53 prometheus<br>drwxr-xr-x<span class="hljs-number"> 2 </span>root root<span class="hljs-number"> 4096 </span>Dec <span class="hljs-number"> 2 </span>09:53 serviceMonitor<br><br>$ ll operator/<br>total 660<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root    <span class="hljs-number"> 60 </span>Dec <span class="hljs-number"> 2 </span>09:34 0namespace-namespace.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root<span class="hljs-number"> 274629 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-0alertmanagerCustomResourceDefinition.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root <span class="hljs-number"> 12100 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-0podmonitorCustomResourceDefinition.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root<span class="hljs-number"> 321507 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-0prometheusCustomResourceDefinition.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root <span class="hljs-number"> 14561 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-0prometheusruleCustomResourceDefinition.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root <span class="hljs-number"> 17422 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-0servicemonitorCustomResourceDefinition.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root   <span class="hljs-number"> 425 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-clusterRoleBinding.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root  <span class="hljs-number"> 1066 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-clusterRole.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root  <span class="hljs-number"> 1405 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-deployment.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root   <span class="hljs-number"> 239 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-serviceAccount.yaml<br>-rw-r--r--<span class="hljs-number"> 1 </span>root root   <span class="hljs-number"> 420 </span>Dec <span class="hljs-number"> 2 </span>09:34 prometheus-operator-service.yaml<br></code></pre></td></tr></table></figure>
+
+
+
+<p>有些版本的k8s的label为<code>beta.kubernetes.io/os</code></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs bash">$ curl -s https://zhangguanzhang.github.io/bash/label.sh | bash<br>Node                                    Label       <br>k8s-m1	<br>            beta.kubernetes.io/arch	amd64<br>            beta.kubernetes.io/os	linux<br>            kubernetes.io/hostname	k8s-m1<br>k8s-m2	<br>            beta.kubernetes.io/arch	amd64<br>            beta.kubernetes.io/os	linux<br>            kubernetes.io/hostname	k8s-m2<br>k8s-m3	<br>            beta.kubernetes.io/arch	amd64<br>            beta.kubernetes.io/os	linux<br>            kubernetes.io/hostname	k8s-m3<br>k8s-n1	<br>            beta.kubernetes.io/arch	amd64<br>            beta.kubernetes.io/os	linux<br>            kubernetes.io/hostname	k8s-n1<br>k8s-n2	<br>            beta.kubernetes.io/arch	amd64<br>            beta.kubernetes.io/os	linux<br>            kubernetes.io/hostname	k8s-n2<br></code></pre></td></tr></table></figure>
+
+<p>如果是上面这种没有<code>kubernetes.io/os: linux</code>的情况则需要修改yaml里的selector字段</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs shell"><span class="hljs-meta prompt_">$ </span><span class="language-bash">grep -A1 nodeSelector alertmanager/alertmanager-alertmanager.yaml</span> <br>  nodeSelector:<br>    kubernetes.io/os: linux<br><span class="hljs-meta prompt_">$ </span><span class="language-bash">sed -ri <span class="hljs-string">&#x27;/linux/s#kubernetes.io#beta.&amp;#&#x27;</span> \</span><br><span class="language-bash">    alertmanager/alertmanager-alertmanager.yaml \</span><br><span class="language-bash">    prometheus/prometheus-prometheus.yaml \</span><br><span class="language-bash">    node-exporter/node-exporter-daemonset.yaml \</span><br><span class="language-bash">    kube-state-metrics/kube-state-metrics-deployment.yaml <span class="hljs-comment"># 修改选择器</span></span><br></code></pre></td></tr></table></figure>
+
+
+<p>quay.io可能不好拉取，这里修改使用Azure的代理或者使用dockerhub上</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs shell"><span class="hljs-meta prompt_">$ </span><span class="language-bash">sed -ri <span class="hljs-string">&#x27;/quay.io/s#quay.io/prometheus#prom#&#x27;</span> \</span><br><span class="language-bash">  alertmanager/alertmanager-alertmanager.yaml \</span><br><span class="language-bash">  prometheus/prometheus-prometheus.yaml \</span><br><span class="language-bash">  node-exporter/node-exporter-daemonset.yaml <span class="hljs-comment">#镜像使用dockerhub上的</span></span><br><span class="hljs-meta prompt_">$ </span><span class="language-bash">find -<span class="hljs-built_in">type</span> f -<span class="hljs-built_in">exec</span> sed -ri <span class="hljs-string">&#x27;s#k8s.gcr.io#gcr.azk8s.cn/google_containers#&#x27;</span> &#123;&#125; \;  <span class="hljs-comment">#使用能拉取到的谷歌镜像</span></span><br><span class="hljs-meta prompt_">$ </span><span class="language-bash">find . -<span class="hljs-built_in">type</span> f -name <span class="hljs-string">&#x27;*ml&#x27;</span> -<span class="hljs-built_in">exec</span> sed -ri <span class="hljs-string">&#x27;s#quay.io/#quay.azk8s.cn/#&#x27;</span> &#123;&#125; \;</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="部署operator"><a href="#部署operator" class="headerlink" title="部署operator"></a>部署operator</h3><figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> manifests]<span class="hljs-meta">#  kubectl apply -f operator/</span><br></code></pre></td></tr></table></figure>
+
+<p>确认状态运行正常再往后执行</p>
+<figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs csharp">[<span class="hljs-meta">root@master-1 manifests</span>]<span class="hljs-meta">#  $ kubectl -n monitoring get pod</span><br>NAME                                   READY     STATUS    RESTARTS   AGE<br>prometheus-<span class="hljs-keyword">operator</span><span class="hljs-number">-56954</span>c76b5-qm9ww   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">24</span>s<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="部署整套CRD"><a href="#部署整套CRD" class="headerlink" title="部署整套CRD"></a>部署整套CRD</h3><p>确保prometheus-operator的pod运行起来后就可以，创建相关的CRD,这里镜像可能也要很久，建议提前看下需要拉取哪些镜像提前拉取了</p>
+<figure class="highlight coq"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs coq">kubectl <span class="hljs-built_in">apply</span> -f adapter/<br>kubectl <span class="hljs-built_in">apply</span> -f alertmanager/<br>kubectl <span class="hljs-built_in">apply</span> -f node-exporter/<br>kubectl <span class="hljs-built_in">apply</span> -f kube-state-metrics/<br>kubectl <span class="hljs-built_in">apply</span> -f grafana/<br>kubectl <span class="hljs-built_in">apply</span> -f prometheus/<br>kubectl <span class="hljs-built_in">apply</span> -f serviceMonitor/<br></code></pre></td></tr></table></figure>
+
+<h3 id="部署完成后"><a href="#部署完成后" class="headerlink" title="部署完成后"></a>部署完成后</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sql">[root<span class="hljs-variable">@master</span><span class="hljs-number">-1</span> manifests]#  kubectl <span class="hljs-operator">-</span>n monitoring <span class="hljs-keyword">get</span> <span class="hljs-keyword">all</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="常见坑的说明和解决方法"><a href="#常见坑的说明和解决方法" class="headerlink" title="常见坑的说明和解决方法"></a>常见坑的说明和解决方法</h3><h4 id="坑一："><a href="#坑一：" class="headerlink" title="坑一："></a>坑一：</h4><p><img src="/images/Prometheus-4.png" srcset="/img/loading.gif" lazyload alt="Prometheus-4"></p>
+<p>&amp;emsp;&amp;emsp;这里要注意有一个坑,二进制部署k8s管理组件和新版本kubeadm部署的都会发现在prometheus server的页面上发现<code>kube-controller</code>和<code>kube-schedule</code>的target为0&#x2F;0也就是上图所示。<br>&amp;emsp;&amp;emsp;这是因为serviceMonitor是根据label去选取svc的,我们先来查看下 <code>kube-scheduler</code> 组件对应的 <code>ServiceMonitor</code> 资源的定义：(prometheus-serviceMonitorKubeScheduler.yaml)</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">monitoring.coreos.com/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">ServiceMonitor</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">kube-scheduler</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kube-scheduler</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">monitoring</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">endpoints:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">interval:</span> <span class="hljs-string">30s</span> <span class="hljs-comment"># 每30s获取一次信息</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-string">http-metrics</span>  <span class="hljs-comment"># 对应service的端口名</span><br>  <span class="hljs-attr">jobLabel:</span> <span class="hljs-string">k8s-app</span><br>  <span class="hljs-attr">namespaceSelector:</span> <span class="hljs-comment"># 表示去匹配某一命名空间中的service，如果想从所有的namespace中匹配用any: true</span><br>    <span class="hljs-attr">matchNames:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">kube-system</span><br>  <span class="hljs-attr">selector:</span>  <span class="hljs-comment"># 匹配的 Service 的labels，如果使用mathLabels，则下面的所有标签都匹配时才会匹配该service，如果使用matchExpressions，则至少匹配一个标签的service都会被选择</span><br>    <span class="hljs-attr">matchLabels:</span><br>      <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">kube-scheduler</span><br></code></pre></td></tr></table></figure>
+
+<p>&amp;emsp;&amp;emsp;上面是一个典型的 ServiceMonitor 资源文件的声明方式，上面我们通过<code>selector.matchLabels</code>在 <code>kube-system</code> 这个命名空间下面匹配具有<code>k8s-app=kube-scheduler</code>这样的 Service，但是我们系统中根本就没有对应的 Service。</p>
+<p>prometheus-serviceMonitorKubeControllerManager.yaml文件</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">monitoring.coreos.com/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">ServiceMonitor</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">kube-controller-manager</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kube-controller-manager</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">monitoring</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">endpoints:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">interval:</span> <span class="hljs-string">30s</span>   <span class="hljs-comment"># 每30s获取一次信息</span><br>    <span class="hljs-attr">metricRelabelings:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">action:</span> <span class="hljs-string">drop</span><br>      <span class="hljs-attr">regex:</span> <span class="hljs-string">etcd_(debugging|disk|request|server).*</span><br>      <span class="hljs-attr">sourceLabels:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">__name__</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-string">http-metrics</span>   <span class="hljs-comment"># 对应service的端口名</span><br>  <span class="hljs-attr">jobLabel:</span> <span class="hljs-string">k8s-app</span><br>  <span class="hljs-attr">namespaceSelector:</span>  <span class="hljs-comment"># 表示去匹配某一命名空间中的service，如果想从所有的namespace中匹配用any: true</span><br>    <span class="hljs-attr">matchNames:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">kube-system</span><br>  <span class="hljs-attr">selector:</span>    <span class="hljs-comment"># 匹配的 Service 的labels，如果使用mathLabels，则下面的所有标签都匹配时才会匹配该service，如果使用matchExpressions，则至少匹配一个标签的service都会被选择</span><br>    <span class="hljs-attr">matchLabels:</span><br>      <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">kube-controller-manager</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="而kube-system里默认只有这俩svc-且没有符合上面的label"><a href="#而kube-system里默认只有这俩svc-且没有符合上面的label" class="headerlink" title="而kube-system里默认只有这俩svc,且没有符合上面的label"></a>而kube-system里默认只有这俩svc,且没有符合上面的label</h3><figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">[root@master<span class="hljs-number">-1</span> serviceMonitor]#  kubectl -n kube-<span class="hljs-keyword">system</span> <span class="hljs-keyword">get</span> svc<br><span class="hljs-type">NAME</span>                      <span class="hljs-keyword">TYPE</span>        <span class="hljs-keyword">CLUSTER</span>-IP   <span class="hljs-keyword">EXTERNAL</span>-IP   PORT(S)         AGE<br>kube-dns                  ClusterIP   <span class="hljs-number">10.96</span><span class="hljs-number">.0</span><span class="hljs-number">.10</span>   &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">53</span>/UDP,<span class="hljs-number">53</span>/TCP   <span class="hljs-number">139</span>m<br>kubelet                   ClusterIP   <span class="hljs-keyword">None</span>         &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">10250</span>/TCP       <span class="hljs-number">103</span>m<br></code></pre></td></tr></table></figure>
+
+<h3 id="但是却有对应的ep-没有带任何label-被创建-这点想不通官方什么鬼操作-另外这里没有kubelet的ep-二进制的话会有"><a href="#但是却有对应的ep-没有带任何label-被创建-这点想不通官方什么鬼操作-另外这里没有kubelet的ep-二进制的话会有" class="headerlink" title="但是却有对应的ep(没有带任何label)被创建,这点想不通官方什么鬼操作,另外这里没有kubelet的ep,二进制的话会有"></a>但是却有对应的ep(没有带任何label)被创建,这点想不通官方什么鬼操作,另外这里没有kubelet的ep,二进制的话会有</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs sql">[root<span class="hljs-variable">@master</span><span class="hljs-number">-1</span> serviceMonitor]#  kubectl <span class="hljs-keyword">get</span> ep <span class="hljs-operator">-</span>n kube<span class="hljs-operator">-</span><span class="hljs-keyword">system</span><br>NAME                      ENDPOINTS                                                AGE<br>kube<span class="hljs-operator">-</span>controller<span class="hljs-operator">-</span>manager      <span class="hljs-operator">&lt;</span><span class="hljs-keyword">none</span><span class="hljs-operator">&gt;</span>                                                <span class="hljs-number">139</span>m<br>kube<span class="hljs-operator">-</span>dns                  <span class="hljs-number">10.244</span><span class="hljs-number">.1</span><span class="hljs-number">.2</span>:<span class="hljs-number">53</span>,<span class="hljs-number">10.244</span><span class="hljs-number">.8</span><span class="hljs-number">.10</span>:<span class="hljs-number">53</span>,<span class="hljs-number">10.244</span><span class="hljs-number">.1</span><span class="hljs-number">.2</span>:<span class="hljs-number">53</span> <span class="hljs-operator">+</span> <span class="hljs-number">1</span> more...   <span class="hljs-number">139</span>m<br>kube<span class="hljs-operator">-</span>scheduler               <span class="hljs-operator">&lt;</span><span class="hljs-keyword">none</span><span class="hljs-operator">&gt;</span>                                                <span class="hljs-number">139</span>m<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="解决办法"><a href="#解决办法" class="headerlink" title="解决办法"></a>解决办法</h3><p>&amp;emsp;&amp;emsp;所以这里我们创建两个管理组建的svc,名字无所谓,关键是svc的label要能被servicemonitor选中,svc的选择器的label是因为kubeadm的staticPod的label是这样（注意：如果是二进制部署的这俩svc的selector部分不能要，因为二进制安装<code>kube-controller-manager和kube-scheduler</code>都是外部IP不是Pod运行的，service反代外部IP时不需要写selector但是需要手工创建Endpoints。10251是kube-scheduler组件 metrics 数据所在的端口，10252是kube-controller-manager组件的监控数据所在端口。）</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kube-controller-manager</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">kube-controller-manager</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">component:</span> <span class="hljs-string">kube-controller-manager</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">ClusterIP</span><br>  <span class="hljs-attr">clusterIP:</span> <span class="hljs-string">None</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-metrics</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">10252</span><br>    <span class="hljs-attr">targetPort:</span> <span class="hljs-number">10252</span><br>    <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kube-scheduler</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">kube-scheduler</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">component:</span> <span class="hljs-string">kube-scheduler</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">ClusterIP</span><br>  <span class="hljs-attr">clusterIP:</span> <span class="hljs-string">None</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-metrics</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">10251</span><br>    <span class="hljs-attr">targetPort:</span> <span class="hljs-number">10251</span><br>    <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br></code></pre></td></tr></table></figure>
+
+
+<p>&amp;emsp;&amp;emsp;二进制的话需要我们手动填入svc对应的ep的属性,我集群是HA的,所有有三个,仅供参考,别傻傻得照抄,另外这个ep的名字得和上面的svc的名字和属性对应上</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Endpoints</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">kube-controller-manager</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kube-controller-manager</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br><span class="hljs-attr">subsets:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">addresses:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.2</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.7</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.8</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-metrics</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">10252</span><br>    <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Endpoints</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">kube-scheduler</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kube-scheduler</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br><span class="hljs-attr">subsets:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">addresses:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.2</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.7</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.8</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-metrics</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">10251</span><br>    <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br></code></pre></td></tr></table></figure>
+
+<p>&amp;emsp;&amp;emsp;这里不知道为啥kubeadm部署的没有kubelet这个ep,我博客二进制部署后是会有kubelet这个ep的,下面仅供参考,IP根据实际写。另外kubeadm部署下kubelet的readonly的metrics端口(默认是10255)不会开放可以删掉ep的那部分port</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Endpoints</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">kubelet</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kubelet</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br><span class="hljs-attr">subsets:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">addresses:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.14</span><br>    <span class="hljs-attr">targetRef:</span><br>      <span class="hljs-attr">kind:</span> <span class="hljs-string">Node</span><br>      <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-n2</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.18</span><br>    <span class="hljs-attr">targetRef:</span><br>      <span class="hljs-attr">kind:</span> <span class="hljs-string">Node</span><br>      <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-n3</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.2</span><br>    <span class="hljs-attr">targetRef:</span><br>      <span class="hljs-attr">kind:</span> <span class="hljs-string">Node</span><br>      <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-m1</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.20</span><br>    <span class="hljs-attr">targetRef:</span><br>      <span class="hljs-attr">kind:</span> <span class="hljs-string">Node</span><br>      <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-n4</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">172.16</span><span class="hljs-number">.0</span><span class="hljs-number">.21</span><br>    <span class="hljs-attr">targetRef:</span><br>      <span class="hljs-attr">kind:</span> <span class="hljs-string">Node</span><br>      <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-n5</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http-metrics</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">10255</span><br>    <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">cadvisor</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">4194</span><br>    <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">https-metrics</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">10250</span><br>    <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="坑二"><a href="#坑二" class="headerlink" title="坑二"></a>坑二</h3><p>&amp;emsp;&amp;emsp;访问prometheus server的web页面我们发现即使创建了svc和注入对应ep的信息在target页面发现prometheus server请求被拒绝</p>
+<p><img src="/images/Prometheus-5.png" srcset="/img/loading.gif" lazyload alt="Prometheus-5"></p>
+<p>&amp;emsp;&amp;emsp;在宿主机上我们发现127.0.0.1才能访问,网卡ip不能访问(这里需要注意的是：这里的IP是取自其他项目的IP,所以ip是192不是上面的我们看到的172，我们只是为了演示这个现象。)</p>
+<figure class="highlight sqf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs sqf">[root@master-<span class="hljs-number">1</span> serviceMonitor]<span class="hljs-meta">#  hostname -i</span><br><span class="hljs-number">192.168</span>.<span class="hljs-number">15.223</span><br><br>[root@master-<span class="hljs-number">1</span> serviceMonitor]<span class="hljs-meta">#  curl -I http:<span class="hljs-comment">//192.168.15.223:10251/metrics</span></span><br>curl: (<span class="hljs-number">7</span>) Failed connect <span class="hljs-keyword">to</span> <span class="hljs-number">192.168</span>.<span class="hljs-number">15.223</span>:<span class="hljs-number">10251</span>; Connection refused<br><br>[root@master-<span class="hljs-number">1</span> serviceMonitor]<span class="hljs-meta">#  curl -I http:<span class="hljs-comment">//127.0.0.1:10251/metrics</span></span><br>HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK<br>Content-Length: <span class="hljs-number">30349</span><br>Content-<span class="hljs-built_in">Type</span>: <span class="hljs-built_in">text</span>/plain; version=<span class="hljs-number">0.0</span>.<span class="hljs-number">4</span><br><span class="hljs-built_in">Date</span>: Mon, <span class="hljs-number">07</span> Jan <span class="hljs-number">2019</span> <span class="hljs-number">13</span>:<span class="hljs-number">33</span>:<span class="hljs-number">50</span> GMT<br></code></pre></td></tr></table></figure>
+
+<h3 id="解决办法-1"><a href="#解决办法-1" class="headerlink" title="解决办法"></a>解决办法</h3><p>修改管理组件bind的ip，如果使用kubeadm启动的集群，初始化时的config.yml里可以加入如下参数</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">controllerManagerExtraArgs:</span><br><span class="hljs-symbol">  address:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span><br><span class="hljs-symbol">schedulerExtraArgs:</span><br><span class="hljs-symbol">  address:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span><br></code></pre></td></tr></table></figure>
+
+<p>已经启动后的使用下面命令更改就会滚动更新</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">sed -ri <span class="hljs-string">&#x27;/--address/s#=.+#=0.0.0.0#&#x27;</span> <span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/manifests/</span>kube-*<br></code></pre></td></tr></table></figure>
+
+<p>二进制的话查看是不是bind的0.0.0.0如果不是就修改成0.0.0.0<br>多块网卡如果只想bind一个网卡就写对应的主机上的网卡ip,写0.0.0.0就会监听所有网卡的对应端口</p>
+<h3 id="坑三"><a href="#坑三" class="headerlink" title="坑三"></a>坑三</h3><p>&amp;emsp;&amp;emsp;默认serviceMonitor实际上只能选三个namespacs，默认和Kube-system和monitoring，见文件<code>cat prometheus-roleSpecificNamespaces.yaml</code>，需要其他的ns自行创建role</p>
+<h3 id="访问相关页面"><a href="#访问相关页面" class="headerlink" title="访问相关页面"></a>访问相关页面</h3><p>&amp;emsp;&amp;emsp;通过浏览器查看prometheus.monitoring.k8s.local与grafana.monitoring.k8s.local是否正常,若沒问题就可以看到下图结果,grafana初始用户名和密码是admin。</p>
+<p><img src="/images/Prometheus-6.png" srcset="/img/loading.gif" lazyload alt="Prometheus-6"></p>
+<p><img src="/images/Prometheus-7.png" srcset="/img/loading.gif" lazyload alt="Prometheus-7"></p>
+<h3 id="部署kind-Prometheus-（以下均为扩展知识）"><a href="#部署kind-Prometheus-（以下均为扩展知识）" class="headerlink" title="部署kind: Prometheus （以下均为扩展知识）"></a>部署kind: Prometheus （以下均为扩展知识）</h3><p>现在我们有了prometheus这个CRD,我们部署一个prometheus server只需要如下声明即可</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">$</span> <span class="hljs-string">cat&lt;&lt;EOF</span> <span class="hljs-string">|</span> <span class="hljs-string">kubectl</span> <span class="hljs-string">apply</span> <span class="hljs-string">-f</span> <span class="hljs-bullet">-</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">ServiceAccount</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">prometheus</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">monitoring.coreos.com/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Prometheus</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">prometheus</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">serviceMonitorSelector:</span><br>    <span class="hljs-attr">matchLabels:</span><br>      <span class="hljs-attr">team:</span> <span class="hljs-string">frontend</span><br>  <span class="hljs-attr">serviceAccountName:</span> <span class="hljs-string">prometheus</span><br>  <span class="hljs-attr">resources:</span><br>    <span class="hljs-attr">requests:</span><br>      <span class="hljs-attr">memory:</span> <span class="hljs-string">400Mi</span><br><span class="hljs-string">EOF</span><br></code></pre></td></tr></table></figure>
+
+<p>上面要注意的是我创建prometheus server的时候有如下值</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">serviceMonitorSelector:</span><br><span class="hljs-symbol">  matchLabels:</span><br><span class="hljs-symbol">    team:</span> frontend<br></code></pre></td></tr></table></figure>
+
+<p>&amp;emsp;&amp;emsp;该值字面意思可以知道就是指定prometheus server去选择哪些ServiceMonitor,这个概念和svc去选择pod一样,可能一个集群跑很多prometheus server来监控各自选中的ServiceMonitor,如果想一个prometheus server监控所有的则<code>spec.serviceMonitorSelector: &#123;&#125;</code>为空即可,而namespaces的范围同样的设置<code>spec.serviceMonitorNamespaceSelector: &#123;&#125;</code>,官方的prometheus实例里我们可以看到设置了这两个值（prometheus-prometheus.yaml）。</p>
+<p>给prometheus server设置相关的RBAC权限</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">$</span> <span class="hljs-string">cat&lt;&lt;EOF</span> <span class="hljs-string">|</span> <span class="hljs-string">kubectl</span> <span class="hljs-string">apply</span> <span class="hljs-string">-f</span> <span class="hljs-bullet">-</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">rbac.authorization.k8s.io/v1beta1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">ClusterRole</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">prometheus</span><br><span class="hljs-attr">rules:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">apiGroups:</span> [<span class="hljs-string">&quot;&quot;</span>]<br>  <span class="hljs-attr">resources:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">nodes</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">services</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">endpoints</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">pods</span><br>  <span class="hljs-attr">verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;list&quot;</span>, <span class="hljs-string">&quot;watch&quot;</span>]<br><span class="hljs-bullet">-</span> <span class="hljs-attr">apiGroups:</span> [<span class="hljs-string">&quot;&quot;</span>]<br>  <span class="hljs-attr">resources:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">configmaps</span><br>  <span class="hljs-attr">verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>]<br><span class="hljs-bullet">-</span> <span class="hljs-attr">nonResourceURLs:</span> [<span class="hljs-string">&quot;/metrics&quot;</span>]<br>  <span class="hljs-attr">verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>]<br><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">rbac.authorization.k8s.io/v1beta1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">ClusterRoleBinding</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">prometheus</span><br><span class="hljs-attr">roleRef:</span><br>  <span class="hljs-attr">apiGroup:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br>  <span class="hljs-attr">kind:</span> <span class="hljs-string">ClusterRole</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">prometheus</span><br><span class="hljs-attr">subjects:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">kind:</span> <span class="hljs-string">ServiceAccount</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">prometheus</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br><span class="hljs-string">EOF</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="部署一组pod及其svc"><a href="#部署一组pod及其svc" class="headerlink" title="部署一组pod及其svc"></a>部署一组pod及其svc</h3><p>因为service是prometheus operator监控的最小单位,要监控一个svc下的pod的metrics就声明创建一个servicemonitors即可；</p>
+<p>首先,我们部署一个带metrics输出的简单程序的deploy,该镜像里的主进程会在8080端口上输出metrics信息</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">$</span> <span class="hljs-string">cat&lt;&lt;EOF</span> <span class="hljs-string">|</span> <span class="hljs-string">kubectl</span> <span class="hljs-string">apply</span> <span class="hljs-string">-f</span> <span class="hljs-bullet">-</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">extensions/v1beta1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">example-app</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">replicas:</span> <span class="hljs-number">3</span><br>  <span class="hljs-attr">template:</span><br>    <span class="hljs-attr">metadata:</span><br>      <span class="hljs-attr">labels:</span><br>        <span class="hljs-attr">app:</span> <span class="hljs-string">example-app</span><br>    <span class="hljs-attr">spec:</span><br>      <span class="hljs-attr">containers:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">example-app</span><br>        <span class="hljs-attr">image:</span> <span class="hljs-string">zhangguanzhang/instrumented_app</span><br>        <span class="hljs-attr">ports:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web</span><br>          <span class="hljs-attr">containerPort:</span> <span class="hljs-number">8080</span><br><span class="hljs-string">EOF</span><br></code></pre></td></tr></table></figure>
+
+<p>创建对应的svc</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">$</span> <span class="hljs-string">cat&lt;&lt;EOF</span> <span class="hljs-string">|</span> <span class="hljs-string">kubectl</span> <span class="hljs-string">apply</span> <span class="hljs-string">-f</span> <span class="hljs-bullet">-</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">example-app</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">example-app</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">example-app</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">8080</span><br><span class="hljs-string">EOF</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="部署kind-ServiceMonitor"><a href="#部署kind-ServiceMonitor" class="headerlink" title="部署kind: ServiceMonitor"></a>部署kind: ServiceMonitor</h3><p>现在创建一个ServiceMonitor来告诉prometheus server需要监控带有label app: example-app的svc背后的一组pod的metrics</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">$ cat&lt;&lt;EOF | kubectl apply -f -</span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">monitoring.coreos.com/v1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ServiceMonitor</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">example-app</span><br>  <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">team</span><span class="hljs-punctuation">:</span> <span class="hljs-string">frontend</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">selector</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">matchLabels</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">example-app</span><br>  <span class="hljs-attribute">endpoints</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">port: web</span><br>EOF<br></code></pre></td></tr></table></figure>
+
+<p>默认情况下ServiceMonitor和监控对象必须是在相同Namespace下的,如果要关联非同ns下需要下面这样设置值</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">namespaceSelector</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">matchNames</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">target_ns_name</span><br></code></pre></td></tr></table></figure>
+
+<p>如果希望ServiceMonitor可以关联任意命名空间下的标签，则通过以下方式定义：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">namespaceSelector:</span><br>    <span class="hljs-attr">any:</span> <span class="hljs-literal">true</span><br></code></pre></td></tr></table></figure>
+
+
+<p>如果需要监控的Target对象启用了BasicAuth认证，那在定义ServiceMonitor对象时，可以使用endpoints配置中定义basicAuth如下所示basicAuth中的password和username值来源于同ns下的一个名为basic-auth的Secret</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">spec</span><br>  <span class="hljs-attr">endpoints:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">basicAuth:</span><br>      <span class="hljs-attr">password:</span><br>        <span class="hljs-attr">name:</span> <span class="hljs-string">basic-auth</span><br>        <span class="hljs-attr">key:</span> <span class="hljs-string">password</span><br>      <span class="hljs-attr">username:</span><br>        <span class="hljs-attr">name:</span> <span class="hljs-string">basic-auth</span><br>        <span class="hljs-attr">key:</span> <span class="hljs-string">user</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-string">web</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Secret</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">basic-auth</span><br><span class="hljs-attr">type:</span> <span class="hljs-string">Opaque</span><br><span class="hljs-attr">data:</span><br>  <span class="hljs-attr">user:</span> <span class="hljs-string">dXNlcgo=</span> <span class="hljs-comment"># base64编码后的用户名</span><br>  <span class="hljs-attr">password:</span> <span class="hljs-string">cGFzc3dkCg==</span> <span class="hljs-comment"># base64编码后的密码</span><br></code></pre></td></tr></table></figure>
+
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>初探Prometheus Operator</div>
+      <div>https://system51.github.io/2019/08/26/Kubernetes-Prometheus-Operator/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-TLS-bootstrapping/" title="Kubernetes TLS bootstrapping 那点事">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes TLS bootstrapping 那点事</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-Weave-Scope/" title="Kubernetes之Weave Scope集群监控">
+                        <span class="hidden-mobile">Kubernetes之Weave Scope集群监控</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

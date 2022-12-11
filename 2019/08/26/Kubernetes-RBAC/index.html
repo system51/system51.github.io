@@ -1,0 +1,876 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="Kubernetes的授权是基于插件形式的，其常用的授权插件有以下几种：  Node（节点认证） ABAC(基于属性的访问控制) RBAC（基于角色的访问控制） Webhook（基于http回调机制的访问控制）  让一个用户（Users）扮演一个角色（Role），角色拥有权限，从而让用户拥有这样的权限，随后在授权机制当中，只需要将权限授予某个角色，此时用户将获取对应角色的权限，从而实现角色的访问控">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之RBAC（基于角色的访问控制）">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-RBAC/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Kubernetes的授权是基于插件形式的，其常用的授权插件有以下几种：  Node（节点认证） ABAC(基于属性的访问控制) RBAC（基于角色的访问控制） Webhook（基于http回调机制的访问控制）  让一个用户（Users）扮演一个角色（Role），角色拥有权限，从而让用户拥有这样的权限，随后在授权机制当中，只需要将权限授予某个角色，此时用户将获取对应角色的权限，从而实现角色的访问控">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/rbac-1.png">
+<meta property="og:image" content="https://system51.github.io/images/rbac-2.png">
+<meta property="og:image" content="https://system51.github.io/images/rbac-3.png">
+<meta property="og:image" content="https://system51.github.io/images/rbac-4.png">
+<meta property="og:image" content="https://system51.github.io/images/rbac-5.png">
+<meta property="og:image" content="https://system51.github.io/images/rbac-6.png">
+<meta property="article:published_time" content="2019-08-26T03:10:59.000Z">
+<meta property="article:modified_time" content="2022-08-30T14:15:25.612Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/rbac-1.png">
+  
+  
+  
+  <title>Kubernetes之RBAC（基于角色的访问控制） - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes之RBAC（基于角色的访问控制）"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 11:10" pubdate>
+          2019年8月26日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          22k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          38 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes之RBAC（基于角色的访问控制）</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>Kubernetes的授权是基于插件形式的，其常用的授权插件有以下几种：</p>
+<ul>
+<li>Node（节点认证）</li>
+<li>ABAC(基于属性的访问控制)</li>
+<li>RBAC（基于角色的访问控制）</li>
+<li>Webhook（基于http回调机制的访问控制）</li>
+</ul>
+<p>让一个用户（Users）扮演一个角色（Role），角色拥有权限，从而让用户拥有这样的权限，随后在授权机制当中，只需要将权限授予某个角色，此时用户将获取对应角色的权限，从而实现角色的访问控制。如图：</p>
+<p><img src="/images/rbac-1.png" srcset="/img/loading.gif" lazyload alt="rbac-1"></p>
+<p>基于角色的访问控制（Role-Based Access Control, 即”RBAC”）使用”rbac.authorization.k8s.io” API Group实现授权决策，允许管理员通过Kubernetes API动态配置策略。</p>
+<p>在k8s的授权机制当中，采用RBAC的方式进行授权，其工作逻辑是把对对象的操作权限定义到一个角色当中，再将用户绑定到该角色，从而使用户得到对应角色的权限。此种方式仅作用于名称空间当中，这是什么意思呢？当User1绑定到Role角色当中，User1就获取了对该NamespaceA的操作权限，但是对NamespaceB是没有权限进行操作的，如get，list等操作。</p>
+<p>另外，k8s为此还有一种集群级别的授权机制，就是定义一个集群角色（ClusterRole），对集群内的所有资源都有可操作的权限，从而将User2，User3通过ClusterRoleBinding到ClusterRole，从而使User2、User3拥有集群的操作权限。</p>
+<p><img src="/images/rbac-2.png" srcset="/img/loading.gif" lazyload alt="rbac-2"></p>
+<p>这里有2种绑定ClusterRoleBinding、RoleBinding。但是也可以使用RoleBinding去绑定ClusterRole。</p>
+<p>当使用这种方式进行绑定时，用户仅能获取当前名称空间的所有权限。为什么这么绕呢？？举例有10个名称空间，每个名称空间都需要一个管理员，而该管理员的权限都是一致的。那么此时需要去定义这样的管理员，使用RoleBinding就需要创建10个Role，这样显得更加繁重。为此当使用RoleBinding去绑定一个ClusterRole时，该User仅仅拥有对当前名称空间的集群操作权限，换句话说，此时只需要创建一个ClusterRole就解决了以上的需求。(注意：RoleBinding仅仅对当前名称空间有对应的权限)</p>
+<p>在RBAC API中，一个角色就是一组权限的集合， 权限以纯粹的累加形式累积（没有”否定”的规则）。 角色由命名空间（namespace）内的Role对象定义，而整个Kubernetes集群范围内有效的角色则通过ClusterRole对象实现。</p>
+<h2 id="角色（Role）"><a href="#角色（Role）" class="headerlink" title="角色（Role）"></a>角色（Role）</h2><p>角色只能对命名空间内的资源进行授权，以下示例描述了”default”命名空间中定义了一个Role对象，用于授予对pod的读访问权限：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">kind:</span> Role<br><span class="hljs-symbol">apiVersion:</span> rbac.authorization.k8s.io/v1beta1<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">  name:</span> pod-reader<br><span class="hljs-symbol">rules:</span><br>- apiGroups: [<span class="hljs-string">&quot;&quot;</span>] <span class="hljs-meta"># <span class="hljs-string">&quot;&quot;</span> 空字符串，表示核心 API 群</span><br><span class="hljs-symbol">  resources:</span> [<span class="hljs-string">&quot;pods&quot;</span>]<br><span class="hljs-symbol">  verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;watch&quot;</span>, <span class="hljs-string">&quot;list&quot;</span>]<br></code></pre></td></tr></table></figure>
+
+<h3 id="rules-中的参数说明如下"><a href="#rules-中的参数说明如下" class="headerlink" title="rules 中的参数说明如下"></a>rules 中的参数说明如下</h3><ul>
+<li>apiGroups：支持的 API 组列表，例如<code>apiVersion: batch/v1</code>、 <code>apiVersion: extensions/v1beta1</code>、 <code>apiVersion: apps/v1beta1</code> 等。</li>
+<li>resource：支持的资源对象列表，例如 <code>pods</code>、<code>deployments</code>、<code>jobs</code> 等。</li>
+<li>verbs：对资源对象的操作方法列表，例如 <code>get</code>, <code>list</code>, <code>watch</code>, <code>create</code>, <code>update</code>, <code>patch</code>, <code>delete</code>,<code>deletecollection</code> 。</li>
+</ul>
+<h2 id="集群角色（Cluster-Role）"><a href="#集群角色（Cluster-Role）" class="headerlink" title="集群角色（Cluster Role）"></a>集群角色（Cluster Role）</h2><p>集群角色除了具有和角色一致的名称空间内资源的管理能力，因其集群级别的范围，还可以用于以下特殊元素的授权。</p>
+<ul>
+<li>集群范围的资源（例如 Node（节点））</li>
+<li>非资源型的路径（例如 <code>/healthz</code>）</li>
+<li>包含全部名称空间的资源，例如 pods（用于 <code>kubectl get pods --all-namespaces</code> 这样的操作授权）。</li>
+</ul>
+<p>下面的集群角色可以让用户有权访问任意一个或所有命名空间的 secrets（取决于其绑定方式）：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">kind:</span> ClusterRole<br><span class="hljs-symbol">apiVersion:</span> rbac.authorization.k8s.io/v1beta1<br><span class="hljs-symbol">metadata:</span><br>  <span class="hljs-meta"># 鉴于ClusterRole是作用于整个集群范围对象，所以这里不需要定义<span class="hljs-string">&quot;namespace&quot;</span>字段</span><br><span class="hljs-symbol">  name:</span> secret-reader<br><span class="hljs-symbol">rules:</span><br>- apiGroups: [<span class="hljs-string">&quot;&quot;</span>]<br><span class="hljs-symbol">  resources:</span> [<span class="hljs-string">&quot;secrets&quot;</span>]<br><span class="hljs-symbol">  verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;watch&quot;</span>, <span class="hljs-string">&quot;list&quot;</span>]<br></code></pre></td></tr></table></figure>
+
+
+<h2 id="RoleBinding与ClusterRoleBinding"><a href="#RoleBinding与ClusterRoleBinding" class="headerlink" title="RoleBinding与ClusterRoleBinding"></a>RoleBinding与ClusterRoleBinding</h2><p>角色绑定（Role Binding）将一个角色中定义的各种权限授予一个或者一组用户。 角色绑定包含了一组相关主体（即subject, 包括用户——User、用户组——Group、或者服务账户——Service Account）以及对被授予角色的引用。 在命名空间中可以通过RoleBinding对象授予权限，而集群范围的权限授予则通过ClusterRoleBinding对象完成。</p>
+<p>RoleBinding可以引用在同一命名空间内定义的Role对象。 下面示例中定义的RoleBinding对象在”default”命名空间中将”pod-reader”角色授予用户”jane”。 这一授权将允许用户”jane”从”default”命名空间中读取pod。</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-meta"># 以下角色绑定定义将允许用户<span class="hljs-string">&quot;jane&quot;</span>从<span class="hljs-string">&quot;default&quot;</span>命名空间中读取pod。</span><br><span class="hljs-symbol"></span><br><span class="hljs-symbol">kind:</span> RoleBinding<br><span class="hljs-symbol">apiVersion:</span> rbac.authorization.k8s.io/v1<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> read-pods<br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">subjects:</span><br>- kind: User               <span class="hljs-meta"># 赋予用户jane pod-reader角色权限</span><br><span class="hljs-symbol">  name:</span> jane<br><span class="hljs-symbol">  apiGroup:</span> rbac.authorization.k8s.io<br><span class="hljs-symbol">roleRef:</span><br><span class="hljs-symbol">  kind:</span> Role               <span class="hljs-meta"># 此字段必须是 Role 或 ClusterRole</span><br><span class="hljs-symbol">  name:</span> pod-reader         <span class="hljs-meta"># 此字段必须与你要绑定的 Role 或 ClusterRole 的名称匹配，也就是说此 Role 或 ClusterRole必须存在</span><br><span class="hljs-symbol">  apiGroup:</span> rbac.authorization.k8s.io<br></code></pre></td></tr></table></figure>
+
+
+<p>RoleBinding对象也可以引用一个ClusterRole对象用于在RoleBinding所在的命名空间内授予用户对所引用的ClusterRole中 定义的命名空间资源的访问权限。这一点允许管理员在整个集群范围内首先定义一组通用的角色，然后再在不同的命名空间中复用这些角色。(这样做的目的是创建一个通用权限的ClusterRole，如果需要创建10个名称空间管理员的时候只需要用RoleBinding和ClusterRole绑定即可，不用创建10个role和10个RoleBinding，只需要一个ClusterRole和十个RoleBinding就搞定了)</p>
+<p>例如，尽管下面示例中的RoleBinding引用的是一个ClusterRole对象，但是用户”dave”（即角色绑定主体）还是只能读取”development” 命名空间中的secret（即RoleBinding所在的命名空间）。</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-meta"># 以下角色绑定允许用户<span class="hljs-string">&quot;dave&quot;</span>读取<span class="hljs-string">&quot;development&quot;</span>命名空间中的secret。</span><br><span class="hljs-symbol"></span><br><span class="hljs-symbol">kind:</span> RoleBinding<br><span class="hljs-symbol">apiVersion:</span> rbac.authorization.k8s.io/v1beta1<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> read-secrets<br><span class="hljs-symbol">  namespace:</span> development       <span class="hljs-meta"># 这里表明仅授权读取<span class="hljs-string">&quot;development&quot;</span>命名空间中的资源。</span><br><span class="hljs-symbol">subjects:</span><br>- kind: User<br><span class="hljs-symbol">  name:</span> dave<br><span class="hljs-symbol">  apiGroup:</span> rbac.authorization.k8s.io<br><span class="hljs-symbol">roleRef:</span><br><span class="hljs-symbol">  kind:</span> ClusterRole<br><span class="hljs-symbol">  name:</span> secret-reader         <span class="hljs-meta"># 引用上面定义的clusterRole 名称（clusterRole没有指定命名空间，默认可以应用所有，但是在rolebinding时，指定了命名空间，所以只能读取本命名空间的文件）</span><br><span class="hljs-symbol">  apiGroup:</span> rbac.authorization.k8s.io<br></code></pre></td></tr></table></figure>
+
+
+<p>最后，可以使用ClusterRoleBinding在集群级别的所有名称空间中授予权限。下面示例中所定义的ClusterRoleBinding 允许在用户组”manager”中的任何用户都可以读取集群中任何名称空间中的secret。</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-meta"># 以下`ClusterRoleBinding`对象允许在用户组<span class="hljs-string">&quot;manager&quot;</span>中的任何用户都可以读取集群中任何命名空间中的secret。</span><br><span class="hljs-symbol"></span><br><span class="hljs-symbol">kind:</span> ClusterRoleBinding<br><span class="hljs-symbol">apiVersion:</span> rbac.authorization.k8s.io/v1beta1<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> read-secrets-global<br><span class="hljs-symbol">subjects:</span><br>- kind: Group<br><span class="hljs-symbol">  name:</span> manager<br><span class="hljs-symbol">  apiGroup:</span> rbac.authorization.k8s.io<br><span class="hljs-symbol">roleRef:</span><br><span class="hljs-symbol">  kind:</span> ClusterRole<br><span class="hljs-symbol">  name:</span> secret-reader<br><span class="hljs-symbol">  apiGroup:</span> rbac.authorization.k8s.io<br></code></pre></td></tr></table></figure>
+
+
+<h2 id="对资源的引用"><a href="#对资源的引用" class="headerlink" title="对资源的引用"></a>对资源的引用</h2><p>大多数资源由代表其名字的字符串表示，例如”pods”，就像它们出现在相关API endpoint的URL中一样。然而，有一些Kubernetes API还 包含了”子资源”，比如pod的logs。在Kubernetes中，pod logs endpoint的URL格式为：</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">GET <span class="hljs-regexp">/api/</span>v1<span class="hljs-regexp">/namespaces/</span>&#123;namespace&#125;<span class="hljs-regexp">/pods/</span>&#123;name&#125;/log<br></code></pre></td></tr></table></figure>
+
+
+<p>在这种情况下，”pods”是命名空间资源，而”log”是pods的子资源。为了在RBAC角色中表示出这一点，我们需要使用斜线来划分资源 与子资源。如果需要角色绑定主体读取pods以及pod log，您需要定义以下角色：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">kind:</span> Role<br><span class="hljs-symbol">apiVersion:</span> rbac.authorization.k8s.io/v1beta1<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">  name:</span> pod-and-pod-logs-reader<br><span class="hljs-symbol">rules:</span><br>- apiGroups: [<span class="hljs-string">&quot;&quot;</span>]<br><span class="hljs-symbol">  resources:</span> [<span class="hljs-string">&quot;pods&quot;</span>, <span class="hljs-string">&quot;pods/log&quot;</span>]       <span class="hljs-meta"># 根据上面意思表示授予读取pods和pods下log的权限</span><br><span class="hljs-symbol">  verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;list&quot;</span>]<br></code></pre></td></tr></table></figure>
+
+
+
+<h2 id="角色定义的例子"><a href="#角色定义的例子" class="headerlink" title="角色定义的例子"></a>角色定义的例子</h2><p>以下示例均为从 Role 或 ClusterRole 对象中截取出来，我们仅展示其 <code>rules</code> 部分</p>
+<p>允许读取core API Group中定义的资源”pods”：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">rules:</span><br>- apiGroups: [<span class="hljs-string">&quot;&quot;</span>]<br><span class="hljs-symbol">  resources:</span> [<span class="hljs-string">&quot;pods&quot;</span>]<br><span class="hljs-symbol">  verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;list&quot;</span>, <span class="hljs-string">&quot;watch&quot;</span>]<br></code></pre></td></tr></table></figure>
+<p>允许读写在”extensions”和”apps” API Group中定义的”deployments”：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">rules:</span><br>- apiGroups: [<span class="hljs-string">&quot;extensions&quot;</span>, <span class="hljs-string">&quot;apps&quot;</span>]<br><span class="hljs-symbol">  resources:</span> [<span class="hljs-string">&quot;deployments&quot;</span>]<br><span class="hljs-symbol">  verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;list&quot;</span>, <span class="hljs-string">&quot;watch&quot;</span>, <span class="hljs-string">&quot;create&quot;</span>, <span class="hljs-string">&quot;update&quot;</span>, <span class="hljs-string">&quot;patch&quot;</span>, <span class="hljs-string">&quot;delete&quot;</span>]<br></code></pre></td></tr></table></figure>
+<p>允许读取”pods”以及读写”jobs”：</p>
+<figure class="highlight prolog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs prolog">rules:<br>- apiGroups: [<span class="hljs-string">&quot;&quot;</span>]<br>  resources: [<span class="hljs-string">&quot;pods&quot;</span>]<br>  verbs: [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;list&quot;</span>, <span class="hljs-string">&quot;watch&quot;</span>]<br>- apiGroups: [<span class="hljs-string">&quot;batch&quot;</span>, <span class="hljs-string">&quot;extensions&quot;</span>]<br>  resources: [<span class="hljs-string">&quot;jobs&quot;</span>]<br>  verbs: [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;list&quot;</span>, <span class="hljs-string">&quot;watch&quot;</span>, <span class="hljs-string">&quot;create&quot;</span>, <span class="hljs-string">&quot;update&quot;</span>, <span class="hljs-string">&quot;patch&quot;</span>, <span class="hljs-string">&quot;delete&quot;</span>]<br></code></pre></td></tr></table></figure>
+
+<p>允许读取一个名为”my-config”的ConfigMap实例（需要将其通过RoleBinding绑定从而限制针对某一个命名空间中定义的一个ConfigMap实例的访问）：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">rules:</span><br>- apiGroups: [<span class="hljs-string">&quot;&quot;</span>]<br><span class="hljs-symbol">  resources:</span> [<span class="hljs-string">&quot;configmaps&quot;</span>]<br><span class="hljs-symbol">  resourceNames:</span> [<span class="hljs-string">&quot;my-config&quot;</span>]<br><span class="hljs-symbol">  verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>]<br></code></pre></td></tr></table></figure>
+<p>允许读取core API Group中的”nodes”资源（由于Node是集群级别资源，所以此ClusterRole定义需要与一个ClusterRoleBinding绑定才能有效）：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">rules:</span><br>- apiGroups: [<span class="hljs-string">&quot;&quot;</span>]<br><span class="hljs-symbol">  resources:</span> [<span class="hljs-string">&quot;nodes&quot;</span>]<br><span class="hljs-symbol">  verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;list&quot;</span>, <span class="hljs-string">&quot;watch&quot;</span>]<br></code></pre></td></tr></table></figure>
+<p>允许针对非资源端点 <code>“/healthz”</code> 及其所有子路径的”GET”和”POST”请求（此ClusterRole定义需要与一个ClusterRoleBinding绑定才能有效）：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">rules:</span><br>- nonResourceURLs: [<span class="hljs-string">&quot;/healthz&quot;</span>, <span class="hljs-string">&quot;/healthz/*&quot;</span>]   <span class="hljs-meta"># 在非资源URL中，<span class="hljs-string">&#x27;*&#x27;</span>代表后缀通配符</span><br><span class="hljs-symbol">  verbs:</span> [<span class="hljs-string">&quot;get&quot;</span>, <span class="hljs-string">&quot;post&quot;</span>]<br></code></pre></td></tr></table></figure>
+
+
+
+<h2 id="对角色绑定主体（Subject）的引用"><a href="#对角色绑定主体（Subject）的引用" class="headerlink" title="对角色绑定主体（Subject）的引用"></a>对角色绑定主体（Subject）的引用</h2><p>RoleBinding或者ClusterRoleBinding将角色绑定到角色绑定主体（Subject）。 角色绑定主体（kind指定）可以是用户组（Group）、用户（User）或者服务账户（Service Accounts）。</p>
+<p>用户由字符串表示。可以是纯粹的用户名，例如”alice”、电子邮件风格的名字，如 “<a href="mailto:&#x62;&#x6f;&#x62;&#x40;&#101;&#120;&#97;&#109;&#112;&#108;&#x65;&#46;&#99;&#x6f;&#x6d;">&#x62;&#x6f;&#x62;&#x40;&#101;&#120;&#97;&#109;&#112;&#108;&#x65;&#46;&#99;&#x6f;&#x6d;</a>” 或者是用字符串表示的数字id。由Kubernetes管理员配置认证模块 以产生所需格式的用户名。对于用户名，RBAC授权系统不要求任何特定的格式。然而，前缀<code>system:</code>是 为Kubernetes系统使用而保留的，所以管理员应该确保用户名不会意外地包含这个前缀。</p>
+<p>Kubernetes中的用户组信息由授权模块提供。用户组与用户一样由字符串表示。Kubernetes对用户组 字符串没有格式要求，但前缀system:同样是被系统保留的。</p>
+<p>服务账户（serviceAccount）拥有包含 <code>system:serviceaccount:</code>前缀的用户名，并属于拥有<code>system:serviceaccounts:</code>前缀的用户组。</p>
+<p>说明：</p>
+<ul>
+<li>system:serviceaccount: （单数）是用于服务账户用户名的前缀；</li>
+<li>system:serviceaccounts: （复数）是用于服务账户组名的前缀。</li>
+</ul>
+<h3 id="角色绑定例子"><a href="#角色绑定例子" class="headerlink" title="角色绑定例子"></a>角色绑定例子</h3><p>以下示例中，仅截取展示了RoleBinding的subjects字段。</p>
+<p>一个名为”<a href="mailto:&#x61;&#x6c;&#x69;&#99;&#101;&#x40;&#101;&#120;&#97;&#x6d;&#112;&#108;&#101;&#x2e;&#99;&#111;&#109;">&#x61;&#x6c;&#x69;&#99;&#101;&#x40;&#101;&#120;&#97;&#x6d;&#112;&#108;&#101;&#x2e;&#99;&#111;&#109;</a>”的用户：</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">subjects:<br>- kind: <span class="hljs-keyword">User</span><br>  <span class="hljs-title">name</span>: <span class="hljs-string">&quot;alice@example.com&quot;</span><br>  apiGroup: rbac.authorization.k8s.io<br></code></pre></td></tr></table></figure>
+<p>一个名为”frontend-admins”的用户组：</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">subjects:<br>- kind: <span class="hljs-keyword">Group</span><br>  <span class="hljs-title">name</span>: <span class="hljs-string">&quot;frontend-admins&quot;</span><br>  apiGroup: rbac.authorization.k8s.io<br></code></pre></td></tr></table></figure>
+
+<p>kube-system命名空间中的默认服务账户：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">subjects</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: ServiceAccount</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">kube-system</span><br></code></pre></td></tr></table></figure>
+<p>对于任何名称空间中的 “qa” 组中所有的服务账户：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">subjects</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: Group</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:serviceaccounts:qa</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br></code></pre></td></tr></table></figure>
+<p>对于 “development” 名称空间中 “dev” 组中的所有服务帐户：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">subjects</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: Group</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:serviceaccounts:dev</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">development</span><br></code></pre></td></tr></table></figure>
+
+
+<p>在集群中的所有服务账户：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">subjects</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: Group</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:serviceaccounts</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br></code></pre></td></tr></table></figure>
+<p>所有认证过的用户：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">subjects</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: Group</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:authenticated</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io </span><br></code></pre></td></tr></table></figure>
+
+<p>所有未认证的用户：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">subjects</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: Group</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:unauthenticated</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br></code></pre></td></tr></table></figure>
+<p>所有用户：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">subjects</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: Group</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:authenticated</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: Group</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:unauthenticated</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="重点注意"><a href="#重点注意" class="headerlink" title="重点注意"></a>重点注意</h3><p>在创建Rolebinding 或是Clusterrolebinding时如果是ServiceAccount则需指定Namespace字段</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@master-1</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># kubectl create rolebinding heihei  --role=pods-reader   --serviceaccount=kube-system:admin --dry-run -o yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">rbac.authorization.k8s.io/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">RoleBinding</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">creationTimestamp:</span> <span class="hljs-literal">null</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">heihei</span><br><span class="hljs-attr">roleRef:</span><br>  <span class="hljs-attr">apiGroup:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br>  <span class="hljs-attr">kind:</span> <span class="hljs-string">Role</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">pods-reader</span><br><span class="hljs-attr">subjects:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">kind:</span> <span class="hljs-string">ServiceAccount</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">admin</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br><span class="hljs-comment">#这里的admin必须是真实存在于kubectl get sa -n kube-system中的serviceaccount</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs makefile">[root@master-1 pki]<span class="hljs-comment"># kubectl describe rolebinding leader-locking-nfs-provisioner</span><br><span class="hljs-section">Name:         leader-locking-nfs-provisioner</span><br><span class="hljs-section">Labels:       &lt;none&gt;</span><br><span class="hljs-section">Annotations:  kubectl.kubernetes.io/last-applied-configuration:</span><br>                &#123;<span class="hljs-string">&quot;apiVersion&quot;</span>:<span class="hljs-string">&quot;rbac.authorization.k8s.io/v1&quot;</span>,<span class="hljs-string">&quot;kind&quot;</span>:<span class="hljs-string">&quot;RoleBinding&quot;</span>,<span class="hljs-string">&quot;metadata&quot;</span>:&#123;<span class="hljs-string">&quot;annotations&quot;</span>:&#123;&#125;,<span class="hljs-string">&quot;name&quot;</span>:<span class="hljs-string">&quot;leader-locking-nfs-provisioner&quot;</span>,<span class="hljs-string">&quot;na...</span><br><span class="hljs-string">Role:</span><br><span class="hljs-string">  Kind:  Role</span><br><span class="hljs-string">  Name:  leader-locking-nfs-provisioner</span><br><span class="hljs-string">Subjects:</span><br><span class="hljs-string">  Kind            Name             Namespace</span><br><span class="hljs-string">  ----            ----             ---------</span><br><span class="hljs-string">  ServiceAccount  nfs-provisioner  default</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<p>在创建Rolebinding 或是Clusterrolebinding如果是User、Group时无需指定Namespace字段</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master-01</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># kubectl describe clusterrolebinding ye-read-pods</span><br><span class="hljs-attr">Name:</span>         <span class="hljs-string">ye-read-pods</span><br><span class="hljs-attr">Labels:</span>       <span class="hljs-string">&lt;none&gt;</span><br><span class="hljs-attr">Annotations:</span>  <span class="hljs-string">&lt;none&gt;</span><br><span class="hljs-attr">Role:</span><br>  <span class="hljs-attr">Kind:</span>  <span class="hljs-string">ClusterRole</span><br>  <span class="hljs-attr">Name:</span>  <span class="hljs-string">pods-reader</span><br><span class="hljs-attr">Subjects:</span><br>  <span class="hljs-string">Kind</span>  <span class="hljs-string">Name</span>           <span class="hljs-string">Namespace</span><br>  <span class="hljs-string">----</span>  <span class="hljs-string">----</span>           <span class="hljs-string">---------</span><br>  <span class="hljs-string">User</span>  <span class="hljs-string">k8s-user-test</span>  <br></code></pre></td></tr></table></figure>
+
+
+<h2 id="创建User-Account访问Kubernetes集群"><a href="#创建User-Account访问Kubernetes集群" class="headerlink" title="创建User Account访问Kubernetes集群"></a>创建User Account访问Kubernetes集群</h2><p>此步骤在<code>/etc/kubernetes/pki</code>路径下执行，因为需要用到Kubernetes CA证书</p>
+<h3 id="生成证书"><a href="#生成证书" class="headerlink" title="生成证书"></a>生成证书</h3><figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs csharp">[<span class="hljs-meta">root@k8s-master-01 pki</span>]<span class="hljs-meta"># (umask 077;openssl genrsa -out k8s-user-test.key 2048)</span><br>Generating RSA <span class="hljs-keyword">private</span> key, <span class="hljs-number">2048</span> bit <span class="hljs-built_in">long</span> modulus<br>...................................+++<br>.+++<br>e <span class="hljs-keyword">is</span> <span class="hljs-number">65537</span> (<span class="hljs-number">0x10001</span>)<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight tap"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs tap">[root@k8s-master-01 pki]<span class="hljs-comment"># ll k8s-user-test.key</span><br>-rw-------<span class="hljs-number"> 1 </span>root root<span class="hljs-number"> 1675 </span>12月<span class="hljs-number"> 16 </span>17:02 k8s-user-test.key<br></code></pre></td></tr></table></figure>
+
+<h3 id="使用ca-crt进行签署"><a href="#使用ca-crt进行签署" class="headerlink" title="使用ca.crt进行签署"></a>使用ca.crt进行签署</h3><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sql">[root<span class="hljs-variable">@k8s</span><span class="hljs-operator">-</span>master<span class="hljs-number">-01</span> pki]# openssl req <span class="hljs-operator">-</span><span class="hljs-keyword">new</span> <span class="hljs-operator">-</span>key k8s<span class="hljs-operator">-</span><span class="hljs-keyword">user</span><span class="hljs-operator">-</span>test.key <span class="hljs-operator">-</span><span class="hljs-keyword">out</span> k8s<span class="hljs-operator">-</span><span class="hljs-keyword">user</span><span class="hljs-operator">-</span>test.csr <span class="hljs-operator">-</span>subj &quot;/CN=k8s-user-test&quot;     # 证书签署请求(CN表示用户名，O表示组)<br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs stata">[root@k8s-master-01 pki]# openssl x509 -req -<span class="hljs-keyword">in</span> k8s-user-<span class="hljs-keyword">test</span>.csr -<span class="hljs-keyword">CA</span> ./<span class="hljs-keyword">ca</span>.crt -CAkey ./<span class="hljs-keyword">ca</span>.key -CAcreateserial -<span class="hljs-keyword">out</span> k8s-user-<span class="hljs-keyword">test</span>.crt -days 1000      #证书签署<br>Signature ok<br>subject=/CN=k8s-user-<span class="hljs-keyword">test</span><br>Getting <span class="hljs-keyword">CA</span> Private Key<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@k8s</span>-master<span class="hljs-number">-01</span> pki]<span class="hljs-meta"># openssl x509 -in k8s-user-test.crt -text -noout</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="role定义（User-–-gt-Rolebinding-–-gt-Role）"><a href="#role定义（User-–-gt-Rolebinding-–-gt-Role）" class="headerlink" title="role定义（User –&gt; Rolebinding –&gt; Role）"></a>role定义（User –&gt; Rolebinding –&gt; Role）</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master-01</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># kubectl create role  pods-reader --verb=get,list,watch --resource=pods --dry-run=client -o yaml #单跑模式查看role的定义</span><br><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">rbac.authorization.k8s.io/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Role</span>    <span class="hljs-comment">#资源类型</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">creationTimestamp:</span> <span class="hljs-literal">null</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">pods-reader</span><br><span class="hljs-attr">rules:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">apiGroups:</span>  <span class="hljs-comment">#对那些api组内的资源进行操作</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;&quot;</span><br>  <span class="hljs-attr">resources:</span>  <span class="hljs-comment">#对那些资源定义</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">pods</span><br>  <span class="hljs-attr">verbs:</span>      <span class="hljs-comment">#操作权限定义</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">get</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">list</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">watch</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">[root@k8s-master-01 pki]# kubectl create role pods-reader --verb=get,list,watch --resource=pods --dry-run=client -o yaml &gt; role-demo.yaml</span><br><span class="hljs-attribute"></span><br><span class="hljs-attribute">[root@k8s-master-01 pki]# vim role-demo.yaml </span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io/v1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Role</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">creationTimestamp</span><span class="hljs-punctuation">:</span> <span class="hljs-string">null</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">pods-reader</span><br><span class="hljs-attribute">rules</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">apiGroups:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;&quot;</span><br>  <span class="hljs-attribute">resources</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">pods</span><br>  <span class="hljs-attribute">verbs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">get</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">list</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">watch</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">[root@k8s-master<span class="hljs-number">-01</span> pki]# kubectl apply -f <span class="hljs-keyword">role</span>-demo.yaml      #角色创建<br><span class="hljs-keyword">role</span>.rbac.<span class="hljs-keyword">authorization</span>.k8s.io/pods-reader created <br></code></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs sql">[root<span class="hljs-variable">@k8s</span><span class="hljs-operator">-</span>master<span class="hljs-number">-01</span> pki]# kubectl <span class="hljs-keyword">get</span> role<br>NAME          AGE<br>pods<span class="hljs-operator">-</span>reader   <span class="hljs-number">3</span>s<br><br>[root<span class="hljs-variable">@k8s</span><span class="hljs-operator">-</span>master<span class="hljs-number">-01</span> pki]# kubectl <span class="hljs-keyword">describe</span> role pods<span class="hljs-operator">-</span>reader<br>Name:         pods<span class="hljs-operator">-</span>reader<br>Labels:       <span class="hljs-operator">&lt;</span><span class="hljs-keyword">none</span><span class="hljs-operator">&gt;</span><br>Annotations:  <span class="hljs-operator">&lt;</span><span class="hljs-keyword">none</span><span class="hljs-operator">&gt;</span><br>PolicyRule:<br>  Resources  Non<span class="hljs-operator">-</span>Resource URLs  Resource Names  Verbs<br>  <span class="hljs-comment">---------  -----------------  --------------  -----</span><br>  pods       []                 []              [<span class="hljs-keyword">get</span> list watch]  #此处已经定义了pods<span class="hljs-operator">-</span>reader这个角色对pods资源拥有<span class="hljs-keyword">get</span>、list、watch的权限<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="rolebinding定义"><a href="#rolebinding定义" class="headerlink" title="rolebinding定义"></a>rolebinding定义</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master-01</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># kubectl create rolebinding ye-read-pods --role=pods-reader --user=k8s-user-test --dry-run=client -o yaml &gt; rolebinding-demo.yaml</span><br><br>[<span class="hljs-string">root@k8s-master-01</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># cat rolebinding-demo.yaml </span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">rbac.authorization.k8s.io/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">RoleBinding</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">creationTimestamp:</span> <span class="hljs-literal">null</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">ye-read-pods</span><br><span class="hljs-attr">roleRef:</span><br>  <span class="hljs-attr">apiGroup:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br>  <span class="hljs-attr">kind:</span> <span class="hljs-string">Role</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">pods-reader</span><br><span class="hljs-attr">subjects:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">apiGroup:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br>  <span class="hljs-attr">kind:</span> <span class="hljs-string">User</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-user-test</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># kubectl apply -f rolebinding-demo.yaml  #创建角色绑定</span><br>rolebinding.rbac.authorization.k8s.io/ye-<span class="hljs-keyword">read</span>-pods created<br><br>[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># kubectl describe rolebinding ye-read-pods #查看角色绑定的信息，这里可以看到user：k8s-user-test绑定到了pods-reader这个角色上</span><br>Name:         ye-<span class="hljs-keyword">read</span>-pods<br>Labels:       <span class="hljs-tag">&lt;none&gt;</span><br>Annotations:  <span class="hljs-tag">&lt;none&gt;</span><br>Role:<br>  Kind:  <span class="hljs-keyword">Role</span><br>  <span class="hljs-title">Name</span>:  pods-reader<br>Subjects:<br>  Kind  Name           Namespace<br>  ----  ----           ---------<br>  <span class="hljs-keyword">User</span>  <span class="hljs-title">k8s-user-test</span>  <br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="添加用户认证"><a href="#添加用户认证" class="headerlink" title="添加用户认证"></a>添加用户认证</h3><figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[root@k8s-master-01 pki]# kubectl<span class="hljs-built_in"> config </span>set-credentials k8s-user-test <span class="hljs-attribute">--client-certificate</span>=./k8s-user-test.crt <span class="hljs-attribute">--client-key</span>=./k8s-user-test.key <span class="hljs-attribute">--embed-certs</span>=<span class="hljs-literal">true</span><span class="hljs-built_in"></span><br><span class="hljs-built_in">User </span><span class="hljs-string">&quot;k8s-user-test&quot;</span> set.<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[root@k8s-master-01 pki]# kubectl<span class="hljs-built_in"> config </span>set-context k8s-user-test@kubernetes <span class="hljs-attribute">--cluster</span>=kubernetes <span class="hljs-attribute">--user</span>=k8s-user-test<br>Context <span class="hljs-string">&quot;k8s-user-test@kubernetes&quot;</span> created.<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master-01</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># kubectl config view</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">clusters:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">cluster:</span><br>    <span class="hljs-attr">certificate-authority-data:</span> <span class="hljs-string">DATA+OMITTED</span><br>    <span class="hljs-attr">server:</span> <span class="hljs-string">https://172.16.50.200:6443</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes</span><br><span class="hljs-attr">contexts:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">context:</span><br>    <span class="hljs-attr">cluster:</span> <span class="hljs-string">kubernetes</span><br>    <span class="hljs-attr">user:</span> <span class="hljs-string">k8s-user-test</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-user-test@kubernetes</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">context:</span><br>    <span class="hljs-attr">cluster:</span> <span class="hljs-string">kubernetes</span><br>    <span class="hljs-attr">user:</span> <span class="hljs-string">kubernetes-admin</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes-admin@kubernetes</span><br><span class="hljs-attr">current-context:</span> <span class="hljs-string">kubernetes-admin@kubernetes</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Config</span><br><span class="hljs-attr">preferences:</span> &#123;&#125;<br><span class="hljs-attr">users:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-user-test</span><br>  <span class="hljs-attr">user:</span><br>    <span class="hljs-attr">client-certificate-data:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attr">client-key-data:</span> <span class="hljs-string">REDACTED</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes-admin</span><br>  <span class="hljs-attr">user:</span><br>    <span class="hljs-attr">client-certificate-data:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attr">client-key-data:</span> <span class="hljs-string">REDACTED</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs sql">[root<span class="hljs-variable">@k8s</span><span class="hljs-operator">-</span>master<span class="hljs-number">-01</span> pki]# kubectl config use<span class="hljs-operator">-</span>context k8s<span class="hljs-operator">-</span><span class="hljs-keyword">user</span><span class="hljs-operator">-</span>test<span class="hljs-variable">@kubernetes</span>      #切换k8s<span class="hljs-operator">-</span><span class="hljs-keyword">user</span><span class="hljs-operator">-</span>test这个用户，并使用<span class="hljs-keyword">get</span>获取pods资源信息<br>Switched <span class="hljs-keyword">to</span> context &quot;k8s-user-test@kubernetes&quot;. <br><br><br>[root<span class="hljs-variable">@k8s</span><span class="hljs-operator">-</span>master<span class="hljs-number">-01</span> pki]# kubectl <span class="hljs-keyword">get</span> pods<br>NAME                     READY   STATUS    RESTARTS   AGE<br>nginx<span class="hljs-number">-7</span>fb7fd49b4<span class="hljs-number">-4</span>wdnq   <span class="hljs-number">1</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     <span class="hljs-keyword">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d3h<br>nginx<span class="hljs-number">-7</span>fb7fd49b4<span class="hljs-number">-6</span>mvlr   <span class="hljs-number">1</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     <span class="hljs-keyword">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d3h<br>nginx<span class="hljs-number">-7</span>fb7fd49b4<span class="hljs-number">-6</span>rbrv   <span class="hljs-number">1</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     <span class="hljs-keyword">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d3h<br>nginx<span class="hljs-number">-7</span>fb7fd49b4<span class="hljs-operator">-</span>jqsvj   <span class="hljs-number">1</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     <span class="hljs-keyword">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d3h<br>nginx<span class="hljs-number">-7</span>fb7fd49b4<span class="hljs-operator">-</span>r5mrl   <span class="hljs-number">1</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     <span class="hljs-keyword">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d3h<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[root@k8s-master-01 pki]# kubectl <span class="hljs-built_in">get</span> pods -n kube-system        #测试获取kube-system这个名称空间的pods信息<br><span class="hljs-built_in">Error</span> <span class="hljs-keyword">from</span><span class="hljs-built_in"> server </span>(Forbidden): pods is forbidden:<span class="hljs-built_in"> User </span><span class="hljs-string">&quot;k8s-user-test&quot;</span> cannot list<span class="hljs-built_in"> resource </span><span class="hljs-string">&quot;pods&quot;</span> <span class="hljs-keyword">in</span> API<span class="hljs-built_in"> group </span><span class="hljs-string">&quot;&quot;</span> <span class="hljs-keyword">in</span> the namespace <span class="hljs-string">&quot;kube-system&quot;</span><br></code></pre></td></tr></table></figure>
+
+<p>由于k8s-user-test账户不具备创建的权限，这也说明普通用户是无法进行创建K8S资源的，除非进行授权。如下，我们另开一个终端，将配置到一个普通用户yedong上，使其使用k8s-user-test账户进行通信</p>
+<p>以下步骤在root权限下执行</p>
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@k8s</span>-master<span class="hljs-number">-01</span> ~]<span class="hljs-meta"># useradd yedong</span><br>[root<span class="hljs-symbol">@k8s</span>-master<span class="hljs-number">-01</span> ~]<span class="hljs-meta"># cp -rp .kube/ /home/yedong/</span><br>[root<span class="hljs-symbol">@k8s</span>-master<span class="hljs-number">-01</span> ~]<span class="hljs-meta"># chown -R yedong.yedong /home/yedong/</span><br>[root<span class="hljs-symbol">@k8s</span>-master<span class="hljs-number">-01</span> ~]<span class="hljs-meta"># su - yedong</span><br></code></pre></td></tr></table></figure>
+
+<p>以下步骤在普通用户yedong下执行</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">[yedong@k8s-master-01 ~]$ kubectl config use-context k8s-user-test@kubernetes</span><br><span class="hljs-attribute">Switched to context &quot;k8s-user-test@kubernetes&quot;.</span><br><span class="hljs-attribute"></span><br><span class="hljs-attribute">[yedong@k8s-master-01 ~]$ kubectl config view</span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">v1</span><br><span class="hljs-attribute">clusters</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">cluster:</span><br>    <span class="hljs-attribute">certificate-authority-data</span><span class="hljs-punctuation">:</span> <span class="hljs-string">DATA+OMITTED</span><br>    <span class="hljs-attribute">server</span><span class="hljs-punctuation">:</span> <span class="hljs-string">https://172.16.50.200:6443</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">kubernetes</span><br><span class="hljs-attribute">contexts</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">context:</span><br>    <span class="hljs-attribute">cluster</span><span class="hljs-punctuation">:</span> <span class="hljs-string">kubernetes</span><br>    <span class="hljs-attribute">user</span><span class="hljs-punctuation">:</span> <span class="hljs-string">k8s-user-test</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">k8s-user-test@kubernetes</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">context:</span><br>    <span class="hljs-attribute">cluster</span><span class="hljs-punctuation">:</span> <span class="hljs-string">kubernetes</span><br>    <span class="hljs-attribute">user</span><span class="hljs-punctuation">:</span> <span class="hljs-string">kubernetes-admin</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">kubernetes-admin@kubernetes</span><br><span class="hljs-attribute">current-context</span><span class="hljs-punctuation">:</span> <span class="hljs-string">k8s-user-test@kubernetes</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Config</span><br><span class="hljs-attribute">preferences</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#123;&#125;</span><br><span class="hljs-attribute">users</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">name: k8s-user-test</span><br>  <span class="hljs-attribute">user</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">client-certificate-data</span><span class="hljs-punctuation">:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attribute">client-key-data</span><span class="hljs-punctuation">:</span> <span class="hljs-string">REDACTED</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">name: kubernetes-admin</span><br>  <span class="hljs-attribute">user</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">client-certificate-data</span><span class="hljs-punctuation">:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attribute">client-key-data</span><span class="hljs-punctuation">:</span> <span class="hljs-string">REDACTED</span><br></code></pre></td></tr></table></figure>
+
+
+<p>以下步骤在root权限下执行</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> ~]<span class="hljs-comment"># kubectl get rolebinding                       #获取角色绑定信息</span><br>NAME           <span class="hljs-keyword">ROLE</span>               <span class="hljs-title">AGE</span><br>ye-<span class="hljs-keyword">read</span>-pods   Role/pods-reader   <span class="hljs-number">16h</span> <br><br><br>[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> ~]<span class="hljs-comment"># kubectl delete rolebinding ye-read-pods       #删除前面的绑定</span><br>rolebinding.rbac.authorization.k8s.io <span class="hljs-string">&quot;ye-read-pods&quot;</span> deleted <br></code></pre></td></tr></table></figure>
+
+<p>以下步骤在普通用户yedong下执行</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[yedong@k8s-master-01 ~]$  kubectl <span class="hljs-built_in">get</span> pods     #删除后，在yedong普通用户上进行获取pods资源信息，就立马出现forbidden了<br><span class="hljs-built_in">Error</span> <span class="hljs-keyword">from</span><span class="hljs-built_in"> server </span>(Forbidden): pods is forbidden:<span class="hljs-built_in"> User </span><span class="hljs-string">&quot;k8s-user-test&quot;</span> cannot list<span class="hljs-built_in"> resource </span><span class="hljs-string">&quot;pods&quot;</span> <span class="hljs-keyword">in</span> API<span class="hljs-built_in"> group </span><span class="hljs-string">&quot;&quot;</span> <span class="hljs-keyword">in</span> the namespace <span class="hljs-string">&quot;default&quot;</span> <br></code></pre></td></tr></table></figure>
+
+
+
+
+
+
+<h3 id="clusterrole定义（User-–-gt-Clusterrolebinding-–-gt-Clusterrole）"><a href="#clusterrole定义（User-–-gt-Clusterrolebinding-–-gt-Clusterrole）" class="headerlink" title="clusterrole定义（User –&gt; Clusterrolebinding –&gt; Clusterrole）"></a>clusterrole定义（User –&gt; Clusterrolebinding –&gt; Clusterrole）</h3><figure class="highlight scss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><code class="hljs scss"><span class="hljs-selector-attr">[root@k8s-master-01 pki]</span># kubectl config use-context kubernetes-admin<span class="hljs-keyword">@kubernetes</span>  #切换会kubernetes-admin用户<br>Switched to context <span class="hljs-string">&quot;kubernetes-admin@kubernetes&quot;</span>.<br><br>[root<span class="hljs-keyword">@k</span>8s-master-<span class="hljs-number">01</span> pki]# kubectl create clusterrole cluster-read --verb=get,list,watch --resource=pods -o yaml &gt; clusterrole-demo.yaml<br><br>[root<span class="hljs-keyword">@k</span>8s-master-<span class="hljs-number">01</span> pki]# vim clusterrole-demo.yaml #定义clusterrole和权限<br><span class="hljs-attribute">apiVersion</span>: rbac.authorization.k8s.io/v1<br><span class="hljs-attribute">kind</span>: ClusterRole<br><span class="hljs-attribute">metadata</span>:<br>  <span class="hljs-attribute">creationTimestamp</span>: <span class="hljs-string">&quot;2021-12-16T09:50:01Z&quot;</span><br>  <span class="hljs-attribute">name</span>: cluster-read<br>  <span class="hljs-attribute">resourceVersion</span>: <span class="hljs-string">&quot;879450&quot;</span><br>  <span class="hljs-attribute">uid</span>: <span class="hljs-number">0</span>effd7d6-<span class="hljs-number">2</span>ed3-<span class="hljs-number">4</span>fdb-be1e-da1ad65de097<br><span class="hljs-attribute">rules</span>:<br>- <span class="hljs-attribute">apiGroups</span>:<br>  - <span class="hljs-string">&quot;&quot;</span><br>  <span class="hljs-attribute">resources</span>:<br>  - pods<br>  <span class="hljs-attribute">verbs</span>:<br>  - get<br>  - list<br>  - watch<br><br><br>[root<span class="hljs-keyword">@k</span>8s-master-<span class="hljs-number">01</span> pki]# kubectl apply -f clusterrole-demo.yaml  #创建clusterrole<br>clusterrole.rbac.authorization.k8s.io/cluster-read configured<br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight subunit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs subunit">[root@k8s-master<span class="hljs-string">-01</span> pki]# kubectl get clusterrole<br>NAME                                                                   CREATED AT<br>admin                                                                  2021<span class="hljs-string">-12</span><span class="hljs-string">-09</span>T03:05:01Z<br>cluster-admin                                                          2021<span class="hljs-string">-12</span><span class="hljs-string">-09</span>T03:05:01Z<br>cluster-read                                                           2021<span class="hljs-string">-12</span><span class="hljs-string">-16</span>T09:53:29Z<br>edit                                                                   2021<span class="hljs-string">-12</span><span class="hljs-string">-09</span>T03:05:01Z<br>......<br></code></pre></td></tr></table></figure>
+
+
+
+
+<h3 id="clusterrolebinding定义"><a href="#clusterrolebinding定义" class="headerlink" title="clusterrolebinding定义"></a>clusterrolebinding定义</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master-01</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># kubectl create clusterrolebinding ye-read-all-pods --clusterrole=cluster-read --user=k8s-user-test --dry-run=client -o yaml &gt; clusterrolebinding-demo.yaml</span><br><br>[<span class="hljs-string">root@k8s-master-01</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># vim clusterrolebinding-demo.yaml  #创建角色绑定，将k8s-user-test绑定到clusterrole：ye-read-all-pods上</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">rbac.authorization.k8s.io/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">ClusterRoleBinding</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">creationTimestamp:</span> <span class="hljs-literal">null</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">ye-read-all-pods</span><br><span class="hljs-attr">roleRef:</span><br>  <span class="hljs-attr">apiGroup:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br>  <span class="hljs-attr">kind:</span> <span class="hljs-string">ClusterRole</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">cluster-read</span><br><span class="hljs-attr">subjects:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">apiGroup:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br>  <span class="hljs-attr">kind:</span> <span class="hljs-string">User</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-user-test</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># kubectl apply -f clusterrolebinding-demo.yaml</span><br>clusterrolebinding.rbac.authorization.k8s.io/ye-<span class="hljs-keyword">read</span>-all-pods created<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># kubectl get clusterrolebinding</span><br>NAME                                                   <span class="hljs-keyword">ROLE</span>                                                                               <span class="hljs-title">AGE</span><br>cluster-admin                                          ClusterRole/cluster-admin                                                          <span class="hljs-number">7</span>d22h<br>flannel                                                ClusterRole/flannel                                                                <span class="hljs-number">7</span>d22h<br>kubeadm:get-nodes                                      ClusterRole/kubeadm:get-nodes                                                      <span class="hljs-number">7</span>d22h<br>kubeadm:kubelet-bootstrap                              ClusterRole/system:<span class="hljs-keyword">node</span><span class="hljs-title">-bootstrapper</span>                                               <span class="hljs-number">7</span>d22h<br>.........<br>ye-<span class="hljs-keyword">read</span>-all-pods                                       ClusterRole/cluster-<span class="hljs-keyword">read</span>                                                           <span class="hljs-number">2m</span>41s<br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight fortran"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs fortran">[root@k8s-master-<span class="hljs-number">01</span> pki]# kubectl describe clusterrolebinding ye-read-<span class="hljs-built_in">all</span>-pods<br><span class="hljs-keyword">Name</span>:         ye-read-<span class="hljs-built_in">all</span>-pods<br>Labels:       &lt;<span class="hljs-keyword">none</span>&gt;<br>Annotations:  &lt;<span class="hljs-keyword">none</span>&gt;<br>Role:<br>  <span class="hljs-keyword">Kind</span>:  ClusterRole<br>  <span class="hljs-keyword">Name</span>:  cluster-read<br>Subjects:<br>  <span class="hljs-keyword">Kind</span>  <span class="hljs-keyword">Name</span>           Namespace<br>  ----  ----           ---------<br>  User  k8s-user-test  <br></code></pre></td></tr></table></figure>
+
+<figure class="highlight subunit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs subunit">[yedong@k8s-master<span class="hljs-string">-01</span> ~]$  kubectl get pods     #角色绑定后在yedong终端上进行获取pods信息，已经不会出现forbidden了<br>NAME                     READY   STATUS    RESTARTS   AGE<br>nginx<span class="hljs-string">-7</span>fb7fd49b4<span class="hljs-string">-4</span>wdnq   1/1     Running   0          7d19h<br>nginx<span class="hljs-string">-7</span>fb7fd49b4<span class="hljs-string">-6</span>mvlr   1/1     Running   0          7d19h<br>nginx<span class="hljs-string">-7</span>fb7fd49b4<span class="hljs-string">-6</span>rbrv   1/1     Running   0          7d19h<br>nginx<span class="hljs-string">-7</span>fb7fd49b4-jqsvj   1/1     Running   0          7d19h<br>nginx<span class="hljs-string">-7</span>fb7fd49b4-r5mrl   1/1     Running   0          7d19h<br><br><br>[yedong@k8s-master<span class="hljs-string">-01</span> ~]$  kubectl get pods -n kube-system   #更换名称空间进行查看也是可行的<br>NAME                                    READY   STATUS    RESTARTS         AGE<br>coredns<span class="hljs-string">-7568</span>f67dbd-bsnsh                1/1     Running   2                7d22h<br>coredns<span class="hljs-string">-7568</span>f67dbd-xjkmx                1/1     Running   2                7d22h<br>etcd-k8s-master<span class="hljs-string">-01</span>                      1/1     Running   10 (7d20h ago)   7d22h<br>kube-apiserver-k8s-master<span class="hljs-string">-01</span>            1/1     Running   10 (7d20h ago)   7d22h<br>kube-controller-manager-k8s-master<span class="hljs-string">-01</span>   1/1     Running   0                22h<br>kube-flannel-ds<span class="hljs-string">-26466</span>                   1/1     Running   1                7d22h<br>kube-flannel-ds<span class="hljs-string">-4</span>qxhf                   1/1     Running   2                7d22h<br>kube-flannel-ds-l68hk                   1/1     Running   2                7d22h<br>kube-proxy-dgj8z                        1/1     Running   1                7d22h<br>kube-proxy-smvwz                        1/1     Running   3                7d22h<br>kube-proxy-ttnl9                        1/1     Running   2                7d22h<br>kube-scheduler-k8s-master<span class="hljs-string">-01</span>            1/1     Running   0                22h<br><br><br>[yedong@k8s-master<span class="hljs-string">-01</span> ~]$  kubectl delete pods nginx<span class="hljs-string">-7</span>fb7fd49b4-jqsvj    #但是进行删除pod就无法进行，因为在授权时是没有delete权限的<br><span class="hljs-keyword">Error </span>from server (Forbidden): pods &quot;nginx<span class="hljs-string">-7</span>fb7fd49b4-jqsvj&quot; is forbidden: User &quot;k8s-user-test&quot; cannot delete resource &quot;pods&quot; in API group &quot;&quot; in the namespace &quot;default&quot;<br></code></pre></td></tr></table></figure>
+
+<p>从上面的实验，我们可以知道对用户k8s-user-test进行集群角色绑定，用户k8s-user-test将会获取对集群内所有资源的对应权限。</p>
+<h3 id="User-–-gt-Rolebinding-–-gt-Clusterrole"><a href="#User-–-gt-Rolebinding-–-gt-Clusterrole" class="headerlink" title="User –&gt; Rolebinding –&gt; Clusterrole"></a>User –&gt; Rolebinding –&gt; Clusterrole</h3><p>将k8s-user-test通过rolebinding到集群角色cluster-read当中，此时，k8s-user-test仅作用于当前名称空间的所有pods资源的权限</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># kubectl delete clusterrolebinding ye-read-all-pods </span><br>clusterrolebinding.rbac.authorization.k8s.io <span class="hljs-string">&quot;ye-read-all-pods&quot;</span> deleted<br><br>[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># kubectl create rolebinding ye-read-pods --clusterrole=cluster-read --user=k8s-user-test --dry-run=client -o yaml &gt; rolebinding-clusterrole-demo.yaml</span><br><br>[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># vim rolebinding-clusterrole-demo.yaml </span><br>apiVersion: rbac.authorization.k8s.io/v1<br>kind: RoleBinding<br>metadata:<br>  creationTimestamp: null<br>  name: ye-<span class="hljs-keyword">read</span>-pods<br>roleRef:<br>  apiGroup: rbac.authorization.k8s.io<br>  kind: ClusterRole<br>  name: cluster-<span class="hljs-keyword">read</span><br>subjects:<br>- apiGroup: rbac.authorization.k8s.io<br>  kind: <span class="hljs-keyword">User</span><br>  <span class="hljs-title">name</span>: k8s-user-test<br><br><br><br>[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># kubectl apply -f rolebinding-clusterrole-demo.yaml </span><br>rolebinding.rbac.authorization.k8s.io/ye-<span class="hljs-keyword">read</span>-pods created<br><br>[yedong@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> ~]$ kubectl get pods<br>NAME                     READY   STATUS    RESTARTS   AGE<br>nginx-<span class="hljs-number">7</span>fb7fd49b4-<span class="hljs-number">4</span>wdnq   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d19h<br>nginx-<span class="hljs-number">7</span>fb7fd49b4-<span class="hljs-number">6m</span>vlr   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d19h<br>nginx-<span class="hljs-number">7</span>fb7fd49b4-<span class="hljs-number">6</span>rbrv   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d19h<br>nginx-<span class="hljs-number">7</span>fb7fd49b4-jqsvj   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d19h<br>nginx-<span class="hljs-number">7</span>fb7fd49b4-r5mrl   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d19h<br><br>[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># kubectl get rolebinding</span><br>NAME           <span class="hljs-keyword">ROLE</span>                       <span class="hljs-title">AGE</span><br>ye-<span class="hljs-keyword">read</span>-pods   ClusterRole/cluster-<span class="hljs-keyword">read</span>   <span class="hljs-number">3m</span>4s<br><br><br>[yedong@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> ~]$ kubectl get pods -n kube-system<br>Error from server (Forbidden): pods is forbidden: <span class="hljs-keyword">User</span> <span class="hljs-title">&quot;k8s-user-test</span><span class="hljs-string">&quot; cannot list resource &quot;</span>pods<span class="hljs-string">&quot; in API group &quot;</span><span class="hljs-string">&quot; in the namespace &quot;</span>kube-system<span class="hljs-string">&quot;</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="删除用户"><a href="#删除用户" class="headerlink" title="删除用户"></a>删除用户</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master-01</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># kubectl config view</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">clusters:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">cluster:</span><br>    <span class="hljs-attr">certificate-authority-data:</span> <span class="hljs-string">DATA+OMITTED</span><br>    <span class="hljs-attr">server:</span> <span class="hljs-string">https://172.16.50.200:6443</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes</span><br><span class="hljs-attr">contexts:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">context:</span><br>    <span class="hljs-attr">cluster:</span> <span class="hljs-string">kubernetes</span><br>    <span class="hljs-attr">user:</span> <span class="hljs-string">k8s-user-test</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-user-test@kubernetes</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">context:</span><br>    <span class="hljs-attr">cluster:</span> <span class="hljs-string">kubernetes</span><br>    <span class="hljs-attr">user:</span> <span class="hljs-string">kubernetes-admin</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes-admin@kubernetes</span><br><span class="hljs-attr">current-context:</span> <span class="hljs-string">kubernetes-admin@kubernetes</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Config</span><br><span class="hljs-attr">preferences:</span> &#123;&#125;<br><span class="hljs-attr">users:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-user-test</span><br>  <span class="hljs-attr">user:</span><br>    <span class="hljs-attr">client-certificate-data:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attr">client-key-data:</span> <span class="hljs-string">REDACTED</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes-admin</span><br>  <span class="hljs-attr">user:</span><br>    <span class="hljs-attr">client-certificate-data:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attr">client-key-data:</span> <span class="hljs-string">REDACTED</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight coffeescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs coffeescript">[root@k8s-master<span class="hljs-number">-01</span> pki]<span class="hljs-comment"># kubectl config delete-context k8s-user-test@kubernetes</span><br>deleted context yedong@kubernetes <span class="hljs-keyword">from</span> <span class="hljs-regexp">/root/</span>.kube/config<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> pki]<span class="hljs-comment"># kubectl config unset users.k8s-user-test</span><br><span class="hljs-keyword">Property</span><span class="hljs-title"> </span><span class="hljs-string">&quot;users.k8s-user-test&quot;</span> unset.<br></code></pre></td></tr></table></figure>
+
+
+<h2 id="默认角色与默认角色绑定"><a href="#默认角色与默认角色绑定" class="headerlink" title="默认角色与默认角色绑定"></a>默认角色与默认角色绑定</h2><p>API Server会创建一组默认的ClusterRole和ClusterRoleBinding对象。 这些默认对象中有许多包含<code>system:</code>前缀，表明这些资源由Kubernetes基础组件”拥有”。 对这些资源的修改可能导致非功能性集群（non-functional cluster）故障。一个例子是system:node ClusterRole对象。 这个角色定义了kubelets的权限。如果这个角色被修改，可能会导致kubelets无法正常工作。</p>
+<p>所有默认的ClusterRole和ClusterRoleBinding对象都会被标记为<code>kubernetes.io/bootstrapping=rbac-defaults</code>。</p>
+<h3 id="自动协商"><a href="#自动协商" class="headerlink" title="自动协商"></a>自动协商</h3><p>每次启动时，API Server都会更新默认ClusterRole所缺乏的各种权限，并更新默认ClusterRoleBinding所缺乏的各个角色绑定主体。 这种自动更新机制允许集群修复一些意外的修改。由于权限和角色绑定主体在新的Kubernetes释出版本中可能变化，这也能够保证角色和角色 绑定始终保持是最新的。</p>
+<p>如果需要禁用自动更新，请将默认ClusterRole以及ClusterRoleBinding的<code>rbac.authorization.kubernetes.io/autoupdate</code> 设置成为false。 请注意，缺乏默认权限和角色绑定主体可能会导致非功能性集群问题。</p>
+<p>当集群RBAC鉴权机制（RBAC Authorizer）处于开启状态时，则自动协商功能默认是被启用的。</p>
+<h3 id="发现类角色"><a href="#发现类角色" class="headerlink" title="发现类角色"></a>发现类角色</h3><p>下面是一些默认Clusterrole绑定默认的Clusterrolebinding</p>
+<p><img src="/images/rbac-3.png" srcset="/img/loading.gif" lazyload alt="rbac-3"></p>
+<h3 id="面向用户的角色"><a href="#面向用户的角色" class="headerlink" title="面向用户的角色"></a>面向用户的角色</h3><p>一些默认角色并不包含system:前缀，它们是面向用户的角色。 这些角色包含超级用户角色（cluster-admin），即旨在利用ClusterRoleBinding（cluster-status）在集群范围内授权的角色， 以及那些使用RoleBinding（admin、edit和view）在特定命名空间中授权的角色。</p>
+<p><img src="/images/rbac-4.png" srcset="/img/loading.gif" lazyload alt="rbac-4"></p>
+<h3 id="核心组件角色"><a href="#核心组件角色" class="headerlink" title="核心组件角色"></a>核心组件角色</h3><p><img src="/images/rbac-5.png" srcset="/img/loading.gif" lazyload alt="rbac-5"></p>
+<h3 id="其它组件角色"><a href="#其它组件角色" class="headerlink" title="其它组件角色"></a>其它组件角色</h3><p><img src="/images/rbac-6.png" srcset="/img/loading.gif" lazyload alt="rbac-6"></p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes之RBAC（基于角色的访问控制）</div>
+      <div>https://system51.github.io/2019/08/26/Kubernetes-RBAC/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-dashboard/" title="Kubernetes之配置dashboard">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes之配置dashboard</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-CFSSL/" title="Kubernetes证书相关(CFSSL)">
+                        <span class="hidden-mobile">Kubernetes证书相关(CFSSL)</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

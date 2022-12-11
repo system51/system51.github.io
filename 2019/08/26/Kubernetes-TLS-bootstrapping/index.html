@@ -1,0 +1,836 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="一、TLS bootstrapping 简介 当集群开启了 TLS 认证后，每个节点的 kubelet 组件都要使用由 apiserver 使用的 CA 签发的有效证书才能与 apiserver 通讯；此时如果节点多起来，为每个节点单独签署证书将是一件非常繁琐的事情；TLS bootstrapping 功能就是让 kubelet 先使用一个预定的低权限用户连接到 apiserver，然后向 api">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes TLS bootstrapping 那点事">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="一、TLS bootstrapping 简介 当集群开启了 TLS 认证后，每个节点的 kubelet 组件都要使用由 apiserver 使用的 CA 签发的有效证书才能与 apiserver 通讯；此时如果节点多起来，为每个节点单独签署证书将是一件非常繁琐的事情；TLS bootstrapping 功能就是让 kubelet 先使用一个预定的低权限用户连接到 apiserver，然后向 api">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/bootstarp-1.png">
+<meta property="og:image" content="https://system51.github.io/images/bootstarp-2.png">
+<meta property="og:image" content="https://system51.github.io/images/bootstarp-3.png">
+<meta property="og:image" content="https://system51.github.io/images/bootstarp-4.png">
+<meta property="og:image" content="https://system51.github.io/images/bootstarp-5.png">
+<meta property="og:image" content="https://system51.github.io/images/bootstarp-6.png">
+<meta property="article:published_time" content="2019-08-26T05:51:38.000Z">
+<meta property="article:modified_time" content="2020-09-15T01:25:32.863Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/bootstarp-1.png">
+  
+  
+  
+  <title>Kubernetes TLS bootstrapping 那点事 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes TLS bootstrapping 那点事"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 13:51" pubdate>
+          2019年8月26日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          12k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          21 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes TLS bootstrapping 那点事</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h3 id="一、TLS-bootstrapping-简介"><a href="#一、TLS-bootstrapping-简介" class="headerlink" title="一、TLS bootstrapping 简介"></a>一、TLS bootstrapping 简介</h3><blockquote>
+<p>当集群开启了 TLS 认证后，每个节点的 kubelet 组件都要使用由 apiserver 使用的 CA 签发的有效证书才能与 apiserver 通讯；此时如果节点多起来，为每个节点单独签署证书将是一件非常繁琐的事情；TLS bootstrapping 功能就是让 kubelet 先使用一个预定的低权限用户连接到 apiserver，然后向 apiserver 申请证书，kubelet 的证书由 apiserver 动态签署；在配合 RBAC 授权模型下的工作流程大致如下所示</p>
+</blockquote>
+<p><img src="/images/bootstarp-1.png" srcset="/img/loading.gif" lazyload alt="bootstarp-1"></p>
+<h3 id="二、TLS-bootstrapping-相关术语"><a href="#二、TLS-bootstrapping-相关术语" class="headerlink" title="二、TLS bootstrapping 相关术语"></a>二、TLS bootstrapping 相关术语</h3><h4 id="2-1、kubelet"><a href="#2-1、kubelet" class="headerlink" title="2.1、kubelet"></a>2.1、kubelet</h4><blockquote>
+<p>kubelet 组件在工作时，采用主动的查询机制，即定期请求 apiserver 获取自己所应当处理的任务，如哪些 pod 分配到了自己身上，从而去处理这些任务；同时 kubelet 自己还会暴露出两个本身 api 的端口，用于将自己本身的私有 api 暴露出去，这两个端口分别是 10250 与 10255；对于 10250 端口，kubelet 会在其上采用 TLS 加密以提供适当的鉴权功能；对于 10255 端口，kubelet 会以只读形式暴露组件本身的私有 api，并且不做鉴权处理<br>总结一下，就是说 kubelet 上实际上有两个地方用到证书，一个是用于与 API server 通讯所用到的证书，另一个是 kubelet 的 10250 私有 api 端口需要用到的证书</p>
+</blockquote>
+<h4 id="2-2、CSR-请求类型"><a href="#2-2、CSR-请求类型" class="headerlink" title="2.2、CSR 请求类型"></a>2.2、CSR 请求类型</h4><blockquote>
+<p>kubelet 发起的 CSR 请求都是由 <code>kube-controller-manager</code> 来做实际签署的，对于 <code>kube-controller-manager</code> 来说，TLS bootstrapping 下 kubelet 发起的 CSR 请求大致分为以下两种</p>
+</blockquote>
+<ul>
+<li>nodeclient: kubelet 首次创建新证书以 <code>O=system:bootstrappers</code> 和 <code>CN=system:bootstrappers</code> 形式发起的 CSR 请求</li>
+<li>selfnodeclient: kubelet client 更新自己的证书以 <code>O=system:nodes</code> 和 <code>CN=system:nodes</code> 形式发起的 CSR 请求</li>
+</ul>
+<blockquote>
+<p>大白话加自己测试得出的结果: nodeclient 类型的 CSR 仅在第一次启动时会产生，selfnodeclient 类型的 CSR 请求实际上就是 kubelet 更新自己作为 client 跟 apiserver 通讯时使用的证书产生的。</p>
+</blockquote>
+<h3 id="三、TLS-bootstrapping-具体引导过程"><a href="#三、TLS-bootstrapping-具体引导过程" class="headerlink" title="三、TLS bootstrapping 具体引导过程"></a>三、TLS bootstrapping 具体引导过程</h3><h4 id="3-1、Kubernetes-TLS-与-RBAC-认证"><a href="#3-1、Kubernetes-TLS-与-RBAC-认证" class="headerlink" title="3.1、Kubernetes TLS 与 RBAC 认证"></a>3.1、Kubernetes TLS 与 RBAC 认证</h4><blockquote>
+<p>在说具体的引导过程之前先谈一下 TLS 和 RBAC，因为这两个事不整明白下面的都不用谈；</p>
+</blockquote>
+<ul>
+<li>TLS 作用<blockquote>
+<p>众所周知 TLS 的作用就是对通讯加密，防止中间人窃听；同时如果证书不信任的话根本就无法与 apiserver 建立连接，更不用提有没有权限向 apiserver 请求指定内容</p>
+</blockquote>
+</li>
+<li>RBAC 作用<blockquote>
+<p>当 TLS 解决了通讯问题后，那么权限问题就应由 RBAC 解决(可以使用其他权限模型，如 ABAC)；RBAC 中规定了一个用户或者用户组(subject)具有请求哪些 api 的权限；在配合 TLS 加密的时候，实际上 apiserver 读取客户端证书的 CN 字段作为用户名，读取 O 字段作为用户组</p>
+</blockquote>
+</li>
+</ul>
+<blockquote>
+<p>从以上两点上可以总结出两点: 第一，想要与 apiserver 通讯就必须采用由 apiserver CA 签发的证书，这样才能形成信任关系，建立 TLS 连接；第二，可以通过证书的 CN、O 字段来提供 RBAC 所需的用户与用户组</p>
+</blockquote>
+<h4 id="3-2、kubelet-首次启动流程"><a href="#3-2、kubelet-首次启动流程" class="headerlink" title="3.2、kubelet 首次启动流程"></a>3.2、kubelet 首次启动流程</h4><blockquote>
+<p>看完上面的介绍，不知道有没有人想过，既然 TLS bootstrapping 功能是让 kubelet 组件去 apiserver 申请证书，然后用于连接 apiserver；那么第一次启动时没有证书如何连接 apiserver ?</p>
+</blockquote>
+<ul>
+<li>kubelet启动</li>
+<li>kubelet看到它没有kubeconfig文件</li>
+<li>kubelet搜索并查找bootstrap-kubeconfig文件</li>
+<li>kubelet读取它的bootstrap文件，检索API server的URL和一个低权限的“token”</li>
+<li>kubelet连接到API服务器，使用token进行身份验证</li>
+<li>kubelet现在具有创建和检索证书签名请求（CSR）的有限凭据</li>
+<li>kubelet为自己创建了一个CSR</li>
+<li>CSR通过以下两种方式之一获得批准：<ul>
+<li>如果已配置，kube-controller-manager将自动批准CSR</li>
+<li>如果已配置，则外部流程（可能是人员）使用Kubernetes API或通过批准CSR kubectl</li>
+</ul>
+</li>
+<li>为kubelet创建证书</li>
+<li>证书颁发给kubelet</li>
+<li>kubelet检索证书</li>
+<li>kubelet 使用密钥和签名证书创建一个正确的kubeconfig文件</li>
+<li>kubelet开始正常运作</li>
+<li>可选：如果已配置，则当证书接近到期时，kubelet会自动请求更新证书</li>
+</ul>
+<blockquote>
+<p>在有些用户首次启动时，可能与遇到 kubelet 报 401 无权访问 apiserver 的错误；kubelet 通过bootstrap.kubeconfig 中的预设用户 Token 声明了自己的身份，然后创建 CSR 请求；但是不要忘记这个“用户和组”在我们不处理的情况下他没任何权限的，包括创建 CSR 请求；所以需要如下命令创建一个 ClusterRoleBinding，将预设“用户”或“组”与内置的 ClusterRole system:node-bootstrapper 绑定到一起，使其能够发起 CSR 请求（以下是用“组”做绑定）。</p>
+</blockquote>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs crmsh"><span class="hljs-comment"># 组</span><br>kubectl create clusterrolebinding kubeadm:kubelet-bootstrap \<br>        --clusterrole system:<span class="hljs-keyword">node</span><span class="hljs-title">-bootstrapper</span> --<span class="hljs-keyword">group</span> <span class="hljs-title">system</span>:bootstrappers<br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight gauss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs gauss"><span class="hljs-meta"># 用户</span><br>kubectl <span class="hljs-keyword">create</span> clusterrolebinding kubelet-bootstrap \<br>  --clusterrole=<span class="hljs-keyword">system</span>:node-bootstrapper \<br>  --user=<span class="hljs-keyword">system</span>:bootstrap:&lt;<span class="hljs-built_in">token</span> id&gt;<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc"># 使用kubeadm管理token（在高版本中采用Kubeadm管理token可以不用创建自动批准csr步骤，因为默认已经为这个“组”创建好了自动批准csr请求的权限,接下来只需要生成bootstarp文件即可。）<br>kubeadm token create --groups system:bootstrappers:kubeadm:default-node-token<br><br><br>[root@k8s-m1 kubernetes]# kubeadm token list<br>TOKEN                     TTL         EXPIRES   USAGES                   DESCRIPTION                                                EXTRA GROUPS<br>0c15sx.z41i3lfabbizbqb5   23h         2020-09-16T08:56:30+08:00   authentication,signing   &lt;none&gt;                                                     system:bootstrappers:kubeadm:default-node-token<br><br><br>[root@k8s-m1 kubernetes]# kubectl  get secret -n kube-system<br>NAME                                             TYPE                                  DATA   AGE<br><span class="hljs-code">.....</span><br><span class="hljs-code">bootstrap-token-0c15sx                           bootstrap.kubernetes.io/token         6      19m</span><br><span class="hljs-code">.....</span><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="3-3、手动签发证书"><a href="#3-3、手动签发证书" class="headerlink" title="3.3、手动签发证书"></a>3.3、手动签发证书</h4><blockquote>
+<p>在 kubelet 首次启动后，如果用户 Token 没问题，并且 RBAC 也做了相应的设置，那么此时在集群内应该能看到 kubelet 发起的 CSR 请求</p>
+</blockquote>
+<p><img src="/images/bootstarp-2.png" srcset="/img/loading.gif" lazyload alt="bootstarp-2"></p>
+<blockquote>
+<p>出现 CSR 请求后，可以使用 kubectl 手动签发(允许) kubelet 的证书</p>
+</blockquote>
+<p><img src="/images/bootstarp-3.png" srcset="/img/loading.gif" lazyload alt="bootstarp-3"></p>
+<blockquote>
+<p>当成功签发证书后，目标节点的 kubelet 会将证书写入到 –cert-dir&#x3D; 选项指定的目录中；注意此时如果不做其他设置应当生成四个文件</p>
+</blockquote>
+<p><img src="/images/bootstarp-4.png" srcset="/img/loading.gif" lazyload alt="bootstarp-4"></p>
+<blockquote>
+<p>而 kubelet 与 apiserver 通讯所使用的证书为 kubelet-client.crt，剩下的 kubelet.crt 将会被用于 kubelet server(10250) 做鉴权使用；注意，此时 kubelet.crt 这个证书是个独立于 apiserver CA 的自签 CA，并且删除后 kubelet 组件会重新生成它</p>
+</blockquote>
+<h3 id="四、证书文件作用"><a href="#四、证书文件作用" class="headerlink" title="四、证书文件作用"></a>四、证书文件作用</h3><blockquote>
+<ul>
+<li>kubelet-client.crt<br>该文件在 kubelet 完成 TLS bootstrapping 后生成，此证书是由 controller manager 签署的，此后 kubelet 将会加载该证书，用于与 apiserver 建立 TLS 通讯，同时使用该证书的 CN 字段作为用户名，O 字段作为用户组向 apiserver 发起其他请求</li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>kubelet-client-current.pem<br>这是一个软连接文件，会在证书总有效期的 70%~90% 的时间内发起续期请求，请求被批准后会生成一个 kubelet-client-时间戳.pem；kubelet-client-current.pem 文件则始终软连接到最新的真实证书文件，除首次启动外，kubelet 一直会使用这个证书同 apiserver 通讯</li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>kubelet.crt<br>该文件在 kubelet 完成 TLS bootstrapping 后并且没有配置 <code>--rotate-server-certificates</code> 时才会生成；这种情况下该文件为一个独立于 apiserver CA 的自签 CA 证书，有效期为 1 年；被用作 kubelet 10250 api 端口</li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>kubelet-server.crt<br>该文件在 kubelet 完成 TLS bootstrapping 后并且配置了 <code>--rotate-server-certificates</code> 时才会生成；这种情况下该证书由 apiserver CA 签署，默认有效期同样是 1 年，被用作 kubelet 10250 api 端口鉴权</li>
+</ul>
+</blockquote>
+<blockquote>
+<ul>
+<li>kubelet-server-current.pem<br>同样是一个软连接文件，当 kubelet 配置了 <code>--rotate-server-certificates</code> 选项后，会在证书总有效期的 70%~90% 的时间内发起续期请求，请求被批准后会生成一个 kubelet-server-时间戳.pem；kubelet-server-current.pem 文件则始终软连接到最新的真实证书文件，该文件将会一直被用于 kubelet 10250 api 端口鉴权</li>
+</ul>
+</blockquote>
+<h3 id="五、使用-Bootstrap-Token"><a href="#五、使用-Bootstrap-Token" class="headerlink" title="五、使用 Bootstrap Token"></a>五、使用 Bootstrap Token</h3><h4 id="5-1、创建-Bootstrap-Token"><a href="#5-1、创建-Bootstrap-Token" class="headerlink" title="5.1、创建 Bootstrap Token"></a>5.1、创建 Bootstrap Token</h4><blockquote>
+<p>既然整个功能都时刻强调这个 Token，那么第一步肯定是生成一个 token，生成方式如下:</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash">➜  ~ <span class="hljs-built_in">echo</span> <span class="hljs-string">&quot;<span class="hljs-subst">$(head -c 6 /dev/urandom | md5sum | head -c 6)</span>&quot;</span>.<span class="hljs-string">&quot;<span class="hljs-subst">$(head -c 16 /dev/urandom | md5sum | head -c 16)</span>&quot;</span><br>47f392.d22d04e89a65eb22<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>这个 <code>47f392.d22d04e89a65eb22</code> 就是生成的 <code>Bootstrap Token</code>，保存好 token，因为后续要用；关于这个 token 解释如下:<br>Token 必须满足 <code>[a-z0-9]&#123;6&#125;\.[a-z0-9]&#123;16&#125;</code> 格式；以<code>.</code>分割，前面的部分被称作 Token ID，Token ID 并不是 “机密信息”，它可以暴露出去；相对的后面的部分称为 Token Secret，它应该是保密的。</p>
+</blockquote>
+<h4 id="5-2、创建-Bootstrap-Token-Secret"><a href="#5-2、创建-Bootstrap-Token-Secret" class="headerlink" title="5.2、创建 Bootstrap Token Secret"></a>5.2、创建 Bootstrap Token Secret</h4><blockquote>
+<p>对于 Kubernetes 来说 Bootstrap Token Secret 也仅仅是一个特殊的 Secret 而已；对于这个特殊的 Secret 样例 yaml 配置如下:</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Secret</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-comment"># Name MUST be of form &quot;bootstrap-token-&lt;token id&gt;&quot;</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">bootstrap-token-07401b</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br><br><span class="hljs-comment"># Type MUST be &#x27;bootstrap.kubernetes.io/token&#x27;</span><br><span class="hljs-attr">type:</span> <span class="hljs-string">bootstrap.kubernetes.io/token</span><br><span class="hljs-attr">stringData:</span><br>  <span class="hljs-comment"># Human readable description. Optional.</span><br>  <span class="hljs-attr">description:</span> <span class="hljs-string">&quot;The default bootstrap token generated by &#x27;kubeadm init&#x27;.&quot;</span><br><br>  <span class="hljs-comment"># Token ID and secret. Required.</span><br>  <span class="hljs-attr">token-id:</span> <span class="hljs-string">47f392</span><br>  <span class="hljs-attr">token-secret:</span> <span class="hljs-string">d22d04e89a65eb22</span><br><br>  <span class="hljs-comment"># Expiration. Optional.</span><br>  <span class="hljs-attr">expiration:</span> <span class="hljs-number">2018-09-10T00:00:11Z</span><br><br>  <span class="hljs-comment"># Allowed usages.</span><br>  <span class="hljs-attr">usage-bootstrap-authentication:</span> <span class="hljs-string">&quot;true&quot;</span><br>  <span class="hljs-attr">usage-bootstrap-signing:</span> <span class="hljs-string">&quot;true&quot;</span><br><br>  <span class="hljs-comment"># Extra groups to authenticate the token as. Must start with &quot;system:bootstrappers:&quot;</span><br>  <span class="hljs-attr">auth-extra-groups:</span> <span class="hljs-string">system:bootstrappers:worker,system:bootstrappers:ingress</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<h4 id="需要注意几点"><a href="#需要注意几点" class="headerlink" title="需要注意几点:"></a>需要注意几点:</h4></blockquote>
+<ul>
+<li>作为<code>Bootstrap Token Secret</code> 的<code>type</code>必须为<code>bootstrap.kubernetes.io/token</code>，name 必须为<code>bootstrap-token-&lt;token id&gt;</code>(Token ID 就是上一步创建的 Token 前一部分)</li>
+<li><code>usage-bootstrap-authentication</code> 表示令牌可以用于 API 服务器的认证。认证器会以 <code>system:bootstrap:&lt;Token ID&gt;</code> 认证。它被包含在 <code>system:bootstrappers</code> 组中。 命名和组是故意受限制的，以防止用户在启动引导后再使用这些令牌。</li>
+<li><code>usage-bootstrap-signing</code> 表示令牌应该被用于 <code>cluster-info</code> ConfigMap 的签名</li>
+<li><code>expiration</code> 字段是可选的，如果设置则 Secret 到期后将由 Controller Manager 中的 tokencleaner 自动清理</li>
+<li><code>auth-extra-groups</code> 是可选的，令牌的扩展认证组，组必须以 <code>system:bootstrappers:</code> 开头。在1.16后可以设置<code>system:bootstrappers:kubeadm:default-node-token</code>组，后面就不需要创建自动批准csr相关的操作。</li>
+</ul>
+<blockquote>
+<p>最后使用 <code>kubectl create -f bootstrap.secret.yaml</code> 创建即可</p>
+</blockquote>
+<h4 id="5-3、创建-ClusterRoleBinding-将-ClusterRole-绑定到适当的用户组，以完成自动批准相关-CSR-请求"><a href="#5-3、创建-ClusterRoleBinding-将-ClusterRole-绑定到适当的用户组，以完成自动批准相关-CSR-请求" class="headerlink" title="5.3、创建 ClusterRoleBinding 将 ClusterRole 绑定到适当的用户组，以完成自动批准相关 CSR 请求"></a>5.3、创建 ClusterRoleBinding 将 ClusterRole 绑定到适当的用户组，以完成自动批准相关 CSR 请求</h4><blockquote>
+<p>需要注意的是在使用 Bootstrap Token 进行引导时，Kubelet 组件使用 Token 发起的请求其用户名为 <code>system:bootstrap:&lt;token id&gt;</code>，用户组为 <code>system:bootstrappers</code>；所以我们在创建 ClusterRoleBinding 时要绑定到这个用户或者组上；</p>
+</blockquote>
+<ul>
+<li>允许 system:bootstrappers 组用户创建 CSR 请求</li>
+</ul>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">kubectl create clusterrolebinding kubeadm:kubelet-bootstrap \<br>        --clusterrole system:<span class="hljs-keyword">node</span><span class="hljs-title">-bootstrapper</span> --<span class="hljs-keyword">group</span> <span class="hljs-title">system</span>:bootstrappers<br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>自动批准 system:bootstrappers 组用户 TLS bootstrapping 首次申请证书的 CSR 请求</li>
+</ul>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext">cat &lt;&lt;EOF | kubectl apply -f -<br><span class="hljs-comment"># Approve all CSRs for the group &quot;system:bootstrappers&quot;</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ClusterRoleBinding</span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io/v1</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">auto-approve-csrs-for-group</span><br><span class="hljs-attribute">subjects</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: Group</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:bootstrappers</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br><span class="hljs-attribute">roleRef</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ClusterRole</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:certificates.k8s.io:certificatesigningrequests:nodeclient</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br>EOF<br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>自动批准 system:nodes 组用户更新 kubelet 自身与 apiserver 通讯证书的 CSR 请求</li>
+</ul>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext">cat &lt;&lt;EOF | kubectl apply -f -<br><span class="hljs-comment"># Approve renewal CSRs for the group &quot;system:nodes&quot;</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ClusterRoleBinding</span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io/v1</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">auto-approve-renewals-for-nodes</span><br><span class="hljs-attribute">subjects</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kind: Group</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:nodes</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br><span class="hljs-attribute">roleRef</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ClusterRole</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">system:certificates.k8s.io:certificatesigningrequests:selfnodeclient</span><br>  <span class="hljs-attribute">apiGroup</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rbac.authorization.k8s.io</span><br>EOF<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="六、调整-Controller-Manager"><a href="#六、调整-Controller-Manager" class="headerlink" title="六、调整 Controller Manager"></a>六、调整 Controller Manager</h3><blockquote>
+<p>根据官方文档描述，Controller Manager 需要启用 tokencleaner 和 bootstrapsigner</p>
+</blockquote>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-section">[Unit]</span><br><span class="hljs-attr">Description</span>=Kubernetes Controller Manager<br><span class="hljs-attr">Documentation</span>=https://github.com/kubernetes/kubernetes<br><span class="hljs-attr">After</span>=network.target<br><br><span class="hljs-section">[Service]</span><br><span class="hljs-attr">ExecStart</span>=/usr/local/bin/kube-controller-manager <br>  <span class="hljs-attr">--allocate-node-cidrs</span>=<span class="hljs-literal">true</span> <br>  <span class="hljs-attr">--kubeconfig</span>=/etc/kubernetes/controller-manager.conf <br>  <span class="hljs-attr">--authentication-kubeconfig</span>=/etc/kubernetes/controller-manager.conf <br>  <span class="hljs-attr">--authorization-kubeconfig</span>=/etc/kubernetes/controller-manager.conf <br>  <span class="hljs-attr">--client-ca-file</span>=/etc/kubernetes/pki/ca.crt <br>  <span class="hljs-attr">--cluster-signing-cert-file</span>=/etc/kubernetes/pki/ca.crt <br>  <span class="hljs-attr">--cluster-signing-key-file</span>=/etc/kubernetes/pki/ca.key <br>  <span class="hljs-attr">--bind-address</span>=<span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span> <br>  <span class="hljs-attr">--leader-elect</span>=<span class="hljs-literal">true</span> <br>  <span class="hljs-attr">--cluster-cidr</span>=<span class="hljs-number">10.244</span>.<span class="hljs-number">0.0</span>/<span class="hljs-number">16</span> <br>  <span class="hljs-attr">--service-cluster-ip-range</span>=<span class="hljs-number">10.96</span>.<span class="hljs-number">0.0</span>/<span class="hljs-number">12</span> <br>  <span class="hljs-attr">--requestheader-client-ca-file</span>=/etc/kubernetes/pki/front-proxy-ca.crt <br>  <span class="hljs-attr">--service-account-private-key-file</span>=/etc/kubernetes/pki/sa.key <br>  <span class="hljs-attr">--root-ca-file</span>=/etc/kubernetes/pki/ca.crt <br>  <span class="hljs-attr">--use-service-account-credentials</span>=<span class="hljs-literal">true</span> <br>  <span class="hljs-attr">--controllers</span>=*,bootstrapsigner,tokencleaner <br>  <span class="hljs-attr">--experimental-cluster-signing-duration</span>=<span class="hljs-number">86700</span>h <br>  <span class="hljs-attr">--v</span>=<span class="hljs-number">2</span><br><span class="hljs-attr">Restart</span>=always<br><span class="hljs-attr">RestartSec</span>=<span class="hljs-number">10</span>s<br><br><span class="hljs-section">[Install]</span><br><span class="hljs-attr">WantedBy</span>=multi-user.target<br></code></pre></td></tr></table></figure>
+
+<h3 id="七、生成-bootstrap-kubeconfig"><a href="#七、生成-bootstrap-kubeconfig" class="headerlink" title="七、生成 bootstrap.kubeconfig"></a>七、生成 bootstrap.kubeconfig</h3><blockquote>
+<p>前面所有步骤实际上都是在处理 Api Server、Controller Manager 这一块，为的就是 “老子启动后 TLS Bootstarpping 发证书申请你两个要立马允许，不能拒绝老子”；接下来就是比较重要的 bootstrap.kubeconfig 配置生成，这个 bootstrap.kubeconfig 是最终被 Kubelet 使用的，里面包含了相关的 Token，以帮助 Kubelet 在第一次通讯时能成功沟通 Api Server；生成方式如下:</p>
+</blockquote>
+<h4 id="7-1、设置-bootstrap-创建-bootstrap-令牌（此步骤上面已执行，这里只是讲另外一种创建方法）"><a href="#7-1、设置-bootstrap-创建-bootstrap-令牌（此步骤上面已执行，这里只是讲另外一种创建方法）" class="headerlink" title="7.1、设置 bootstrap , 创建 bootstrap 令牌（此步骤上面已执行，这里只是讲另外一种创建方法）"></a>7.1、设置 bootstrap , 创建 bootstrap 令牌（此步骤上面已执行，这里只是讲另外一种创建方法）</h4><figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs routeros"><span class="hljs-attribute">TOKEN_PUB</span>=$(openssl rand -hex 3)<br><span class="hljs-attribute">TOKEN_SECRET</span>=$(openssl rand -hex 8)<br><span class="hljs-attribute">BOOTSTRAP_TOKEN</span>=<span class="hljs-string">&quot;<span class="hljs-variable">$&#123;TOKEN_PUB&#125;</span>.<span class="hljs-variable">$&#123;TOKEN_SECRET&#125;</span>&quot;</span><br><br>kubectl -n kube-system create<span class="hljs-built_in"> secret </span>generic bootstrap-token-<span class="hljs-variable">$&#123;TOKEN_PUB&#125;</span> \<br>        --type <span class="hljs-string">&#x27;bootstrap.kubernetes.io/token&#x27;</span> \<br>        --from-literal <span class="hljs-attribute">description</span>=<span class="hljs-string">&quot;cluster bootstrap token&quot;</span> \<br>        --from-literal <span class="hljs-attribute">token-id</span>=<span class="hljs-variable">$&#123;TOKEN_PUB&#125;</span> \<br>        --from-literal <span class="hljs-attribute">token-secret</span>=<span class="hljs-variable">$&#123;TOKEN_SECRET&#125;</span> \<br>        --from-literal <span class="hljs-attribute">usage-bootstrap-authentication</span>=<span class="hljs-literal">true</span> \<br>        --from-literal <span class="hljs-attribute">usage-bootstrap-signing</span>=<span class="hljs-literal">true</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="7-2、创建-bootstrap-kubeconfig-文件"><a href="#7-2、创建-bootstrap-kubeconfig-文件" class="headerlink" title="7.2、创建 bootstrap kubeconfig 文件"></a>7.2、创建 bootstrap kubeconfig 文件</h4><figure class="highlight dsconfig"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs dsconfig"><span class="hljs-string">CLUSTER_NAME</span>=<span class="hljs-string">&quot;kubernetes&quot;</span><br><span class="hljs-string">KUBE_APISERVER</span>=<span class="hljs-string">&quot;https://10.0.7.101:6443&quot;</span><br><span class="hljs-string">KUBE_USER</span>=<span class="hljs-string">&quot;kubelet-bootstrap&quot;</span><br><span class="hljs-string">KUBE_CONFIG</span>=<span class="hljs-string">&quot;bootstrap.conf&quot;</span><br><br><span class="hljs-comment"># 设置集群参数</span><br><span class="hljs-string">kubectl</span> <span class="hljs-string">config</span> <span class="hljs-built_in">set-cluster</span> $&#123;<span class="hljs-string">CLUSTER_NAME</span>&#125; \<br>  <span class="hljs-built_in">--certificate-authority=/etc/kubernetes/pki/ca.crt</span> \<br>  <span class="hljs-built_in">--embed-certs=true</span> \<br>  <span class="hljs-built_in">--server=$&#123;KUBE_APISERVER&#125;</span> \<br>  <span class="hljs-built_in">--kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><br><span class="hljs-comment"># 设置上下文参数</span><br><span class="hljs-string">kubectl</span> <span class="hljs-string">config</span> <span class="hljs-built_in">set-context</span> $&#123;<span class="hljs-string">KUBE_USER</span>&#125;@$&#123;<span class="hljs-string">CLUSTER_NAME</span>&#125; \<br>  <span class="hljs-built_in">--cluster=$&#123;CLUSTER_NAME&#125;</span> \<br>  <span class="hljs-built_in">--user=$&#123;KUBE_USER&#125;</span> \<br>  <span class="hljs-built_in">--kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><br><span class="hljs-comment"># 设置客户端认证参数</span><br><span class="hljs-string">kubectl</span> <span class="hljs-string">config</span> <span class="hljs-built_in">set-credentials</span> $&#123;<span class="hljs-string">KUBE_USER</span>&#125; \<br>  <span class="hljs-built_in">--token=$&#123;BOOTSTRAP_TOKEN&#125;</span> \<br>  <span class="hljs-built_in">--kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><br><span class="hljs-comment"># 设置当前使用的上下文</span><br><span class="hljs-string">kubectl</span> <span class="hljs-string">config</span> <span class="hljs-string">use-context</span> $&#123;<span class="hljs-string">KUBE_USER</span>&#125;@$&#123;<span class="hljs-string">CLUSTER_NAME</span>&#125; <span class="hljs-built_in">--kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br><br><span class="hljs-comment"># 查看生成的配置文件</span><br><span class="hljs-string">kubectl</span> <span class="hljs-string">config</span> <span class="hljs-string">view</span> <span class="hljs-built_in">--kubeconfig=/etc/kubernetes/$&#123;KUBE_CONFIG&#125;</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="八、调整-Kubelet"><a href="#八、调整-Kubelet" class="headerlink" title="八、调整 Kubelet"></a>八、调整 Kubelet</h3><blockquote>
+<p>Kubelet 启动参数需要做一些相应调整，以使其能正确的使用 Bootstartp Token，完整配置如下(与使用 token.csv 配置没什么变化，因为主要变更在 bootstrap.kubeconfig 中):</p>
+</blockquote>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-section">[Unit]</span><br><span class="hljs-attr">Description</span>=Kubernetes Kubelet<br><span class="hljs-attr">Documentation</span>=https://github.com/kubernetes/kubernetes<br><span class="hljs-attr">After</span>=docker.service<br><span class="hljs-attr">Requires</span>=docker.service<br><br><span class="hljs-section">[Service]</span><br><span class="hljs-attr">ExecStart</span>=/usr/local/bin/kubelet <br>  <span class="hljs-attr">--bootstrap-kubeconfig</span>=/etc/kubernetes/bootstrap.conf <br>  <span class="hljs-attr">--kubeconfig</span>=/etc/kubernetes/kubelet.conf <br>  <span class="hljs-attr">--config</span>=/var/lib/kubelet/config.yaml <br>  <span class="hljs-attr">--cgroup-driver</span>=systemd <br>  <span class="hljs-attr">--pod-infra-container-image</span>=kuops/pause-amd64:<span class="hljs-number">3.1</span> <br>  <span class="hljs-attr">--allow-privileged</span>=<span class="hljs-literal">true</span> <br>  <span class="hljs-attr">--network-plugin</span>=cni <br>  <span class="hljs-attr">--cni-conf-dir</span>=/etc/cni/net.d <br>  <span class="hljs-attr">--cni-bin-dir</span>=/opt/cni/bin <br>  <span class="hljs-attr">--cert-dir</span>=/etc/kubernetes/pki <br>  <span class="hljs-attr">--v</span>=<span class="hljs-number">2</span><br><br><span class="hljs-attr">Restart</span>=always<br><span class="hljs-attr">RestartSec</span>=<span class="hljs-number">10</span>s<br><br><span class="hljs-section">[Install]</span><br><span class="hljs-attr">WantedBy</span>=multi-user.target<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="九、TLS-bootstrapping-证书自动续期"><a href="#九、TLS-bootstrapping-证书自动续期" class="headerlink" title="九、TLS bootstrapping 证书自动续期"></a>九、TLS bootstrapping 证书自动续期</h3><h4 id="9-1、开启自动续期"><a href="#9-1、开启自动续期" class="headerlink" title="9.1、开启自动续期"></a>9.1、开启自动续期</h4><blockquote>
+<p>在 kubelet 启动时增加一个 <code>--rotate-certificates</code> 参数后，<code>kubelet client</code> 才会自动重载新证书。</p>
+</blockquote>
+<h4 id="9-2、证书过期问题"><a href="#9-2、证书过期问题" class="headerlink" title="9.2、证书过期问题"></a>9.2、证书过期问题</h4><blockquote>
+<p>需要重复强调一个问题是: TLS bootstrapping 时的证书实际是由 kube-controller-manager 组件来签署的，也就是说证书有效期是 kube-controller-manager 组件控制的； kube-controller-manager 组件提供了一个 <code>--experimental-cluster-signing-duration</code> 参数来设置签署的证书有效时间；默认为 <code>8760h0m0s</code>，将其改为 <code>87600h0m0s</code> 即 10 年后再进行 <code>TLS bootstrapping</code> 签署证书即可。</p>
+</blockquote>
+<h3 id="扩展知识："><a href="#扩展知识：" class="headerlink" title="扩展知识："></a>扩展知识：</h3><blockquote>
+<p>在文档中多次提到过 kubelet server 这个东西；kubelet server 指的应该是 kubelet 的 10250 端口；在上面我们仅仅提到了两种类型的CSR 请求，其实实际上还有一种CSR请求。这种请求是用来更新kubelet server证书（10250端口）<br>注意:出于安全原因，核心Kubernetes中实现的CSR批准控制器不批准节点服务证书。需要手动批准服务证书请求。（此句摘自官方）</p>
+</blockquote>
+<blockquote>
+<p>在kubelet中开启<code>--rotate-server-certificates</code>参数后会生成<code>kubelet-server.crt</code>证书，如果没开启此参数则仅生成<code>kubelet-client.crt</code>证书。</p>
+</blockquote>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-m1 ~]<span class="hljs-comment"># kubectl get csr</span><br>NAME                                                   AGE   REQUESTOR                  CONDITION<br>csr-<span class="hljs-number">99</span>l77                                              <span class="hljs-number">10s</span>   system:<span class="hljs-keyword">node</span><span class="hljs-title">:docker4</span>.node   Pending<br><span class="hljs-keyword">node</span><span class="hljs-title">-csr-aGwaNKorMc0MZBYOuJsJGCB8Bg8ds97rmE3oKBTV-_E</span>   <span class="hljs-number">11s</span>   system:bootstrap:<span class="hljs-number">5</span>d820b    Approved,Issued<br></code></pre></td></tr></table></figure>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs bash">[root@k8s-m1 ~]<span class="hljs-comment"># kubectl certificate approve csr-99l77</span><br>certificatesigningrequest.certificates.k8s.io/csr-99l77 approved<br></code></pre></td></tr></table></figure>
+
+
+<p><img src="/images/bootstarp-5.png" srcset="/img/loading.gif" lazyload alt="bootstarp-5"></p>
+<p><img src="/images/bootstarp-6.png" srcset="/img/loading.gif" lazyload alt="bootstarp-6"></p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes TLS bootstrapping 那点事</div>
+      <div>https://system51.github.io/2019/08/26/Kubernetes-TLS-bootstrapping/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-kube-apiserver-ha/" title="kube-apiserver 高可用方案">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">kube-apiserver 高可用方案</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-Prometheus-Operator/" title="初探Prometheus Operator">
+                        <span class="hidden-mobile">初探Prometheus Operator</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

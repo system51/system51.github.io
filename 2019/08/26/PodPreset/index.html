@@ -1,0 +1,721 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="PodPreset 介绍 PodPreset 是一种 K8s API 资源，用于在创建 Pod 时注入其他运行时需要的信息，这些信息包括 secrets、volume mounts、environment variables 等，我们可以使用标签选择器来指定某个或某些 Pod，来将 PodPreset 预设信息应用上去。使用 PodPreset 的好处就是我们可以将一些常用 Pod 预设信息配置为">
+<meta property="og:type" content="article">
+<meta property="og:title" content="PodPreset注入信息到 Pods">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/PodPreset/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="PodPreset 介绍 PodPreset 是一种 K8s API 资源，用于在创建 Pod 时注入其他运行时需要的信息，这些信息包括 secrets、volume mounts、environment variables 等，我们可以使用标签选择器来指定某个或某些 Pod，来将 PodPreset 预设信息应用上去。使用 PodPreset 的好处就是我们可以将一些常用 Pod 预设信息配置为">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-08-26T02:45:23.000Z">
+<meta property="article:modified_time" content="2019-12-04T03:15:28.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>PodPreset注入信息到 Pods - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="PodPreset注入信息到 Pods"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 10:45" pubdate>
+          2019年8月26日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          7.7k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          13 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">PodPreset注入信息到 Pods</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="PodPreset-介绍"><a href="#PodPreset-介绍" class="headerlink" title="PodPreset 介绍"></a>PodPreset 介绍</h2><blockquote>
+<p>PodPreset 是一种 K8s API 资源，用于在创建 Pod 时注入其他运行时需要的信息，这些信息包括 secrets、volume mounts、environment variables 等，我们可以使用标签选择器来指定某个或某些 Pod，来将 PodPreset 预设信息应用上去。使用 PodPreset 的好处就是我们可以将一些常用 Pod 预设信息配置为模板，这样就不需要显式为每个 Pod 提供所有信息，简化 Pod 初始化配置，还能起到配置统一的效果。</p>
+</blockquote>
+<h2 id="K8s-启用-PodPreset-配置"><a href="#K8s-启用-PodPreset-配置" class="headerlink" title="K8s 启用 PodPreset 配置"></a>K8s 启用 PodPreset 配置</h2><p>K8s 默认不开启 PodPreset 支持的，其 API 类型为 <code>settings.k8s.io/v1alpha1</code>，如果不确认集群是否已开启 PodPreset 支持，可以通过 kubectl api-versions 命令查看是否存在该类型，或者 <code>kubectl get podpreset</code> 命令查看，如果没开启会提示 <code>error: the server doesn&#39;t have a resource type &quot;podpreset&quot;</code> 错误。</p>
+<p>启用 PodPreset，可以通过 K8s ApiServer 增加 <code>--runtime-config=settings.k8s.io/v1alpha1=true</code> 配置即可。Kubeadm 方式安装集群，可以在<code>/etc/kubernetes/manifests</code>路径下的<code>kube-apiserver.yaml</code>中追加如下命令：</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs gradle">--<span class="hljs-keyword">runtime</span>-config=api<span class="hljs-regexp">/all,settings.k8s.io/</span>v1alpha1=<span class="hljs-keyword">true</span><br></code></pre></td></tr></table></figure>
+
+<p>admission中添加：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-attr">--enable-admission-plugins</span>=NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeClaimResize,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,Priority,PodPreset<br></code></pre></td></tr></table></figure>
+
+
+<p>待组件自动重启完毕后，可以再次检查是否已支持 PodPreset。</p>
+<figure class="highlight lua"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs lua">$ kubectl api-versions | grep settings.k8s.<span class="hljs-built_in">io</span><br>settings.k8s.<span class="hljs-built_in">io</span>/v1alpha1<br></code></pre></td></tr></table></figure>
+
+
+<h2 id="PodPreset-注入信息示例"><a href="#PodPreset-注入信息示例" class="headerlink" title="PodPreset 注入信息示例"></a>PodPreset 注入信息示例</h2><p>现在我们演示一下，如何使用 PodPreset 注入信息到 Pod 中，这里举两个示例，一个是匹配指定 Pod 加载配置，另一个是匹配某个 Namespace 下所有 Pod 加载配置。</p>
+<h3 id="匹配指定-Pod-加载配置"><a href="#匹配指定-Pod-加载配置" class="headerlink" title="匹配指定 Pod 加载配置"></a>匹配指定 Pod 加载配置</h3><p>上边提到过 <code>使用标签选择器来指定某个或某些 Pod，来将 PodPreset 预设信息应用上去</code>，这里我们来演示下如何匹配指定 Pod 加载配置。首先新建 PodPreset Yaml 资源文件。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">$ vim podpreset-busybox-hwy.yaml</span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">settings.k8s.io/v1alpha1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">PodPreset</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">busybox-hwy</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">wanyang3</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">selector</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">matchLabels</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">role</span><span class="hljs-punctuation">:</span> <span class="hljs-string">busybox-hwy</span><br>  <span class="hljs-attribute">env</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">name: PODPRESET_MESSAGE</span><br>      <span class="hljs-attribute">value</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;This is podpreset message.&quot;</span><br>  <span class="hljs-attribute">volumeMounts</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">mountPath: /opt/logs</span><br>      <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">logs-volume</span><br>  <span class="hljs-attribute">volumes</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">name: logs-volume</span><br>      <span class="hljs-attribute">emptyDir</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#123;&#125;</span><br></code></pre></td></tr></table></figure>
+
+<p>可以看到如下几个关键信息：</p>
+<ul>
+<li>PodPreset 资源 ApiVersion 为 <code>settings.k8s.io/v1alpha1</code></li>
+<li>这里 <code>selector.matchLabels</code> 通过 Labels 匹配标签包含 <code>role: busybox-hwy</code> 的 Pod</li>
+<li>注入了 <code>env</code> 环境变量 <code>PODPRESET_MESSAGE=This is podpreset message.</code> 到匹配的 Pod 中</li>
+<li>注入了 <code>volumes</code> 卷挂载目录到匹配的 Pod 中的 <code>/opt/logs</code> 目录</li>
+</ul>
+<p>创建一下该 PodPreset 资源。</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs powershell"><span class="hljs-variable">$</span> kubectl create ns wanyang3<br>namespace/wanyang3 created<br><br><br><span class="hljs-variable">$</span> kubectl apply <span class="hljs-operator">-f</span> podp<span class="hljs-built_in">reset-busybox</span><span class="hljs-literal">-hwy</span>.yaml<br>podpreset.settings.k8s.io/busybox<span class="hljs-literal">-hwy</span> created<br><br><br><span class="hljs-variable">$</span> kubectl get podpreset <span class="hljs-literal">-n</span> wanyang3<br>NAME          CREATED AT<br>busybox<span class="hljs-literal">-hwy</span>   <span class="hljs-number">2019</span><span class="hljs-literal">-07-07T02</span>:<span class="hljs-number">10</span>:<span class="hljs-number">31</span>Z<br></code></pre></td></tr></table></figure>
+
+
+<p>接下来，我们来创建 Pod Yaml 资源文件。</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs dts">$ vim pod-busybox-hwy.yaml <br><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> Pod<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> busybox-hwy<br><span class="hljs-symbol">  namespace:</span> wanyang3<br><span class="hljs-symbol">  labels:</span><br><span class="hljs-symbol">    app:</span> busybox-hwy<br><span class="hljs-symbol">    role:</span> busybox-hwy<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  containers:</span><br>    - name: busybox-hwy<br><span class="hljs-symbol">      image:</span> busybox:latest<br><span class="hljs-symbol">      command:</span> [<span class="hljs-string">&quot;sleep&quot;</span>, <span class="hljs-string">&quot;60000&quot;</span>]<br></code></pre></td></tr></table></figure>
+
+<p>注意：这里我以 <code>busybox</code> 容器来测试，这里 labels <code>role: busybox-hwy</code> 要跟上边 PodPreset <code>selector.matchLabels</code> 匹配上，否则将没法注入信息。那么创建一下该 Pod 资源。</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs powershell"><span class="hljs-variable">$</span> kubectl apply <span class="hljs-operator">-f</span> pod<span class="hljs-literal">-busybox-hwy</span>.yaml<br>pod/busybox<span class="hljs-literal">-hwy</span> created<br><br><br><span class="hljs-variable">$</span> kubectl get pod <span class="hljs-literal">-n</span> wanyang3<br>NAME          READY   STATUS    RESTARTS   AGE<br>busybox<span class="hljs-literal">-hwy</span>   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">15</span>s<br></code></pre></td></tr></table></figure>
+
+
+<p>成功创建，进入到容器内验证一下 PodPreset 信息是否正确注入吧！</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs gradle">$ kubectl exec -it busybox-hwy -n wanyang3 <span class="hljs-regexp">/bin/</span>sh<br>/ # printenv |<span class="hljs-keyword">grep</span> PODPRESET<br>PODPRESET_MESSAGE=<span class="hljs-keyword">This</span> is podpreset message.<br>/ # df -h<br>Filesystem                <span class="hljs-keyword">Size</span>      Used Available Use% Mounted on<br>overlay                  <span class="hljs-number">36.0</span>G      <span class="hljs-number">9.3</span>G     <span class="hljs-number">26.7</span>G  <span class="hljs-number">26</span>% /<br>tmpfs                    <span class="hljs-number">64.0</span>M         <span class="hljs-number">0</span>     <span class="hljs-number">64.0</span>M   <span class="hljs-number">0</span>% /dev<br>tmpfs                     <span class="hljs-number">1.8</span>G         <span class="hljs-number">0</span>      <span class="hljs-number">1.8</span>G   <span class="hljs-number">0</span>% <span class="hljs-regexp">/sys/</span>fs/cgroup<br><span class="hljs-regexp">/dev/m</span>apper/centos-root<br>                         <span class="hljs-number">36.0</span>G      <span class="hljs-number">9.3</span>G     <span class="hljs-number">26.7</span>G  <span class="hljs-number">26</span>% <span class="hljs-regexp">/opt/</span>logs<br><span class="hljs-regexp">/dev/m</span>apper/centos-root<br>                         <span class="hljs-number">36.0</span>G      <span class="hljs-number">9.3</span>G     <span class="hljs-number">26.7</span>G  <span class="hljs-number">26</span>% <span class="hljs-regexp">/dev/</span>termination-log<br><span class="hljs-regexp">/dev/m</span>apper/centos-root<br>                         <span class="hljs-number">36.0</span>G      <span class="hljs-number">9.3</span>G     <span class="hljs-number">26.7</span>G  <span class="hljs-number">26</span>% <span class="hljs-regexp">/etc/</span>resolv.conf<br><span class="hljs-regexp">/dev/m</span>apper/centos-root<br>                         <span class="hljs-number">36.0</span>G      <span class="hljs-number">9.3</span>G     <span class="hljs-number">26.7</span>G  <span class="hljs-number">26</span>% <span class="hljs-regexp">/etc/</span>hostname<br><span class="hljs-regexp">/dev/m</span>apper/centos-root<br>                         <span class="hljs-number">36.0</span>G      <span class="hljs-number">9.3</span>G     <span class="hljs-number">26.7</span>G  <span class="hljs-number">26</span>% <span class="hljs-regexp">/etc/</span>hosts<br>......      <br></code></pre></td></tr></table></figure>
+
+<p>验证没有问题，PodPreset 信息注入到 Pod 里面了，而我们的 Pod yaml 文件就非常简洁了，从而避免了某一个配置更改，所有相关的 Pod 都需要更新 Yaml 配置的麻烦，是不是很方便！咱们在更深入了解一下 PodPreset 实现的方式，此时获取 Pod 的 Yaml 文件看下。</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-meta"># kubectl get pod busybox-hwy -n wanyang3 -o yaml</span><br><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> Pod<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  annotations:</span><br>    podpreset.admission.kubernetes.io/podpreset-busybox-hwy: <span class="hljs-string">&quot;24187&quot;</span><br><span class="hljs-symbol">  creationTimestamp:</span> <span class="hljs-number">2019</span><span class="hljs-number">-07</span><span class="hljs-number">-07</span>T02:<span class="hljs-number">22</span>:<span class="hljs-number">27</span>Z<br><span class="hljs-symbol">  labels:</span><br><span class="hljs-symbol">    app:</span> busybox-hwy<br><span class="hljs-symbol">    role:</span> busybox-hwy<br><span class="hljs-symbol">  name:</span> busybox-hwy<br><span class="hljs-symbol">  namespace:</span> wanyang3<br><span class="hljs-symbol">  resourceVersion:</span> <span class="hljs-string">&quot;24302&quot;</span><br><span class="hljs-symbol">  selfLink:</span> <span class="hljs-keyword">/api/</span>v1<span class="hljs-keyword">/namespaces/</span>wanyang3<span class="hljs-keyword">/pods/</span>busybox-hwy<br><span class="hljs-symbol">  uid:</span> <span class="hljs-number">1066</span>b217-a05e<span class="hljs-number">-11e9</span>-aab0<span class="hljs-number">-080027</span>a076a9<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  containers:</span><br>  - command:<br>    - sleep<br>    - <span class="hljs-string">&quot;60000&quot;</span><br><span class="hljs-symbol">    env:</span><br>    - name: PODPRESET_MESSAGE<br><span class="hljs-symbol">      value:</span> This is podpreset message.<br><span class="hljs-symbol">    image:</span> busybox:latest<br><span class="hljs-symbol">    imagePullPolicy:</span> Always<br><span class="hljs-symbol">    name:</span> busybox-hwy<br><span class="hljs-symbol">    resources:</span> <span class="hljs-punctuation">&#123;</span><span class="hljs-punctuation">&#125;</span><br><span class="hljs-symbol">    terminationMessagePath:</span> <span class="hljs-keyword">/dev/</span>termination-log<br><span class="hljs-symbol">    terminationMessagePolicy:</span> File<br><span class="hljs-symbol">    volumeMounts:</span><br>    - mountPath: <span class="hljs-keyword">/opt/</span>logs<br><span class="hljs-symbol">      name:</span> logs-volume<br>    - mountPath: <span class="hljs-keyword">/var/</span>run<span class="hljs-keyword">/secrets/</span>kubernetes.io/serviceaccount<br><span class="hljs-symbol">      name:</span> default-token-nnbrm<br><span class="hljs-symbol">      readOnly:</span> true<br><span class="hljs-symbol">  dnsPolicy:</span> ClusterFirst<br><span class="hljs-symbol">  nodeName:</span> minikube<br>  ......<br></code></pre></td></tr></table></figure>
+<p>可以看到，经过 k8s admission controller 之后此时的 Yaml 文件是将 PodPreset 和 Pod 资源 Merge 合并了，同时增加了 <code>podpreset.admission.kubernetes.io/podpreset-busybox-hwy: &quot;24187&quot;</code> 这样的注解，类似模板的 Include 功能，而这个 <code>24187</code> 资源号就是上边 <code>podpreset-busybox-hwy</code> 创建完成之后的 <code>resourceVersion: &quot;24187&quot;</code> 资源版本号。</p>
+<h3 id="匹配某个-Namespace-下所有-Pod-加载配置"><a href="#匹配某个-Namespace-下所有-Pod-加载配置" class="headerlink" title="匹配某个 Namespace 下所有 Pod 加载配置"></a>匹配某个 Namespace 下所有 Pod 加载配置</h3><p>上边演示了匹配一个或多个指定 Pod 注入信息，如果我们想针对某个 Namespace 下的所有的 Pod 注入信息该如何配置呢？方法就是配置 <code>selector.matchLabels</code> 时匹配所有即可。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">$</span> <span class="hljs-string">vim</span> <span class="hljs-string">podpreset-ns-test.yaml</span> <br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">settings.k8s.io/v1alpha1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">PodPreset</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">podpreset-ns-test</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">podpreset-test</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">matchLabels:</span>  <span class="hljs-comment">#关键在这里，匹配所有</span><br>  <span class="hljs-attr">env:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">DB_PORT</span><br>      <span class="hljs-attr">value:</span> <span class="hljs-string">&quot;6379&quot;</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">TZ</span><br>      <span class="hljs-attr">value:</span> <span class="hljs-string">Asia/Shanghai</span><br></code></pre></td></tr></table></figure>
+<p>说明一下：这里 <code>matchLabels:</code> 设置为空，表示匹配该 Namespaces 下所有，这里匹配 <code>podpreset-test</code> 命名空间下所有 Pod，并注入了 <code>DB_PORT= 6379</code> 和 <code>TZ=Asia/Shanghai</code> 两个公用环境变量配置。注意：这里的 <code>TZ=Asia/Shanghai</code> 环境变量配置可以用于修改 Pod 所属时区，从而实现该命名空间所有的 Pod 统一更改时区（毕竟 Centos 默认时间为 <code>UTC</code>）。接下来，创建一下该 PodPreset 资源。</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs powershell"><span class="hljs-variable">$</span> kubectl create ns podp<span class="hljs-built_in">reset-test</span><br>namespace/podp<span class="hljs-built_in">reset-test</span> created<br><br><br><span class="hljs-variable">$</span> kubectl apply <span class="hljs-operator">-f</span> podp<span class="hljs-built_in">reset-ns</span><span class="hljs-literal">-test</span>.yaml<br>podpreset.settings.k8s.io/podp<span class="hljs-built_in">reset-ns</span><span class="hljs-literal">-test</span> created<br><br><br><span class="hljs-variable">$</span> kubectl get podpreset <span class="hljs-literal">-n</span> podp<span class="hljs-built_in">reset-test</span><br>NAME                CREATED AT<br>podp<span class="hljs-built_in">reset-ns</span><span class="hljs-literal">-test</span>   <span class="hljs-number">2019</span><span class="hljs-literal">-07-07T03</span>:<span class="hljs-number">52</span>:<span class="hljs-number">42</span>Z<br></code></pre></td></tr></table></figure>
+
+<p>然后，分别创建多个 Pod 来注入该 PodPreset 信息。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">$ vim pod-nginx-test-1.yaml </span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">v1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx-test-1</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">podpreset-test</span><br>  <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx-test-1</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">containers</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">name: nginx-test-1</span><br>      <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx:latest</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">$ vim pod-nginx-test-2.yaml </span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">v1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx-test-2</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">podpreset-test</span><br>  <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx-test-2</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">containers</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">name: nginx-test-2</span><br>      <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx:latest   </span><br></code></pre></td></tr></table></figure>
+
+<p>创建以上 Pod 资源，并分别验证是否注入信息成功。</p>
+<figure class="highlight cmake"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs cmake">$ kubectl apply -f pod-nginx-<span class="hljs-keyword">test</span>-<span class="hljs-number">1</span>.yaml<br>pod/nginx-<span class="hljs-keyword">test</span>-<span class="hljs-number">1</span> created<br><br><br>$ kubectl apply -f pod-nginx-<span class="hljs-keyword">test</span>-<span class="hljs-number">2</span>.yaml<br>pod/nginx-<span class="hljs-keyword">test</span>-<span class="hljs-number">2</span> created<br><br><br>$ kubectl get pod -n podpreset-<span class="hljs-keyword">test</span><br>NAME           READY   STATUS    RESTARTS   AGE<br>nginx-<span class="hljs-keyword">test</span>-<span class="hljs-number">1</span>   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">26</span>s<br>nginx-<span class="hljs-keyword">test</span>-<span class="hljs-number">2</span>   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">20</span>s<br></code></pre></td></tr></table></figure>
+
+<p>分别进入容器内验证是否注入成功</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs routeros">$ kubectl exec -it nginx-test-1 -n podpreset-test /bin/sh<br><span class="hljs-comment"># printenv</span><br><span class="hljs-attribute">KUBERNETES_PORT</span>=tcp://10.96.0.1:443<br><span class="hljs-attribute">KUBERNETES_SERVICE_PORT</span>=443<br><span class="hljs-attribute">HOSTNAME</span>=nginx-test-1<br><span class="hljs-attribute">DB_PORT</span>=6379<br><span class="hljs-attribute">HOME</span>=/root<br><span class="hljs-attribute">PKG_RELEASE</span>=1~stretch<br><span class="hljs-attribute">TERM</span>=xterm<br><span class="hljs-attribute">KUBERNETES_PORT_443_TCP_ADDR</span>=10.96.0.1<br><span class="hljs-attribute">NGINX_VERSION</span>=1.17.1<br><span class="hljs-built_in">..</span><span class="hljs-built_in">..</span><span class="hljs-built_in">..</span><br><span class="hljs-attribute">PWD</span>=/<br><span class="hljs-attribute">TZ</span>=Asia/Shanghai<br><span class="hljs-comment"># date</span><br>Sun Jul  7 12:16:53 CST 2019<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs routeros">$ kubectl exec -it nginx-test-2 -n podpreset-test /bin/sh<br><span class="hljs-comment"># printenv</span><br><span class="hljs-attribute">KUBERNETES_SERVICE_PORT</span>=443<br><span class="hljs-attribute">KUBERNETES_PORT</span>=tcp://10.96.0.1:443<br><span class="hljs-attribute">HOSTNAME</span>=nginx-test-2<br><span class="hljs-attribute">DB_PORT</span>=6379<br><span class="hljs-attribute">HOME</span>=/root<br><span class="hljs-attribute">PKG_RELEASE</span>=1~stretch<br><span class="hljs-attribute">TERM</span>=xterm<br><span class="hljs-attribute">KUBERNETES_PORT_443_TCP_ADDR</span>=10.96.0.1<br><span class="hljs-attribute">NGINX_VERSION</span>=1.17.1<br><span class="hljs-built_in">..</span><span class="hljs-built_in">..</span><span class="hljs-built_in">..</span><br><span class="hljs-attribute">PWD</span>=/<br><span class="hljs-attribute">TZ</span>=Asia/Shanghai<br><span class="hljs-comment"># date</span><br>Sun Jul  7 12:17:26 CST 2019<br></code></pre></td></tr></table></figure>
+
+
+<p>可以看到，该 Namespace 下的两个 Pod 都成功注入了配置信息，时区也改过来了，是不是很方便了。不过，如果想指定该 Namespace 下某个 Pod 不使用该 PodPreset 该如何配置呢？毕竟有些个性化的 Pod 不使用通用配置。我们可以配置 <code>podpreset.admission.kubernetes.io/exclude: &quot;true&quot;</code> 注解来注明该 Pod 不注入 PodPreset，接下来演示一下。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">$ vim pod-nginx-test-3.yaml </span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">v1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx-test-3</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">podpreset-test</span><br>  <span class="hljs-attribute">annotations</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">podpreset.admission.kubernetes.io/exclude</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;true&quot;</span><br>  <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx-test-3</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">containers</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">name: nginx-test-3</span><br>      <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx:latest</span><br></code></pre></td></tr></table></figure>
+
+<p>创建该 Pod 资源，验证信息是否注入容器进去。</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs shell"><span class="hljs-meta prompt_">$ </span><span class="language-bash">kubectl apply -f pod-nginx-test-3.yaml</span><br><span class="hljs-meta prompt_">$ </span><span class="language-bash">kubectl <span class="hljs-built_in">exec</span> -it nginx-test-3 -n podpreset-test /bin/sh</span><br><span class="hljs-meta prompt_">$ </span><span class="language-bash"><span class="hljs-built_in">printenv</span> | grep TZ</span><br><span class="hljs-meta prompt_">$ </span><span class="language-bash"><span class="hljs-built_in">printenv</span> | grep DB_PORT</span><br><span class="hljs-meta prompt_">$ </span><span class="language-bash"><span class="hljs-built_in">date</span></span><br>Sun Jul  7 04:18:54 UTC 2019<br></code></pre></td></tr></table></figure>
+<p>可以看到，添加了忽略 PodPreset 注入 annotations 后，没有将信息注入进去，时间还是默认的 UTC 时间。</p>
+<p>PodPreset 除了上边演示的两种用法外，还支持多 PodPreset 应用到同一 Pod，支持多种资源类型（ReplicaSet 等），支持从 ConfigMap 中取值。同时要说明一下，当 PodPreset 跟 Pod 配置有冲突时，例如 Pod Yaml 容器挂载配置跟 PodPreset 容器挂载配置为同一路径时，会报错提示冲突。</p>
+<p>最后要提一下注意的问题：</p>
+<ul>
+<li>目前 PodPreset 的预设功能这块还在演进中，不过已经能大大简化了相关的管理工作，将这些公用配置从开发者手中分离出来，变成系统管理配置。</li>
+<li>PodPreset 是 Namespace 级别的对象，其作用范围只能是同一个命名空间下容器。</li>
+<li>目前为 <code>v1alpha1</code> 版本，还不成熟，例如当我们对已创建的 PodPreset 执行非常少量的修改时，重新 apply 或者 replace 时，服务端并没有更新过来（亲测会有问题，只能删除重建），大家可以自己尝试下。</li>
+</ul>
+<h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://kubernetes.io/docs/tasks/inject-data-application/podpreset/">PodPreset Doc</a></li>
+<li><a target="_blank" rel="noopener" href="https://kubernetes.io/docs/concepts/workloads/pods/podpreset/">Enable PodPreset</a></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>PodPreset注入信息到 Pods</div>
+      <div>https://system51.github.io/2019/08/26/PodPreset/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-statefulset/" title="Kubernetes之statefulset控制器">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes之statefulset控制器</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-Secret/" title="Kubernetes之Secret">
+                        <span class="hidden-mobile">Kubernetes之Secret</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

@@ -1,0 +1,761 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="管理接口admin Envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等），因此非常有必要精心编排其访问控制机制以避免非授权访问；  12345678admin:  access_log_path: ...      # 管理接口的访问日志文件路径，无须记录访问日志时使用&#x2F;dev&#x2F;null；  profile_path: ...">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Envoy-Administration-interface">
+<meta property="og:url" content="https://system51.github.io/2019/11/26/Envoy-Administration-interface/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="管理接口admin Envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等），因此非常有必要精心编排其访问控制机制以避免非授权访问；  12345678admin:  access_log_path: ...      # 管理接口的访问日志文件路径，无须记录访问日志时使用&#x2F;dev&#x2F;null；  profile_path: ...">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-11-26T05:45:40.000Z">
+<meta property="article:modified_time" content="2019-11-26T06:55:21.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>Envoy-Administration-interface - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Envoy-Administration-interface"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-11-26 13:45" pubdate>
+          2019年11月26日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          4.3k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          8 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Envoy-Administration-interface</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="管理接口admin"><a href="#管理接口admin" class="headerlink" title="管理接口admin"></a>管理接口admin</h2><ul>
+<li>Envoy内建了一个管理接口，它支持查询和修改操作，甚至有可能暴露私有数据（例如统计数据、集群名称和证书信息等），因此非常有必要精心编排其访问控制机制以避免非授权访问；</li>
+</ul>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">admin:</span><br><span class="hljs-symbol">  access_log_path:</span> ...      <span class="hljs-meta"># 管理接口的访问日志文件路径，无须记录访问日志时使用/dev/null；</span><br><span class="hljs-symbol">  profile_path:</span> ...         <span class="hljs-meta"># cpu profiler的输出路径，默认为/var/log/envoy/envoy.prof；</span><br><span class="hljs-symbol">    address:</span>                <span class="hljs-meta"># 监听的套接字；</span><br><span class="hljs-symbol">    socket_address:</span><br><span class="hljs-symbol">      protocol:</span> ...<br><span class="hljs-symbol">      address:</span> ...<br><span class="hljs-symbol">      port_value:</span> ...<br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>下面是一个简单的配置示例</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">admin:</span><br>  <span class="hljs-attr">access_log_path:</span> <span class="hljs-string">/tmp/admin_access.log</span><br>  <span class="hljs-attr">address:</span><br>    <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">9901</span> &#125;<br></code></pre></td></tr></table></figure>
+
+
+<ul>
+<li>一个完整的envoy配置示例</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">admin:</span><br>  <span class="hljs-attr">access_log_path:</span> <span class="hljs-string">/tmp/admin_access.log</span><br>  <span class="hljs-attr">profile_path:</span> <span class="hljs-string">/tmp/envoy.prof</span><br>  <span class="hljs-attr">address:</span><br>    <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">9901</span> &#125;<br><br><span class="hljs-attr">static_resources:</span><br>  <span class="hljs-attr">listeners:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">listener_0</span><br>    <span class="hljs-attr">address:</span><br>      <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br>    <span class="hljs-attr">filter_chains:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">filters:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.http_connection_manager</span><br>        <span class="hljs-attr">config:</span><br>          <span class="hljs-attr">stat_prefix:</span> <span class="hljs-string">egress_http</span><br>          <span class="hljs-attr">codec_type:</span> <span class="hljs-string">AUTO</span><br>          <span class="hljs-attr">route_config:</span><br>            <span class="hljs-attr">name:</span> <span class="hljs-string">test_route</span><br>            <span class="hljs-attr">virtual_hosts:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_service_1</span><br>              <span class="hljs-attr">domains:</span> [<span class="hljs-string">&quot;*.ik8s.io&quot;</span>, <span class="hljs-string">&quot;ik8s.io&quot;</span>]<br>              <span class="hljs-attr">routes:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">match:</span> &#123; <span class="hljs-attr">prefix:</span> <span class="hljs-string">&quot;/&quot;</span> &#125;<br>                <span class="hljs-attr">route:</span> &#123; <span class="hljs-attr">cluster:</span> <span class="hljs-string">web_cluster_1</span> &#125;<br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_service_2</span><br>              <span class="hljs-attr">domains:</span> [<span class="hljs-string">&quot;*.k8scast.cn&quot;</span>,<span class="hljs-string">&quot;k8scast.cn&quot;</span>]<br>              <span class="hljs-attr">routes:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">match:</span> &#123; <span class="hljs-attr">prefix:</span> <span class="hljs-string">&quot;/&quot;</span> &#125;<br>                <span class="hljs-attr">route:</span> &#123; <span class="hljs-attr">cluster:</span> <span class="hljs-string">web_cluster_2</span> &#125; <br>          <span class="hljs-attr">http_filters:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.router</span><br><br>  <span class="hljs-attr">clusters:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_cluster_1</span><br>    <span class="hljs-attr">connect_timeout:</span> <span class="hljs-number">0.</span><span class="hljs-string">25s</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">STRICT_DNS</span><br>    <span class="hljs-attr">lb_policy:</span> <span class="hljs-string">ROUND_ROBIN</span><br>    <span class="hljs-attr">load_assignment:</span><br>      <span class="hljs-attr">cluster_name:</span> <span class="hljs-string">web_cluster_1</span> <br>      <span class="hljs-attr">endpoints:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">lb_endpoints:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span><br>            <span class="hljs-attr">address:</span><br>              <span class="hljs-attr">socket_address:</span><br>                <span class="hljs-attr">address:</span> <span class="hljs-string">myservice</span><br>                <span class="hljs-attr">port_value:</span> <span class="hljs-number">8081</span><br><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_cluster_2</span><br>    <span class="hljs-attr">connect_timeout:</span> <span class="hljs-number">0.</span><span class="hljs-string">25s</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">STRICT_DNS</span><br>    <span class="hljs-attr">lb_policy:</span> <span class="hljs-string">ROUND_ROBIN</span><br>    <span class="hljs-attr">load_assignment:</span><br>      <span class="hljs-attr">cluster_name:</span> <span class="hljs-string">web_cluster_2</span><br>      <span class="hljs-attr">endpoints:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">lb_endpoints:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span><br>            <span class="hljs-attr">address:</span><br>              <span class="hljs-attr">socket_address:</span><br>                <span class="hljs-attr">address:</span> <span class="hljs-string">webserver1</span> <br>                <span class="hljs-attr">port_value:</span> <span class="hljs-number">8081</span><br></code></pre></td></tr></table></figure>
+
+
+<ul>
+<li>管理接口admin<ul>
+<li>admin接口内置了多个&#x2F;path，不同的path可能会分别接受不同的GET或POST请求</li>
+<li>GET &#x2F;help：打印所有可用选项；</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs bash">admin commands are:<br>/: Admin home page                                                       <span class="hljs-comment"># GET</span><br>/certs: <span class="hljs-built_in">print</span> certs on machine                                           <span class="hljs-comment"># GET，列出已加载的所有TLS证书及相关的信息；</span><br>/clusters: upstream cluster status                                       <span class="hljs-comment"># GET，额外支持使用“GET /clusters?format=json”</span><br>/config_dump: dump current Envoy configs (experimental)                  <span class="hljs-comment"># GET，打印Envoy加载的各类配置信息；</span><br>/contention: dump current Envoy mutex contention stats (<span class="hljs-keyword">if</span> enabled)      <span class="hljs-comment"># GET，互斥跟踪</span><br>/cpuprofiler: <span class="hljs-built_in">enable</span>/disable the CPU profiler                            <span class="hljs-comment"># POST，启用或禁用cpuprofiler</span><br>/healthcheck/fail: cause the server to fail health checks                <span class="hljs-comment"># POST，强制设定HTTP健康状态检查为失败；</span><br>/healthcheck/ok: cause the server to pass health checks                  <span class="hljs-comment"># POST，强制设定HTTP健康状态检查为成功；</span><br>/heapprofiler: <span class="hljs-built_in">enable</span>/disable the heap profiler                          <span class="hljs-comment"># POST，启用或禁用heapprofiler；</span><br>/help: <span class="hljs-built_in">print</span> out list of admin commands<br>/hot_restart_version: <span class="hljs-built_in">print</span> the hot restart compatibility version        <span class="hljs-comment"># GET，打印热重启相关的信息；</span><br>/listeners: <span class="hljs-built_in">print</span> listener addresses                                     <span class="hljs-comment"># GET，列出所有侦听器，支持使用“GET /listeners?format=json”</span><br>/logging: query/change logging levels                                    <span class="hljs-comment"># POST，启用或禁用不同子组件上的不同日志记录级别</span><br>/memory: <span class="hljs-built_in">print</span> current allocation/heap usage                             <span class="hljs-comment"># POST，打印当前内在分配信息，以字节为单位；</span><br>/quitquitquit: <span class="hljs-built_in">exit</span> the server                                           <span class="hljs-comment"># POST，干净退出服务器；</span><br>/reset_counters: reset all counters to zero                              <span class="hljs-comment"># POST，重围所有计数器；</span><br>/runtime: <span class="hljs-built_in">print</span> runtime values                                           <span class="hljs-comment"># GET，以json格式输出所有运行时相关值；</span><br>/runtime_modify: modify runtime values                                   <span class="hljs-comment"># POST /runtime_modify?key1=value1&amp;key2=value2，添加或修改在查询参数中传递的运行时值</span><br>/server_info: <span class="hljs-built_in">print</span> server version/status information                    <span class="hljs-comment"># GET，打印当前Envoy Server的相关信息；</span><br>/stats: <span class="hljs-built_in">print</span> server stats                                               <span class="hljs-comment"># 按需输出统计数据，例如GET /stats?filter=regex，另外还支持json和prometheus两种输出格式；</span><br>/stats/prometheus: <span class="hljs-built_in">print</span> server stats <span class="hljs-keyword">in</span> prometheus format：             <span class="hljs-comment"># 输出prometheus格式的统计信息；</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h2 id="管理接口几个示例输出"><a href="#管理接口几个示例输出" class="headerlink" title="管理接口几个示例输出"></a>管理接口几个示例输出</h2><ul>
+<li>GET &#x2F;clusters：列出所有已配置的集群，包括每个集群中发现的所有上游主机以及每个主机的统计信息；支持输出为json格式；<ul>
+<li>集群管理器信息：“version_info string”，无CDS时，则显示为“version_info::static”</li>
+<li>集群相关的信息：断路器、异常点检测和用于表示是否通过CDS添加的集群标识“add_via_api”</li>
+<li>每个主机的统计信息：包括总连接数、活动连接数、总请求数和主机的健康状态等；不健康的原因通常有以下三种<ul>
+<li>failed_active_hc：未通过主动健康状态检测；</li>
+<li>failed_eds_health：被EDS标记为不健康；</li>
+<li>failed_outlier_check：未通过异常检测机制的检查；</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>GET &#x2F;listeners：列出所有已配置的侦听器，包括侦听器的名称以及监听的地址；支持输出为json格式；</li>
+<li>POST &#x2F;reset_counters：将所有计数器重置为0；不过，它只会影响Server本地的输出，对于已经发送到外部存储系统的统计数据无效；</li>
+<li>GET &#x2F;config_dump：以json格式打印当前从Envoy的各种组件加载的配置信息；</li>
+<li>GET &#x2F;ready：获取Server就绪与否的状态，LIVE状态为200，否则为503；</li>
+</ul>
+<h2 id="统计集群中每个主机的状态信息说明"><a href="#统计集群中每个主机的状态信息说明" class="headerlink" title="统计集群中每个主机的状态信息说明"></a>统计集群中每个主机的状态信息说明</h2><table>
+<thead>
+<tr>
+<th align="left">Name</th>
+<th align="right">Type</th>
+<th align="center">Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td align="left">cx_total</td>
+<td align="right">Counter</td>
+<td align="center">Total connections</td>
+</tr>
+<tr>
+<td align="left">cx_active</td>
+<td align="right">Gauge</td>
+<td align="center">Total active connections</td>
+</tr>
+<tr>
+<td align="left">cx_connect_fail</td>
+<td align="right">Counter</td>
+<td align="center">Total connection failures</td>
+</tr>
+<tr>
+<td align="left">rq_total</td>
+<td align="right">Counter</td>
+<td align="center">Total requests</td>
+</tr>
+<tr>
+<td align="left">rq_timeout</td>
+<td align="right">Counter</td>
+<td align="center">Total timed out requests</td>
+</tr>
+<tr>
+<td align="left">rq_success</td>
+<td align="right">Counter</td>
+<td align="center">Total requests with non-5xx responses</td>
+</tr>
+<tr>
+<td align="left">rq_error</td>
+<td align="right">Counter</td>
+<td align="center">Total requests with 5xx responses</td>
+</tr>
+<tr>
+<td align="left">rq_active</td>
+<td align="right">Gauge</td>
+<td align="center">Total active requests</td>
+</tr>
+<tr>
+<td align="left">healthy</td>
+<td align="right">String</td>
+<td align="center">The health status of the host. See below</td>
+</tr>
+<tr>
+<td align="left">weight</td>
+<td align="right">Integer</td>
+<td align="center">Load balancing weight (1-100)</td>
+</tr>
+<tr>
+<td align="left">zone</td>
+<td align="right">String</td>
+<td align="center">Service zone</td>
+</tr>
+<tr>
+<td align="left">canary</td>
+<td align="right">Boolean</td>
+<td align="center">Whether the host is a canary</td>
+</tr>
+<tr>
+<td align="left">success_rate</td>
+<td align="right">Double</td>
+<td align="center">Request success rate (0-100). -1 if there was not enough request volume in the interval to calculate it</td>
+</tr>
+</tbody></table>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Envoy-Administration-interface</div>
+      <div>https://system51.github.io/2019/11/26/Envoy-Administration-interface/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年11月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/12/03/kubeadm-base-use/" title="使用Kubeadm搭建一个高可用集群">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">使用Kubeadm搭建一个高可用集群</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/11/11/Envoy-concept/" title="Envoy的概念与术语">
+                        <span class="hidden-mobile">Envoy的概念与术语</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

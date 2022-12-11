@@ -1,0 +1,831 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="Calico基本概念 Calico是针对容器，虚拟机和基于主机的本机工作负载的开源网络和网络安全解决方案。 Calico支持广泛的平台，包括Kubernetes，OpenShift，Docker EE，OpenStack和裸机服务。 Calico将灵活的网络功能与无处不在的安全性实施相结合，以提供具有本地Linux内核性能和真正的云原生可扩展性的解决方案。 Calico为开发人员和集群运营商提供了">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Calico配置及原理">
+<meta property="og:url" content="https://system51.github.io/2020/05/27/using-calico/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Calico基本概念 Calico是针对容器，虚拟机和基于主机的本机工作负载的开源网络和网络安全解决方案。 Calico支持广泛的平台，包括Kubernetes，OpenShift，Docker EE，OpenStack和裸机服务。 Calico将灵活的网络功能与无处不在的安全性实施相结合，以提供具有本地Linux内核性能和真正的云原生可扩展性的解决方案。 Calico为开发人员和集群运营商提供了">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/calico-cni.png">
+<meta property="og:image" content="https://system51.github.io/images/calico-cni-4.png">
+<meta property="og:image" content="https://system51.github.io/images/calico-cni-2.png">
+<meta property="og:image" content="https://system51.github.io/images/calico-cni-3.png">
+<meta property="og:image" content="https://system51.github.io/images/calico-cni-6.png">
+<meta property="og:image" content="https://system51.github.io/images/calico-cni-5.jpg">
+<meta property="article:published_time" content="2020-05-27T08:17:29.000Z">
+<meta property="article:modified_time" content="2021-05-11T06:59:29.290Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/calico-cni.png">
+  
+  
+  
+  <title>Calico配置及原理 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Calico配置及原理"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2020-05-27 16:17" pubdate>
+          2020年5月27日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          18k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          31 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Calico配置及原理</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="Calico基本概念"><a href="#Calico基本概念" class="headerlink" title="Calico基本概念"></a>Calico基本概念</h2><ul>
+<li>Calico是针对容器，虚拟机和基于主机的本机工作负载的开源网络和网络安全解决方案。</li>
+<li>Calico支持广泛的平台，包括Kubernetes，OpenShift，Docker EE，OpenStack和裸机服务。</li>
+<li>Calico将灵活的网络功能与无处不在的安全性实施相结合，以提供具有本地Linux内核性能和真正的云原生可扩展性的解决方案。</li>
+<li>Calico为开发人员和集群运营商提供了一致的经验和功能集，无论是在公共云中还是本地运行，在单个节点上还是在数千个节点集群中运行。</li>
+</ul>
+<h2 id="Calico架构"><a href="#Calico架构" class="headerlink" title="Calico架构"></a>Calico架构</h2><p><img src="/images/calico-cni.png" srcset="/img/loading.gif" lazyload alt="calico-cni"></p>
+<h3 id="Calico网络模型主要工作组件："><a href="#Calico网络模型主要工作组件：" class="headerlink" title="Calico网络模型主要工作组件："></a>Calico网络模型主要工作组件：</h3><ul>
+<li>Felix：运行在每一台 Host 的 agent 进程，主要负责编写路由和ACLs（访问控制列表）。以便为该主机上的 <code>endpoints</code> 资源正常运行提供所需的网络连接。</li>
+<li>etcd：分布式键值存储，主要负责网络元数据一致性，确保Calico网络状态的准确性，可以与kubernetes共用；</li>
+<li>bird（BGP Client）：<code>Calico</code> 为每一台 <code>Host</code> 部署一个 <code>BGP Client</code>，当 <code>Felix</code> 将路由写入 <code>kernel</code> FIB中时 <code>BGP Client</code> 将通过 <code>BGP</code> 协议广播告诉剩余 <code>calico</code> 节点，从而实现网络互通。</li>
+<li>confd：通过监听etcd以了解BGP配置和全局默认值的更改（例如：AS number、日志级别、IPAM信息）。Confd根据ETCD中数据的更新，动态生成BIRD配置文件。当配置文件更改时，confd触发BIRD重新加载新文件。</li>
+</ul>
+<h2 id="Calico两种网络模式"><a href="#Calico两种网络模式" class="headerlink" title="Calico两种网络模式"></a>Calico两种网络模式</h2><p>&amp;emsp;&amp;emsp;Calico本身支持多种网络模式，从<code>overlay</code>和<code>underlay</code>上区分。<code>Calico overlay</code> 模式，一般也称Calico IPIP或VXLAN模式，不同Node间Pod使用IPIP或VXLAN隧道进行通信。<code>Calico underlay</code> 模式，一般也称calico BGP模式，不同Node Pod使用直接路由进行通信。在overlay和underlay都有<code>nodetonode mesh</code>(全网互联)和<code>Route Reflector</code>(路由反射器)。如果有安全组策略需要开放IPIP协议；要求Node允许BGP协议，如果有安全组策略需要开放TCP 179端口；官方推荐使用在Node小于100的集群，我们在使用的过程中已经通过IPIP模式支撑了100-200规模的集群稳定运行。</p>
+<h3 id="路由更新速率问题"><a href="#路由更新速率问题" class="headerlink" title="路由更新速率问题"></a>路由更新速率问题</h3><p>&amp;emsp;&amp;emsp;为什么要考虑路由更新速率？在Calico默认的使用模式中，Calico每个Node一个分配一个Block，每个Block默认为64个IP，当单个Node启动的Pod超过64时，才会分配下一个Block。Calico BGP client默认只向外通告聚合后的Block的路由，默认配置，只有在Node上下线、Node上Pod数量超过Block size的倍数才会出现路由的更新，路由的条目数量是Node级别的。<br>&amp;emsp;&amp;emsp;而实际业务在使用的过程中，会针对一个服务或者一个deployment分配一个IP Pool，这种使用模式会导致Calico的IP Pool没有办法按照Node聚合，出现一些零散的无法聚合的IP地址，最差的情况，会导致每个Pod产生一条路由，会导致路由的条目变为Pod级别。<br>&amp;emsp;&amp;emsp;在默认情况下，交换机设备为了防止路由震荡，会对BGP路由进行收敛保护。但是Kubernetes集群中，Pod生命周期短，变化频繁，需要关闭网络设备的路由变更保护机制才能满足Kubernetes的要求；对于不同的网络设备，路由收敛速度也是不同的，在大规模Pod扩容和迁移的场景，或者进行双数据中心切换，除了考虑Pod的调度时间、启动时间，还需要对网络设备的路由收敛速度进行性能评估和压测。</p>
+<h3 id="路由黑洞问题"><a href="#路由黑洞问题" class="headerlink" title="路由黑洞问题"></a>路由黑洞问题</h3><p>&amp;emsp;&amp;emsp;使用Calico Downward Default模型组网时，Node使用EBGP模式与Node建立邻居关系。当Pod使用的IP地址为内部统一规划的地址，出现Pod IP地址紧张的时候，会出现Pod之间不能正常访问的情况。（注：只会在EBGP模式下才会出现）<br>&amp;emsp;&amp;emsp;Calico分配IP地址的原则为，将整个IPPool分为多个地址块，每个Node获得一个Block，当有Pod调度到某个Node上时，Node优先使用Block内的地址。如果每个新增的Node分不到一个完整的地址块（也就是说Node无法获得整个网段64个IP），Calico IP地址管理功能会去使用其他Node的Block的IP，此时，就会出现Pod无法访问的现象。</p>
+<p>如下图所示，Pod 10.168.73.82无法访问Pod 10.168.73.83。<br><img src="/images/calico-cni-4.png" srcset="/img/loading.gif" lazyload alt="calico-cni-4"></p>
+<p>&amp;emsp;&amp;emsp;查看Node 10.0.0.70的路由表，其中“blackhole 10.168.73.80&#x2F;28 proto bird”为黑洞路由。如果没有其他优先级更高的路由，主机会将所有目的地址为10.168.73.80&#x2F;28的网络数据丢弃掉。所以在Node 10.0.0.70上ping Pod 10.168.73.84会报“参数不合法”的错误。此时，在Downward Default模式下，Calico配置的这一条黑洞路由使得Node 10.0.0.70不能够响应其他Node上PodIP在10.168.73.80&#x2F;28网段发起的网络请求。<br>&amp;emsp;&amp;emsp;要解决路由黑洞问题问题，首先，除了对整个Calico 的IP Pool总量进行监控外，还需要对可用的IP Block进行监控，确保不会出现IP Block不够分的情况，或者或者IP地址Block借用的情况；也可以通过在规划时计算IP地址总量，以及在kubelet配置参数中指定maxPods来规避这个问题；（注：一般我们会配置子网为<code>/16</code>也就是说能容纳<code>65536</code>个POD。如果一台主机一个block块(64个IP)那么也要1024个主机。为什么是1024，因为65536&#x2F;64&#x3D;1024，用总的IP数除以一个block块的IP数可以计算出总共有多少个block，上面也提到过当一个新的主机无法获得一个完整的block的时候才会出现路由黑洞。所以只要主机不超过1024台或者block块不超过1024个就不会出现。）</p>
+<h3 id="IPIP网络："><a href="#IPIP网络：" class="headerlink" title="IPIP网络："></a>IPIP网络：</h3><p>流量：tunl0设备封装数据，形成隧道，承载流量。</p>
+<p>适用网络类型：适用于互相访问的pod不在同一个网段中，跨网段访问的场景。外层封装的ip能够解决跨网段的路由问题。</p>
+<p>效率：流量需要tunl0设备封装，效率略低。</p>
+<p><img src="/images/calico-cni-2.png" srcset="/img/loading.gif" lazyload alt="calico-cni-2"></p>
+<h3 id="BGP网络："><a href="#BGP网络：" class="headerlink" title="BGP网络："></a>BGP网络：</h3><p>流量：使用主机路由表信息导向流量</p>
+<p>适用网络类型：适用于互相访问的pod在同一个网段，适用于大型网络。</p>
+<p>效率：原生hostGW，效率高。</p>
+<p><img src="/images/calico-cni-3.png" srcset="/img/loading.gif" lazyload alt="calico-cni-3"></p>
+<h2 id="Calico-数据流向"><a href="#Calico-数据流向" class="headerlink" title="Calico 数据流向"></a>Calico 数据流向</h2><p>由于个人环境中使用的是 <code>IPIP</code> 模式，因此接下来这里分析一下这种模式。首先是准备两个准备两个Pod分别在不同的主机上。</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-m1 ~]<span class="hljs-comment"># kubectl get pod -o wide</span><br>NAME                     READY   STATUS    RESTARTS   AGE     IP               <span class="hljs-keyword">NODE</span>     <span class="hljs-title">NOMINATED</span> <span class="hljs-keyword">NODE</span>   <span class="hljs-title">READINESS</span> GATES<br>busybox                  <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">4</span>          <span class="hljs-number">4h</span>53m   <span class="hljs-number">10.244</span>.<span class="hljs-number">215.68</span>    k8s-n1   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>nginx-<span class="hljs-number">7</span>fb7fd49b4-<span class="hljs-number">94694</span>   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">46h</span>     <span class="hljs-number">10.244</span>.<span class="hljs-number">111.195</span>   k8s-n2   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br></code></pre></td></tr></table></figure>
+
+
+<p>这里在 <code>nginx-7fb7fd49b4-94694</code> 这个Pod中ping <code>busybox</code> 这个Pod</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[root@k8s-m1 ~]# kubectl exec -it nginx-7fb7fd49b4-94694 -- /bin/sh<br>/ #<span class="hljs-built_in"> ping </span>10.244.215.68<span class="hljs-built_in"></span><br><span class="hljs-built_in">PING </span>10.244.215.68 (10.244.215.68): 56 data bytes<br>64 bytes <span class="hljs-keyword">from</span> 10.244.215.68: <span class="hljs-attribute">seq</span>=0 <span class="hljs-attribute">ttl</span>=62 <span class="hljs-attribute">time</span>=0.562 ms<br>64 bytes <span class="hljs-keyword">from</span> 10.244.215.68: <span class="hljs-attribute">seq</span>=1 <span class="hljs-attribute">ttl</span>=62 <span class="hljs-attribute">time</span>=0.535 ms<br>64 bytes <span class="hljs-keyword">from</span> 10.244.215.68: <span class="hljs-attribute">seq</span>=2 <span class="hljs-attribute">ttl</span>=62 <span class="hljs-attribute">time</span>=0.408 ms<br>64 bytes <span class="hljs-keyword">from</span> 10.244.215.68: <span class="hljs-attribute">seq</span>=3 <span class="hljs-attribute">ttl</span>=62 <span class="hljs-attribute">time</span>=0.357 ms<br>^C<br>--- 10.244.215.68<span class="hljs-built_in"> ping </span>statistics ---<br>4 packets transmitted, 4 packets received, 0% packet loss<br>round-trip min/avg/max = 0.357/0.465/0.562 ms<br><br></code></pre></td></tr></table></figure>
+
+<p>进入pod <code>nginx-7fb7fd49b4-94694</code> 中查看这个pod中的路由信息</p>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs accesslog"><span class="hljs-string">[root@k8s-m1 ~]</span># kubectl exec -it nginx-7fb7fd49b4-<span class="hljs-number">94694</span> -- /bin/sh<br>/ # route -n<br>Kernel IP routing table<br>Destination     Gateway         Genmask         Flags Metric Ref    Use Iface<br><span class="hljs-number">0.0.0.0</span>         <span class="hljs-number">169</span>.<span class="hljs-number">254</span>.<span class="hljs-number">1</span>.<span class="hljs-number">1</span>     <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         UG    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> eth0<br><span class="hljs-number">169.254.1.1</span>     <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> eth0<br></code></pre></td></tr></table></figure>
+
+<p>根据路由信息 <code>ping 10.244.215.68</code> 会匹配到第一条。</p>
+<p>第一条路由的意思是：去往任何网段的数据包都发往网关169.254.1.1，然后从eth0网卡发送出去。</p>
+<p><code>nginx-7fb7fd49b4-94694</code> 所在的 <code>k8s-n2</code> 宿主机上路由信息如下：</p>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs accesslog"><span class="hljs-string">[root@k8s-n2 ~]</span># route -n<br>Kernel IP routing table<br>Destination     Gateway         Genmask         Flags Metric Ref    Use Iface<br><span class="hljs-number">0.0.0.0</span>         <span class="hljs-number">192</span>.<span class="hljs-number">168</span>.<span class="hljs-number">28</span>.<span class="hljs-number">1</span>    <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         UG    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> eth0<br><span class="hljs-number">10.244.42.128</span>   <span class="hljs-number">192</span>.<span class="hljs-number">168</span>.<span class="hljs-number">28</span>.<span class="hljs-number">10</span>   <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">192</span> UG    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> tunl0<br><span class="hljs-number">10.244.111.192</span>  <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">192</span> U     <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> *<br><span class="hljs-number">10.244.111.193</span>  <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> cali9f065bd7f12<br><span class="hljs-number">10.244.111.194</span>  <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> cali09e37c2b7c3<br><span class="hljs-number">10.244.111.195</span>  <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> calic9aa42a3793<br><span class="hljs-number">10.244.111.197</span>  <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> calia71b83e0080<br><span class="hljs-number">10.244.111.198</span>  <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> cali78caf7934ca<br><span class="hljs-number">10.244.215.64</span>   <span class="hljs-number">192</span>.<span class="hljs-number">168</span>.<span class="hljs-number">28</span>.<span class="hljs-number">13</span>   <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">192</span> UG    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> tunl0<br><span class="hljs-number">169.254.0.0</span>     <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>     U     <span class="hljs-number">1002</span>   <span class="hljs-number">0</span>        <span class="hljs-number">0</span> eth0<br><span class="hljs-number">192.168.28.0</span>    <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">0</span>   U     <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> eth0<br></code></pre></td></tr></table></figure>
+
+<p>可以看到一条Destination为 <code>10.244.215.64</code> 的路由。<br>意思是：当ping包来到 <code>k8s-n2</code> 节点上，会匹配到路由tunl0。该路由的意思是：去往<code>10.244.215.64/26</code>的网段的数据包都发往网关 <code>192.168.28.13</code>。因为 <code>nginx-7fb7fd49b4-94694</code> 的pod在<code>192.168.28.14</code>上，<code>busybox</code>的pod在<code>192.168.28.13</code>上。所以数据包就通过设备tunl0发往到 <code>k8s-n1</code> 节点上。</p>
+<p><code>busybox</code>所在的 <code>k8s-n1</code> 宿主机上路由信息如下：</p>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs accesslog"><span class="hljs-string">[root@k8s-n1 ~]</span># route -n<br>Kernel IP routing table<br>Destination     Gateway         Genmask         Flags Metric Ref    Use Iface<br><span class="hljs-number">0.0.0.0</span>         <span class="hljs-number">192</span>.<span class="hljs-number">168</span>.<span class="hljs-number">28</span>.<span class="hljs-number">1</span>    <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         UG    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> eth0<br><span class="hljs-number">10.244.42.128</span>   <span class="hljs-number">192</span>.<span class="hljs-number">168</span>.<span class="hljs-number">28</span>.<span class="hljs-number">10</span>   <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">192</span> UG    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> tunl0<br><span class="hljs-number">10.244.111.192</span>  <span class="hljs-number">192</span>.<span class="hljs-number">168</span>.<span class="hljs-number">28</span>.<span class="hljs-number">14</span>   <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">192</span> UG    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> tunl0<br><span class="hljs-number">10.244.215.64</span>   <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">192</span> U     <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> *<br><span class="hljs-number">10.244.215.68</span>   <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> cali12d4a061371<br><span class="hljs-number">10.244.215.70</span>   <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> cali9b7bd2198e3<br><span class="hljs-number">10.244.215.71</span>   <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> calif301e12f535<br><span class="hljs-number">10.244.215.72</span>   <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> cali8af25a4f5bc<br><span class="hljs-number">10.244.215.73</span>   <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span> UH    <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> cali05ecd722319<br><span class="hljs-number">169.254.0.0</span>     <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>     U     <span class="hljs-number">1002</span>   <span class="hljs-number">0</span>        <span class="hljs-number">0</span> eth0<br><span class="hljs-number">192.168.28.0</span>    <span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>.<span class="hljs-number">0</span>         <span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">255</span>.<span class="hljs-number">0</span>   U     <span class="hljs-number">0</span>      <span class="hljs-number">0</span>        <span class="hljs-number">0</span> eth0<br></code></pre></td></tr></table></figure>
+
+<p>当 <code>k8s-n1</code> 节点网卡收到数据包之后，发现发往的目的ip为 <code>10.244.215.68</code> ，于是匹配到Destination为 <code>10.244.215.68</code> 的路由。</p>
+<p>该路由的意思是：<code>10.244.215.68</code> 是本机直连设备，去往设备的数据包发往 <code>cali12d4a061371</code></p>
+<p>为什么这么奇怪会有一个名为 <code>cali12d4a061371</code>的设备呢？<br>简单来说，Calico 在主机上创建了一堆的 <code>veth pair</code> ，其中一端在主机上，另一端在容器的网络命名空间里，然后在容器和主机中分别设置几条路由，来完成网络的互联。</p>
+<p>接着验证一下。我们进入 <code>busybox</code> 的pod，查看到 4 号设备后面的编号是：<code>66</code></p>
+<figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs pf">[root@k8s-m1 ~]<span class="hljs-comment"># kubectl exec -it busybox -- /bin/sh</span><br>sh-<span class="hljs-number">4.2</span><span class="hljs-comment"># ip a</span><br><span class="hljs-number">1</span>: lo: <span class="hljs-variable">&lt;LOOPBACK,UP,LOWER_UP&gt;</span> mtu <span class="hljs-number">65536</span> qdisc noqueue <span class="hljs-keyword">state</span> UNKNOWN <span class="hljs-keyword">group</span> <span class="hljs-keyword">default</span> qlen <span class="hljs-number">1000</span><br>    link/loopback <span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span> brd <span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span><br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span>/<span class="hljs-number">8</span> scope host lo<br>       valid_lft forever preferred_lft forever<br>    <span class="hljs-keyword">inet6</span> ::<span class="hljs-number">1</span>/<span class="hljs-number">128</span> scope host <br>       valid_lft forever preferred_lft forever<br><span class="hljs-number">2</span>: tunl0@NONE: <span class="hljs-variable">&lt;NOARP&gt;</span> mtu <span class="hljs-number">1480</span> qdisc noop <span class="hljs-keyword">state</span> DOWN <span class="hljs-keyword">group</span> <span class="hljs-keyword">default</span> qlen <span class="hljs-number">1000</span><br>    link/ipip <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span> brd <span class="hljs-number">0.0</span>.<span class="hljs-number">0.0</span><br><span class="hljs-number">4</span>: eth0@if66: <span class="hljs-variable">&lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt;</span> mtu <span class="hljs-number">1480</span> qdisc noqueue <span class="hljs-keyword">state</span> UP <span class="hljs-keyword">group</span> <span class="hljs-keyword">default</span> <br>    link/ether <span class="hljs-number">42</span>:<span class="hljs-number">26</span>:b4:<span class="hljs-number">65</span>:<span class="hljs-number">87</span>:<span class="hljs-number">9</span>f brd ff:ff:ff:ff:ff:ff link-netnsid <span class="hljs-number">0</span><br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">10.244</span>.<span class="hljs-number">215.68</span>/<span class="hljs-number">32</span> brd <span class="hljs-number">10.244</span>.<span class="hljs-number">215.68</span> scope <span class="hljs-keyword">global</span> eth0<br>       valid_lft forever preferred_lft forever<br>    <span class="hljs-keyword">inet6</span> fe80::<span class="hljs-number">4026</span>:b4ff:fe65:<span class="hljs-number">879</span>f/<span class="hljs-number">64</span> scope link <br>       valid_lft forever preferred_lft forever<br></code></pre></td></tr></table></figure>
+
+<p>然后我们登录到 <code>busybox</code> 这个pod所在的宿主机查看</p>
+<figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs pf">[root@k8s-n1 ~]<span class="hljs-comment"># ip add</span><br><span class="hljs-number">1</span>: lo: <span class="hljs-variable">&lt;LOOPBACK,UP,LOWER_UP&gt;</span> mtu <span class="hljs-number">65536</span> qdisc noqueue <span class="hljs-keyword">state</span> UNKNOWN <span class="hljs-keyword">group</span> <span class="hljs-keyword">default</span> qlen <span class="hljs-number">1000</span><br>    link/loopback <span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span> brd <span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span>:<span class="hljs-number">00</span><br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span>/<span class="hljs-number">8</span> scope host lo<br>       valid_lft forever preferred_lft forever<br><span class="hljs-number">2</span>: eth0: <span class="hljs-variable">&lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt;</span> mtu <span class="hljs-number">1500</span> qdisc pfifo_fast <span class="hljs-keyword">state</span> UP <span class="hljs-keyword">group</span> <span class="hljs-keyword">default</span> qlen <span class="hljs-number">1000</span><br>    link/ether <span class="hljs-number">00</span>:<span class="hljs-number">1</span>c:<span class="hljs-number">42</span>:f3:<span class="hljs-number">3</span>c:<span class="hljs-number">42</span> brd ff:ff:ff:ff:ff:ff<br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">192.168</span>.<span class="hljs-number">28.13</span>/<span class="hljs-number">24</span> brd <span class="hljs-number">192.168</span>.<span class="hljs-number">28.255</span> scope <span class="hljs-keyword">global</span> eth0<br>       valid_lft forever preferred_lft forever<br><br>...<br><br><span class="hljs-number">66</span>: cali12d4a061371@if4: <span class="hljs-variable">&lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt;</span> mtu <span class="hljs-number">1480</span> qdisc noqueue <span class="hljs-keyword">state</span> UP <span class="hljs-keyword">group</span> <span class="hljs-keyword">default</span> <br>    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid <span class="hljs-number">3</span><br><span class="hljs-number">68</span>: cali9b7bd2198e3@if4: <span class="hljs-variable">&lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt;</span> mtu <span class="hljs-number">1480</span> qdisc noqueue <span class="hljs-keyword">state</span> UP <span class="hljs-keyword">group</span> <span class="hljs-keyword">default</span> <br>    link/ether ee:ee:ee:ee:ee:ee brd ff:ff:ff:ff:ff:ff link-netnsid <span class="hljs-number">0</span><br></code></pre></td></tr></table></figure>
+
+<p>发现pod <code>busybox</code> 中的另一端设备编号和<code>k8s-n1</code>宿主机上看到的 <code>cali12d4a061371</code> 编号 <code>66</code> 是一样的</p>
+<p>所以，<code>k8s-n1</code>上的路由，发送 <code>cali12d4a061371</code> 网卡设备的数据其实就是发送到了 <code>busybox</code> 的这个pod中去了。到这里ping包就到了目的地。最粗暴的办法是使用 <code>ip link del cali12d4a061371@if4</code> 删除网卡看是否还能ping通就知道了。</p>
+<p>&amp;emsp;&amp;emsp;我们看到不管是容器也好还是主机也好都有一些奇怪的地方，从容器路由表可以知道 <code>169.254.1.1</code> 是容器的默认网关，MAC地址也是一个无效的MAC地址<code>ee:ee:ee:ee:ee:ee</code> 为什么会这这样呢，其实这些都是calico写死了的。Calico利用了网卡的proxy_arp功能，具体的，是将<code>/proc/sys/net/ipv4/conf/calic9aa42a3793/proxy_arp</code>置为<code>1</code>。当设置这个标志之后，就开启了proxy_arp功能。主机就会看起来像一个网关，会响应所有的ARP请求，并将自己的MAC地址告诉客户端。<br>&amp;emsp;&amp;emsp;也就是说，当容器发送ARP请求时，<code>calic9aa42a3793</code>网卡会告诉容器，我拥有169.254.1.1这个IP，我的MAC地址是XXX，这样当容器去访问外部服务时其实是访问的是<code>calic9aa42a3793</code>。然后在由<code>calic9aa42a3793</code>代替容器去访问外部服务然后把结果返回给容器这样就看起来网络就通了。</p>
+<p>&amp;emsp;&amp;emsp;通过tcpdump抓包可以看到首先容器会发送一个arp广播问<code>169.254.1.1</code>的MAC地址是多少，告诉<code>10.244.215.81</code> 这IP。其实这个IP就是当前Pod自己的IP，也就是告诉自己。然后<code>cali03d85d58f77</code>这个ARP请求，并回复告诉容器我拥有这个IP的MAC，他的MAC地址是<code>ee:ee:ee:ee:ee:ee</code>。如果你想验证你可以使用<code>ip link set dev cali03d85d58f77 address ee:ee:ee:ee:11:11</code>修改<code>cali03d85d58f77</code>网卡的MAC地址，然后你在抓包看看效果。</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">tcpdump</span> -i cali03d85d58f77 -e -nn<br><span class="hljs-attribute">tcpdump</span>: verbose output suppressed, use -v or -vv for full protocol decode<br><span class="hljs-attribute">listening</span> <span class="hljs-literal">on</span> cali03d85d58f77, link-type EN10MB (Ethernet), capture size <span class="hljs-number">262144</span> bytes<br><span class="hljs-attribute">14</span>:<span class="hljs-number">36</span>:<span class="hljs-number">35</span>.<span class="hljs-number">204394</span> <span class="hljs-number">72</span>:f0:<span class="hljs-number">91</span>:<span class="hljs-number">25</span>:<span class="hljs-number">10</span>:ce &gt; ff:ff:ff:ff:ff:ff, ethertype ARP (<span class="hljs-number">0</span>x0806), length <span class="hljs-number">42</span>: Request who-has <span class="hljs-number">169.254.1.1</span> tell <span class="hljs-number">10.244.215.81</span>, length <span class="hljs-number">28</span><br><span class="hljs-attribute">14</span>:<span class="hljs-number">36</span>:<span class="hljs-number">35</span>.<span class="hljs-number">204428</span> ee:ee:ee:ee:ee:ee &gt; <span class="hljs-number">72</span>:f0:<span class="hljs-number">91</span>:<span class="hljs-number">25</span>:<span class="hljs-number">10</span>:ce, ethertype ARP (<span class="hljs-number">0</span>x0806), length <span class="hljs-number">42</span>: Reply <span class="hljs-number">169.254.1.1</span> is-at ee:ee:ee:ee:ee:ee, length <span class="hljs-number">28</span><br><span class="hljs-attribute">14</span>:<span class="hljs-number">36</span>:<span class="hljs-number">35</span>.<span class="hljs-number">204433</span> <span class="hljs-number">72</span>:f0:<span class="hljs-number">91</span>:<span class="hljs-number">25</span>:<span class="hljs-number">10</span>:ce &gt; ee:ee:ee:ee:ee:ee, ethertype IPv4 (<span class="hljs-number">0</span>x0800), length <span class="hljs-number">98</span>: <span class="hljs-number">10.244.215.81</span> &gt; <span class="hljs-number">10.244.111.204</span>: ICMP echo request, id <span class="hljs-number">11520</span>, seq <span class="hljs-number">0</span>, length <span class="hljs-number">64</span><br><span class="hljs-attribute">14</span>:<span class="hljs-number">36</span>:<span class="hljs-number">35</span>.<span class="hljs-number">205018</span> ee:ee:ee:ee:ee:ee &gt; <span class="hljs-number">72</span>:f0:<span class="hljs-number">91</span>:<span class="hljs-number">25</span>:<span class="hljs-number">10</span>:ce, ethertype IPv4 (<span class="hljs-number">0</span>x0800), length <span class="hljs-number">98</span>: <span class="hljs-number">10.244.111.204</span> &gt; <span class="hljs-number">10.244.215.81</span>: ICMP echo reply, id <span class="hljs-number">11520</span>, seq <span class="hljs-number">0</span>, length <span class="hljs-number">64</span><br></code></pre></td></tr></table></figure>
+
+<p>修改MAC地址后</p>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs accesslog">/ # ip neigh<br><span class="hljs-number">169.254.1.1</span> dev eth0 lladdr ee:ee:ee:ee:<span class="hljs-number">11</span>:<span class="hljs-number">11</span> ref <span class="hljs-number">1</span> used <span class="hljs-number">0</span>/<span class="hljs-number">0</span>/<span class="hljs-number">0</span> probes <span class="hljs-number">1</span> REACHABLE<br><span class="hljs-number">192.168.28.13</span> dev eth0 lladdr ee:ee:ee:ee:ee:ee used <span class="hljs-number">0</span>/<span class="hljs-number">0</span>/<span class="hljs-number">0</span> probes <span class="hljs-number">0</span> STALE<br></code></pre></td></tr></table></figure>
+
+
+
+
+<h2 id="部署安装"><a href="#部署安装" class="headerlink" title="部署安装"></a>部署安装</h2><p>1）确保Calico可以在主机上进行管理cali和tunl接口，如果主机上存在NetworkManage，请配置NetworkManager。</p>
+<p>NetworkManager会为默认网络名称空间中的接口操纵路由表，在该默认名称空间中，固定了Calico veth对以连接到容器，这可能会干扰Calico代理正确路由的能力。</p>
+<p>在以下位置创建以下配置文件，以防止NetworkManager干扰接口：</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs gradle">vim <span class="hljs-regexp">/etc/</span>NetworkManager<span class="hljs-regexp">/conf.d/</span>calico.conf<br>[keyfile]<br>unmanaged-devices=<span class="hljs-keyword">interface</span>-name:cali*;<span class="hljs-keyword">interface</span>-name:tunl*<br></code></pre></td></tr></table></figure>
+
+
+
+<h4 id="选择数据存储方式"><a href="#选择数据存储方式" class="headerlink" title="选择数据存储方式"></a>选择数据存储方式</h4><p>&amp;emsp;&amp;emsp;Calico同时支持Kubernetes API数据存储（kdd）和etcd数据存储。建议在本地部署中使用Kubernetes API数据存储，它仅支持Kubernetes工作负载。etcd是混合部署的最佳数据存储。（注意：使用Kubernetes API数据存储安装Calico时calico超过50个节点）需要做如下设置。</p>
+<p>&amp;emsp;&amp;emsp;在calico.yaml文件中将名为<code>calico-typha</code>的<code>deployments</code>的<code>replicas</code>修改为当前节点的10&#x2F;1。假如有200个节点就设置20个<code>replicas</code>。</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> apps/v1beta1<br><span class="hljs-symbol">kind:</span> Deployment<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> calico-typha<br>  ...<br><span class="hljs-symbol">spec:</span><br>  ...<br><span class="hljs-symbol">  replicas:</span> <span class="hljs-params">&lt;number of replicas&gt;</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<p>2）然后更改 <code>CALICO_IPV4POOL_IPIP</code> 为 <code>Never</code> 使用 <code>BGP</code> 模式，另外增加 <code>IP_AUTODETECTION_METHOD</code> 为 <code>interface</code> 使用匹配模式，默认是first-found模式，在复杂网络环境下还是有出错的可能，还有<code>CALICO_IPV4POOL_CIDR</code> 设置为kubeadm初始化时设置的<code>podSubnet</code>参数。</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">curl https:<span class="hljs-regexp">//</span>docs.projectcalico.org<span class="hljs-regexp">/manifests/</span>calico-typha.yaml -o calico.yaml<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs pgsql"># <span class="hljs-keyword">no</span> effect. This should fall <span class="hljs-keyword">within</span> `<span class="hljs-comment">--cluster-cidr`.</span><br>- <span class="hljs-type">name</span>: CALICO_IPV4POOL_CIDR<br>  <span class="hljs-keyword">value</span>: &quot;10.244.0.0/16&quot;<br># <span class="hljs-keyword">Cluster</span> <span class="hljs-keyword">type</span> <span class="hljs-keyword">to</span> identify the deployment <span class="hljs-keyword">type</span><br>- <span class="hljs-type">name</span>: CLUSTER_TYPE<br>  <span class="hljs-keyword">value</span>: &quot;k8s,bgp&quot;<br># IP automatic detection<br>- <span class="hljs-type">name</span>: IP_AUTODETECTION_METHOD<br>  <span class="hljs-keyword">value</span>: &quot;interface=en.*&quot;<br># Auto-detect the BGP IP address.<br>- <span class="hljs-type">name</span>: IP<br>  <span class="hljs-keyword">value</span>: &quot;autodetect&quot;<br># <span class="hljs-keyword">Enable</span> IPIP<br>- <span class="hljs-type">name</span>: CALICO_IPV4POOL_IPIP<br>  <span class="hljs-keyword">value</span>: &quot;Never&quot;<br></code></pre></td></tr></table></figure>
+
+
+<p>3）应用calico文件</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs bash">[root@devops010015001003 ~]<span class="hljs-comment"># kubectl apply  -f calico.yaml       </span><br>configmap/calico-config created<br>customresourcedefinition.apiextensions.k8s.io/bgpconfigurations.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/bgppeers.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/blockaffinities.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/clusterinformations.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/felixconfigurations.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/globalnetworkpolicies.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/globalnetworksets.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/hostendpoints.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/ipamblocks.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/ipamconfigs.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/ipamhandles.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/ippools.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/kubecontrollersconfigurations.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/networkpolicies.crd.projectcalico.org created<br>customresourcedefinition.apiextensions.k8s.io/networksets.crd.projectcalico.org created<br>clusterrole.rbac.authorization.k8s.io/calico-kube-controllers created<br>clusterrolebinding.rbac.authorization.k8s.io/calico-kube-controllers created<br>clusterrole.rbac.authorization.k8s.io/calico-node created<br>clusterrolebinding.rbac.authorization.k8s.io/calico-node created<br>service/calico-typha created<br>deployment.apps/calico-typha created<br>poddisruptionbudget.policy/calico-typha created<br>daemonset.apps/calico-node created<br>serviceaccount/calico-node created<br>deployment.apps/calico-kube-controllers created<br>serviceaccount/calico-kube-controllers created<br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@devops010015001003 ~]<span class="hljs-comment"># kubectl  get pod -n kube-system</span><br>NAME                                         READY   STATUS    RESTARTS   AGE<br>calico-kube-controllers-<span class="hljs-number">789</span>f6df884-fxgcl     <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">4m</span>55s<br>calico-<span class="hljs-keyword">node</span><span class="hljs-title">-28hx7</span>                            <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">4m</span>55s<br>calico-<span class="hljs-keyword">node</span><span class="hljs-title">-fqk8n</span>                            <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">4m</span>55s<br>calico-<span class="hljs-keyword">node</span><span class="hljs-title">-plb4z</span>                            <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">4m</span>55s<br>calico-<span class="hljs-keyword">node</span><span class="hljs-title">-ppgpb</span>                            <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">4m</span>55s<br>calico-<span class="hljs-keyword">node</span><span class="hljs-title">-x9gfj</span>                            <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">4m</span>55s<br>calico-typha-<span class="hljs-number">7698958</span>d65-<span class="hljs-number">6</span>j5jr                <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">4m</span>55s<br>calico-typha-<span class="hljs-number">7698958</span>d65-b4tn6                <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">4m</span>55s<br></code></pre></td></tr></table></figure>
+
+
+<h2 id="安装calicoctl"><a href="#安装calicoctl" class="headerlink" title="安装calicoctl"></a>安装calicoctl</h2><p>下载calicoctl客户端</p>
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@devops010015001003</span> ~]<span class="hljs-meta"># curl -O -L  https://github.com/projectcalico/calicoctl/releases/download/v3.14.0/calicoctl</span><br>[root<span class="hljs-symbol">@devops010015001003</span> ~]<span class="hljs-meta"># chmod 755 calicoctl</span><br>[root<span class="hljs-symbol">@devops010015001003</span> ~]<span class="hljs-meta"># chown root.root calicoctl</span><br>[root<span class="hljs-symbol">@devops010015001003</span> ~]<span class="hljs-meta"># mv calicoctl /usr/bin/</span><br></code></pre></td></tr></table></figure>
+
+
+<p>验证是否可用</p>
+<figure class="highlight dns"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs dns">[root@devops0<span class="hljs-number">10015001003</span> ~]# calicoctl get nodes<br>NAME                 <br>devops0<span class="hljs-number">10015001003</span>   <br>devops0<span class="hljs-number">10015001004</span>   <br>devops0<span class="hljs-number">10015001005</span>   <br>devops0<span class="hljs-number">10015001006</span>   <br>devops0<span class="hljs-number">10015001007</span>   <br></code></pre></td></tr></table></figure>
+
+
+
+<h2 id="BGP两种模式"><a href="#BGP两种模式" class="headerlink" title="BGP两种模式"></a>BGP两种模式</h2><ul>
+<li><p>全互联模式(node-to-node mesh)<br>&amp;emsp;&amp;emsp;全互联模式，每一个BGP Speaker都需要和其他BGP Speaker建立BGP连接，这样BGP连接总数就是N^2，如果数量过大会消耗大量连接。如果集群数量超过100台官方不建议使用此种模式。</p>
+</li>
+<li><p>路由反射模式Router Reflection（RR）<br>&amp;emsp;&amp;emsp;RR模式中会指定一个或多个BGP Speaker为RouterReflection，它与网络中其他Speaker建立连接，每个Speaker只要与Router Reflection建立BGP就可以获得全网的路由信息。在calico中可以通过Global Peer实现RR模式。</p>
+</li>
+</ul>
+<figure class="highlight gherkin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs gherkin">[root<span class="hljs-meta">@devops010015001003</span> ~]<span class="hljs-comment"># calicoctl node status</span><br>Calico process is running.<br><br>IPv4 BGP status<br>+--------------+-------------------+-------+----------+-------------+<br>|<span class="hljs-string"> PEER ADDRESS </span>|<span class="hljs-string">     PEER TYPE     </span>|<span class="hljs-string"> STATE </span>|<span class="hljs-string">  SINCE   </span>|<span class="hljs-string">    INFO     </span>|<br>+--------------+-------------------+-------+----------+-------------+<br>|<span class="hljs-string"> 10.15.1.4    </span>|<span class="hljs-string"> node-to-node mesh </span>|<span class="hljs-string"> up    </span>|<span class="hljs-string"> 09:38:47 </span>|<span class="hljs-string"> Established </span>|<br>|<span class="hljs-string"> 10.15.1.5    </span>|<span class="hljs-string"> node-to-node mesh </span>|<span class="hljs-string"> up    </span>|<span class="hljs-string"> 09:38:47 </span>|<span class="hljs-string"> Established </span>|<br>|<span class="hljs-string"> 10.15.1.6    </span>|<span class="hljs-string"> node-to-node mesh </span>|<span class="hljs-string"> up    </span>|<span class="hljs-string"> 09:38:47 </span>|<span class="hljs-string"> Established </span>|<br>|<span class="hljs-string"> 10.15.1.7    </span>|<span class="hljs-string"> node-to-node mesh </span>|<span class="hljs-string"> up    </span>|<span class="hljs-string"> 09:38:48 </span>|<span class="hljs-string"> Established </span>|<br>+--------------+-------------------+-------+----------+-------------+<br><br>IPv6 BGP status<br>No IPv6 peers found.<br></code></pre></td></tr></table></figure>
+<p>使用calicoctl命令查看calico当前使用模式为<code>node-to-node mesh</code>全互联模式（full mesh）会造成路由条目过大，无法在大规模集群中部署。使用BGP RR(中心化)的方式交换路由，能够有效降低节点间的连接数。</p>
+<h3 id="配置BGP-RR模型-使用node充当路由反射器"><a href="#配置BGP-RR模型-使用node充当路由反射器" class="headerlink" title="配置BGP RR模型(使用node充当路由反射器)"></a>配置BGP RR模型(使用node充当路由反射器)</h3><p>我们将建立两个路由反射器，这意味着即使我们取消一个路由反射器节点进行维护，也可以避免单点故障。</p>
+<p>选择两个节点，并对每个节点执行以下操作：</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs routeros">calicoctl <span class="hljs-built_in">get</span> node &lt;node name&gt; -o yaml --<span class="hljs-built_in">export</span> &gt; node.yaml<br></code></pre></td></tr></table></figure>
+
+<p>编辑YAML以添加：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  labels:</span><br>    calico-route-reflector: <span class="hljs-string">&quot;&quot;</span><br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  bgp:</span><br><span class="hljs-symbol">    routeReflectorClusterID:</span> <span class="hljs-number">224.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span><br></code></pre></td></tr></table></figure>
+
+<p>重新应用YAML</p>
+<figure class="highlight xquery"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs xquery">calicoctl<span class="hljs-built_in"> apply</span> -f <span class="hljs-type">node</span>.yaml<br></code></pre></td></tr></table></figure>
+
+<h4 id="配置-BGPPeer"><a href="#配置-BGPPeer" class="headerlink" title="配置 BGPPeer"></a>配置 BGPPeer</h4><p>将所有非反射器节点配置为与所有路由反射器对等</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">calicoctl apply -f - &lt;&lt;EOF</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">BGPPeer</span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">projectcalico.org/v3</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">peer-to-rrs</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">nodeSelector</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;!has(calico-route-reflector)&quot;</span><br>  <span class="hljs-attribute">peerSelector</span><span class="hljs-punctuation">:</span> <span class="hljs-string">has(calico-route-reflector)</span><br>EOF<br></code></pre></td></tr></table></figure>
+
+<p>将所有路由反射器配置为彼此对等</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">calicoctl apply -f - &lt;&lt;EOF</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">BGPPeer</span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">projectcalico.org/v3</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rrs-to-rrs</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">nodeSelector</span><span class="hljs-punctuation">:</span> <span class="hljs-string">has(calico-route-reflector)</span><br>  <span class="hljs-attribute">peerSelector</span><span class="hljs-punctuation">:</span> <span class="hljs-string">has(calico-route-reflector)</span><br>EOF<br></code></pre></td></tr></table></figure>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@devops010015001003 overlord]<span class="hljs-comment"># calicoctl get bgppeer      </span><br>NAME          PEERIP   <span class="hljs-keyword">NODE</span>                           <span class="hljs-title">ASN</span>   <br>peer-to-rrs            !has(calico-route-reflector)   <span class="hljs-number">0</span>     <br>rrs-to-rrs             has(calico-route-reflector)    <span class="hljs-number">0</span>    <br></code></pre></td></tr></table></figure>
+
+<p>禁用默认的node-to-node mesh模式</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">calicoctl</span> <span class="hljs-string">create</span> <span class="hljs-string">-f</span> <span class="hljs-bullet">-</span> <span class="hljs-string">&lt;&lt;EOF</span><br> <span class="hljs-attr">apiVersion:</span> <span class="hljs-string">projectcalico.org/v3</span><br> <span class="hljs-attr">kind:</span> <span class="hljs-string">BGPConfiguration</span><br> <span class="hljs-attr">metadata:</span><br>   <span class="hljs-attr">name:</span> <span class="hljs-string">default</span><br> <span class="hljs-attr">spec:</span><br>   <span class="hljs-attr">nodeToNodeMeshEnabled:</span> <span class="hljs-literal">false</span><br>   <span class="hljs-attr">asNumber:</span> <span class="hljs-number">64512</span><br><span class="hljs-string">EOF</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight coffeescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs coffeescript">[root@devops010015001003 overlord]<span class="hljs-comment"># calicoctl get bgpconfig -o wide</span><br>NAME      LOGSEVERITY   MESHENABLED   ASNUMBER   <br><span class="hljs-keyword">default</span>                 <span class="hljs-literal">false</span>         <span class="hljs-number">64512</span>      <br></code></pre></td></tr></table></figure>
+
+
+<p>此时在反射器节点上使用 calicoctl node status 应该能看到类似如下输出</p>
+<figure class="highlight gherkin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs gherkin">[root<span class="hljs-meta">@devops010015001003</span> overlord]<span class="hljs-comment"># calicoctl node status</span><br>Calico process is running.<br><br>IPv4 BGP status<br>+--------------+---------------+-------+----------+-------------+<br>|<span class="hljs-string"> PEER ADDRESS </span>|<span class="hljs-string">   PEER TYPE   </span>|<span class="hljs-string"> STATE </span>|<span class="hljs-string">  SINCE   </span>|<span class="hljs-string">    INFO     </span>|<br>+--------------+---------------+-------+----------+-------------+<br>|<span class="hljs-string"> 10.15.1.4    </span>|<span class="hljs-string"> node specific </span>|<span class="hljs-string"> up    </span>|<span class="hljs-string"> 01:12:40 </span>|<span class="hljs-string"> Established </span>|<br>|<span class="hljs-string"> 10.15.1.5    </span>|<span class="hljs-string"> node specific </span>|<span class="hljs-string"> up    </span>|<span class="hljs-string"> 01:12:46 </span>|<span class="hljs-string"> Established </span>|<br>|<span class="hljs-string"> 10.15.1.6    </span>|<span class="hljs-string"> node specific </span>|<span class="hljs-string"> up    </span>|<span class="hljs-string"> 01:12:46 </span>|<span class="hljs-string"> Established </span>|<br>|<span class="hljs-string"> 10.15.1.7    </span>|<span class="hljs-string"> node specific </span>|<span class="hljs-string"> up    </span>|<span class="hljs-string"> 01:12:46 </span>|<span class="hljs-string"> Established </span>|<br>+--------------+---------------+-------+----------+-------------+<br><br>IPv6 BGP status<br>No IPv6 peers found.<br></code></pre></td></tr></table></figure>
+
+
+
+<p>在非反射器节点上，您应该只看到两个对等体。</p>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc">[root@devops010015001005 overlord]# calicoctl node status<br>Calico process is running.<br><br><span class="hljs-section">IPv4 BGP status</span><br><span class="hljs-section">+--------------+---------------+-------+----------+-------------+</span><br><span class="hljs-section">| PEER ADDRESS |   PEER TYPE   | STATE |  SINCE   |    INFO     |</span><br><span class="hljs-section">+--------------+---------------+-------+----------+-------------+</span><br>| 10.15.1.3    | node specific | up    | 01:12:46 | Established |<br><span class="hljs-section">| 10.15.1.4    | node specific | up    | 01:12:46 | Established |</span><br><span class="hljs-section">+--------------+---------------+-------+----------+-------------+</span><br><br>IPv6 BGP status<br>No IPv6 peers found.<br><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="Calico-BGP跨网段-大型网络"><a href="#Calico-BGP跨网段-大型网络" class="headerlink" title="Calico BGP跨网段(大型网络)"></a>Calico BGP跨网段(大型网络)</h3><p><img src="/images/calico-cni-6.png" srcset="/img/loading.gif" lazyload alt="calico-cni-6"></p>
+<p><img src="/images/calico-cni-5.jpg" srcset="/img/loading.gif" lazyload alt="calico-cni-5"></p>
+<p>当节点位于不同的网络段时，我们需要在交换机或路由器上开启BGP协议，并配置BGPPeer将peerIP设置为路由器或交换机IP，我们需要做如下操作。</p>
+<p>为机架1上的节点设置AS号</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">calicoctl patch <span class="hljs-keyword">node</span> <span class="hljs-title">my-node</span> -p &#x27;&#123;<span class="hljs-string">&quot;spec&quot;</span>: &#123;<span class="hljs-string">&quot;bgp&quot;</span>: &#123;<span class="hljs-string">&quot;asNumber&quot;</span>: <span class="hljs-string">&quot;64514&quot;</span>&#125;&#125;&#125;&#x27;<br></code></pre></td></tr></table></figure>
+
+
+<p>为机架1上的节点打标签</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">kubectl label <span class="hljs-keyword">node</span> <span class="hljs-title">my-node</span> <span class="hljs-attr">rack=</span>rack-<span class="hljs-number">1</span><br></code></pre></td></tr></table></figure>
+
+
+<p>设置机架1上的node节点与tor交换机做IBGP</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">projectcalico.org/v3</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">BGPPeer</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rack1-tor</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">peerIP</span><span class="hljs-punctuation">:</span> <span class="hljs-string">192.20.30.40</span><br>  <span class="hljs-attribute">asNumber</span><span class="hljs-punctuation">:</span> <span class="hljs-string">64514</span><br>  <span class="hljs-attribute">nodeSelector</span><span class="hljs-punctuation">:</span> <span class="hljs-string">rack == &#x27;rack-1&#x27;</span><br></code></pre></td></tr></table></figure>
+
+
+<p>关闭BGP的node-to-node模式（对全局生效）</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">calicoctl</span> <span class="hljs-string">create</span> <span class="hljs-string">-f</span> <span class="hljs-bullet">-</span> <span class="hljs-string">&lt;&lt;EOF</span><br> <span class="hljs-attr">apiVersion:</span> <span class="hljs-string">projectcalico.org/v3</span><br> <span class="hljs-attr">kind:</span> <span class="hljs-string">BGPConfiguration</span><br> <span class="hljs-attr">metadata:</span><br>   <span class="hljs-attr">name:</span> <span class="hljs-string">default</span><br> <span class="hljs-attr">spec:</span><br>   <span class="hljs-attr">nodeToNodeMeshEnabled:</span> <span class="hljs-literal">false</span><br>   <span class="hljs-attr">asNumber:</span> <span class="hljs-number">64512</span><br><span class="hljs-string">EOF</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h2 id="Calico-Overlay网络"><a href="#Calico-Overlay网络" class="headerlink" title="Calico Overlay网络"></a>Calico Overlay网络</h2><p>在Calico Overlay网络中有两种模式可选（仅支持IPV4地址）</p>
+<ul>
+<li>IP-in-IP （使用BGP实现）</li>
+<li>Vxlan  （不使用BGP实现）</li>
+</ul>
+<p>两种模式均支持如下参数</p>
+<ul>
+<li>Always: 永远进行 IPIP 封装(默认)</li>
+<li>CrossSubnet: 只在跨网段时才进行 IPIP 封装，适合有 Kubernetes 节点在其他网段的情况，属于中肯友好方案</li>
+<li>Never: 从不进行 IPIP 封装，适合确认所有 Kubernetes 节点都在同一个网段下的情况（配置此参数就开启了BGP模式）</li>
+</ul>
+<p>在默认情况下，默认的 ipPool 启用了 IPIP 封装(至少通过官方安装文档安装的 Calico 是这样)，并且封装模式为 <code>Always</code>；这也就意味着任何时候都会在原报文上封装新 IP 地址，在这种情况下将外部流量路由到 RR 节点，RR 节点再转发进行 IPIP 封装时，可能出现网络无法联通的情况(没仔细追查，网络渣，猜测是 Pod 那边得到的源 IP 不对导致的)；此时我们应当调整 IPIP 封装策略为 <code>CrossSubnet</code></p>
+<p>导出 ipPool 配置</p>
+<figure class="highlight actionscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs actionscript">calicoctl <span class="hljs-keyword">get</span> ippool <span class="hljs-keyword">default</span>-ipv4-ippool -o yaml &gt; ippool.yaml<br></code></pre></td></tr></table></figure>
+
+<p>修改 <code>ipipMode</code> 值为 <code>CrossSubnet</code></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">projectcalico.org/v3</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">IPPool</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">creationTimestamp:</span> <span class="hljs-number">2019-06-17T13:55:44Z</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">default-ipv4-ippool</span><br>  <span class="hljs-attr">resourceVersion:</span> <span class="hljs-string">&quot;61858741&quot;</span><br>  <span class="hljs-attr">uid:</span> <span class="hljs-string">99a82055-9107-11e9-815b-b82a72dffa9f</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">blockSize:</span> <span class="hljs-number">26</span><br>  <span class="hljs-attr">cidr:</span> <span class="hljs-number">10.244</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span><span class="hljs-string">/16</span><br>  <span class="hljs-attr">ipipMode:</span> <span class="hljs-string">CrossSubnet</span><br>  <span class="hljs-attr">natOutgoing:</span> <span class="hljs-literal">true</span><br>  <span class="hljs-attr">nodeSelector:</span> <span class="hljs-string">all()</span><br></code></pre></td></tr></table></figure>
+
+<p>重新使用 <code>calicoctl apply -f ippool.yaml</code> 应用既可</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Calico配置及原理</div>
+      <div>https://system51.github.io/2020/05/27/using-calico/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2020年5月27日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2020/06/02/use-nodelocal-dns-cache/" title="在 Kubernetes 集群中使用 NodeLocal DNSCache">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">在 Kubernetes 集群中使用 NodeLocal DNSCache</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/01/14/using-sysctls-in-a-kubernetes-cluster/" title="在Kuberentes集群中使用sysctl">
+                        <span class="hidden-mobile">在Kuberentes集群中使用sysctl</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

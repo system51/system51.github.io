@@ -1,0 +1,703 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="Kubernetes 从 1.3 版本起， DNS 是内置的服务，通过插件管理器 集群插件 自动被启动。Kubernetes DNS 在集群中调度 DNS Pod 和 Service ，配置 kubelet 以通知个别容器使用 DNS Service 的 IP 解析 DNS 名字。  怎样获取 DNS 名字： 在集群中定义的每个 Service（包括 DNS 服务器自身）都会被指派一个 DNS">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kubernetes之DNS">
+<meta property="og:url" content="https://system51.github.io/2019/08/23/kubernetes-DNS/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Kubernetes 从 1.3 版本起， DNS 是内置的服务，通过插件管理器 集群插件 自动被启动。Kubernetes DNS 在集群中调度 DNS Pod 和 Service ，配置 kubelet 以通知个别容器使用 DNS Service 的 IP 解析 DNS 名字。  怎样获取 DNS 名字： 在集群中定义的每个 Service（包括 DNS 服务器自身）都会被指派一个 DNS">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/dns1.png">
+<meta property="og:image" content="https://system51.github.io/images/dns2.png">
+<meta property="article:published_time" content="2019-08-23T08:17:50.000Z">
+<meta property="article:modified_time" content="2019-09-06T02:04:57.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/dns1.png">
+  
+  
+  
+  <title>kubernetes之DNS - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="kubernetes之DNS"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-23 16:17" pubdate>
+          2019年8月23日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          3.4k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          6 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">kubernetes之DNS</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <blockquote>
+<p>Kubernetes 从 1.3 版本起， DNS 是内置的服务，通过插件管理器 集群插件 自动被启动。Kubernetes DNS 在集群中调度 DNS Pod 和 Service ，配置 kubelet 以通知个别容器使用 DNS Service 的 IP 解析 DNS 名字。</p>
+</blockquote>
+<h3 id="怎样获取-DNS-名字："><a href="#怎样获取-DNS-名字：" class="headerlink" title="怎样获取 DNS 名字："></a>怎样获取 DNS 名字：</h3><blockquote>
+<p>在集群中定义的每个 Service（包括 DNS 服务器自身）都会被指派一个 DNS 名称。 默认，一个客户端 Pod 的 DNS 搜索列表将包含该 Pod 自己的 Namespace 和集群默认域。 通过如下示例可以很好地说明：<br>例如，有一个名称为 <code>nginx-service</code> 的 <code>Service</code>，它在 Kubernetes 集群中名为 <code>kube-system</code> 的 <code>Namespace</code> 中，会创建一条为 <code>nginx-service.kube-system.svc.cluster.local. </code>的DNS 记录。<br>资源记录的格式为：<code>SVC_NAME.NS_NAME.DOMAIN.LTD.</code><br>SVC_NAME:<code>service名称</code><br>NS_NAME:<code>(Namespace )名称空间</code><br>DOMAIN.LTD: <code>默认的集群service 的A记录：svc.cluster.local.</code><br>redis服务创建的A记录：<code>redis.default.svc.cluster.local.</code></p>
+</blockquote>
+<h3 id="支持的-DNS-模式："><a href="#支持的-DNS-模式：" class="headerlink" title="支持的 DNS 模式："></a>支持的 DNS 模式：</h3><h4 id="Service："><a href="#Service：" class="headerlink" title="Service："></a>Service：</h4><blockquote>
+<ul>
+<li>A 记录<br>“正常” Service（除了 Headless Service）会以 my-svc.my-namespace.svc.cluster.local 这种名字的形式被指派一个 DNS A 记录。这会解析成该 Service 的 Cluster IP。</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>“Headless” Service（没有Cluster IP）也会以 my-svc.my-namespace.svc.cluster.local 这种名字的形式被指派一个 DNS A 记录。 不像正常 Service，它会解析成该 Service 选择的一组 Pod 的 IP。 希望客户端能够使用这一组 IP，否则就使用标准的 round-robin 策略从这一组 IP 中进行选择</p>
+</blockquote>
+<blockquote>
+<ul>
+<li>SRV 记录<br>命名端口需要创建 SRV 记录，这些端口是正常 Service或 Headless Services 的一部分。 对每个命名端口，SRV 记录具有 _my-port-name._my-port-protocol.my-svc.my-namespace.svc.cluster.local 这种形式。 对普通 Service，这会被解析成端口号和 CNAME：my-svc.my-namespace.svc.cluster.local。 对 Headless Service，这会被解析成多个结果，Service 对应的每个 backend Pod 各一个，包含 auto-generated-name.my-svc.my-namespace.svc.cluster.local 这种形式 Pod 的端口号和 CNAME。</li>
+</ul>
+</blockquote>
+<h3 id="Pod："><a href="#Pod：" class="headerlink" title="Pod："></a>Pod：</h3><blockquote>
+<ul>
+<li>A 记录<br>如果启用，Pod 会以 pod-ip-address.my-namespace.pod.cluster.local 这种形式被指派一个 DNS A 记录。<br>例如，default Namespace 具有 DNS 名字 cluster.local，在该 Namespace 中一个 IP 为 1.2.3.4 的 Pod 将具有一个条目：1-2-3-4.default.pod.cluster.local。</li>
+</ul>
+</blockquote>
+<h3 id="Kubernetes配置使用CoreDNS："><a href="#Kubernetes配置使用CoreDNS：" class="headerlink" title="Kubernetes配置使用CoreDNS："></a>Kubernetes配置使用CoreDNS：</h3><blockquote>
+<p>kubelet的大多数命令行参数都改为推荐在<code>--config</code>指定位置的配置文件中进行配置，包括<code>--cluster-dns和--cluster-domain</code>两个参数，在kubelet的配置文件中配置如下：</p>
+</blockquote>
+<p><img src="/images/dns1.png" srcset="/img/loading.gif" lazyload alt="dns1"></p>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc">apiVersion: kubelet.config.k8s.io/v1beta1<br>kind: KubeletConfiguration<br><span class="hljs-code">......</span><br><span class="hljs-code">clusterDNS:</span><br><span class="hljs-code">- 10.254.0.2</span><br><span class="hljs-code">clusterDomain: cluster.local</span><br><span class="hljs-code">......</span><br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>其中clusterDNS指定了集群中所有容器将使用的DNS Server，即kubelet会在每个Pod内部设置DNS服务的地址为clusterDNS配置的地址。前面的配置中设置了Kubernetes集群访问内DNS服务器的地址是10.254.0.2，将由起完成Service Name到Cluster Ip的解析。有了这个配置，我们还需要在集群内部署DNS服务，DNS服务一般都是作为addon组件部署在Kubernetes集群内的。</p>
+</blockquote>
+<blockquote>
+<p>在Kubernetes中部署CoreDNS作为集群内的DNS服务有很多种方式。这里继承我们之前部署kubeDNS的传统，使用Kubernetes中addon库中的yaml文件部署，地址在这里：<br><code>https://github.com/kubernetes/kubernetes/tree/master/cluster/addons/dns/coredns</code></p>
+</blockquote>
+<blockquote>
+<p>查看transforms2sed.sed的内容：<br><img src="/images/dns2.png" srcset="/img/loading.gif" lazyload alt="dns2"></p>
+</blockquote>
+<blockquote>
+<p>将$DNS_SERVER_IP和DNS_DOMAIN替换成kubelet配置的内容。这里将$DNS_SERVER_IP替换成10.254.0.2，将DNS_DOMAIN替换成cluster.local.。</p>
+</blockquote>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs stylus">#执行下面的命令，生成部署coreDNS所需的coredns.yaml文件：<br>sed -f transforms2sed<span class="hljs-selector-class">.sed</span> coredns<span class="hljs-selector-class">.yaml</span><span class="hljs-selector-class">.base</span> &gt; coredns.yaml<br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs nginx"><span class="hljs-comment">#对coredns.yaml做微调，如修改镜像地址为私有镜像仓库，调整副本数量等等。</span><br><span class="hljs-attribute">kubectl</span> apply -f coredns.yaml      <span class="hljs-comment">#注意使用镜像加速器不然可能无法下载镜像</span><br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-comment">#查看coredns的Pod，确认所有Pod都处于Running状态：</span><br><br><span class="hljs-attribute">kubectl</span> get pods -n kube-system -l k8s-app=kube-dns<br><span class="hljs-attribute">NAME</span>                       READY     STATUS    RESTARTS   AGE<br><span class="hljs-attribute">coredns</span>-<span class="hljs-number">699477</span>c54d-<span class="hljs-number">9</span>fsl2   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">5</span>m<br><span class="hljs-attribute">coredns</span>-<span class="hljs-number">699477</span>c54d-d6tb2   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">5</span>m<br><span class="hljs-attribute">coredns</span>-<span class="hljs-number">699477</span>c54d-qh54v   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">5</span>m<br><span class="hljs-attribute">coredns</span>-<span class="hljs-number">699477</span>c54d-vvqj9   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">5</span>m<br><span class="hljs-attribute">coredns</span>-<span class="hljs-number">699477</span>c54d-xcv8h   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">6</span>m<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs autoit"><span class="hljs-meta">#测试一下DNS功能是否好用：</span><br>dig -t A nginx-service.<span class="hljs-literal">default</span>.svc.cluster.<span class="hljs-keyword">local</span>. <span class="hljs-symbol">@10</span><span class="hljs-number">.254</span><span class="hljs-number">.0</span><span class="hljs-number">.2</span><br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>修改master节点和所有node节点的&#x2F;etc&#x2F;systemd&#x2F;system&#x2F;kube-kubelet.service，修改–cluster-dns和 –cluster-domain内容如下，与上面的Corefile中的值对应。</p>
+</blockquote>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[Service]<br><span class="hljs-attribute">WorkingDirectory</span>=/var/lib/kubelet<br><span class="hljs-attribute">ExecStart</span>=/usr/k8s/bin/kubelet \<br>  <span class="hljs-attribute">--fail-swap-on</span>=<span class="hljs-literal">false</span> \<br>  <span class="hljs-attribute">--cgroup-driver</span>=cgroupfs \<br>  <span class="hljs-attribute">--address</span>=192.168.91.21 \<br>  <span class="hljs-attribute">--hostname-override</span>=192.168.91.21 \<br>  <span class="hljs-attribute">--experimental-bootstrap-kubeconfig</span>=/etc/kubernetes/bootstrap.kubeconfig \<br>  <span class="hljs-attribute">--kubeconfig</span>=/etc/kubernetes/kubelet.kubeconfig \<br>  <span class="hljs-attribute">--cert-dir</span>=/etc/kubernetes/ssl \<br>  <span class="hljs-attribute">--cluster-dns</span>=10.254.0.2 \<br>  <span class="hljs-attribute">--cluster-domain</span>=cluster.local. \<br>  --hairpin-mode promiscuous-bridge \<br>  <span class="hljs-attribute">--allow-privileged</span>=<span class="hljs-literal">true</span> \<br>  <span class="hljs-attribute">--serialize-image-pulls</span>=<span class="hljs-literal">false</span> \<br>  <span class="hljs-attribute">--logtostderr</span>=<span class="hljs-literal">true</span> \<br>  <span class="hljs-attribute">--v</span>=2<br><span class="hljs-attribute">Restart</span>=on-failure<br><span class="hljs-attribute">RestartSec</span>=5<br></code></pre></td></tr></table></figure>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>kubernetes之DNS</div>
+      <div>https://system51.github.io/2019/08/23/kubernetes-DNS/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月23日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-Ingress/" title="Kubernetes之Ingress">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes之Ingress</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/23/Kubernetes-Service/" title="Kubernetes之Service">
+                        <span class="hidden-mobile">Kubernetes之Service</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

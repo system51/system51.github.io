@@ -1,0 +1,722 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="资源类型 CPU 和 memory 都是 资源类型。资源类型具有基本单位。CPU 的单位是 core，memory 的单位是 byte。这些都统称为计算资源。  CPU含义： CPU 资源的限制和请求以cpu为单位。Kubernetes 中的一个 cpu 等于一个core，就是逻辑CPU。1颗逻辑CPU等于1000millicores。500m&#x3D;0.5颗cpu。  内存含义： 内存的限制">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kubernetes之管理容器的计算资源">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/kubernetes-Resource-constraints/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="资源类型 CPU 和 memory 都是 资源类型。资源类型具有基本单位。CPU 的单位是 core，memory 的单位是 byte。这些都统称为计算资源。  CPU含义： CPU 资源的限制和请求以cpu为单位。Kubernetes 中的一个 cpu 等于一个core，就是逻辑CPU。1颗逻辑CPU等于1000millicores。500m&#x3D;0.5颗cpu。  内存含义： 内存的限制">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/cpu-requests.png">
+<meta property="article:published_time" content="2019-08-26T03:58:50.000Z">
+<meta property="article:modified_time" content="2019-09-19T03:21:34.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/cpu-requests.png">
+  
+  
+  
+  <title>kubernetes之管理容器的计算资源 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="kubernetes之管理容器的计算资源"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 11:58" pubdate>
+          2019年8月26日 中午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          3.3k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          6 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">kubernetes之管理容器的计算资源</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h3 id="资源类型"><a href="#资源类型" class="headerlink" title="资源类型"></a>资源类型</h3><blockquote>
+<p>CPU 和 memory 都是 资源类型。资源类型具有基本单位。CPU 的单位是 core，memory 的单位是 byte。这些都统称为计算资源。</p>
+</blockquote>
+<h3 id="CPU含义："><a href="#CPU含义：" class="headerlink" title="CPU含义："></a>CPU含义：</h3><blockquote>
+<p>CPU 资源的限制和请求以cpu为单位。Kubernetes 中的一个 cpu 等于一个core，就是逻辑CPU。1颗逻辑CPU等于1000millicores。500m&#x3D;0.5颗cpu。</p>
+</blockquote>
+<h3 id="内存含义："><a href="#内存含义：" class="headerlink" title="内存含义："></a>内存含义：</h3><blockquote>
+<p>内存的限制和请求以字节为单位。您可以使用以下后缀之一作为平均整数或定点整数表示内存：E，P，T，G，M，K。您还可以使用两个字母的等效的幂数：Ei，Pi，Ti ，Gi，Mi，Ki。</p>
+</blockquote>
+<h3 id="POD中的资源请求和资源限制"><a href="#POD中的资源请求和资源限制" class="headerlink" title="POD中的资源请求和资源限制"></a>POD中的资源请求和资源限制</h3><blockquote>
+<ul>
+<li>requests  资源请求   pod最低需求（表示Pod对资源的最小需求，因此在调度的时候会如果Node剩余的资源不能满足Pod的需求，则不会调度到对应的Node上。Scheduler调度的时候并不关注在调度时具体的资源使用情况，而是根据现存Pod的资源请求情况来进行调度。调度器首先将不符合请求的Node排除在外，然后在执行优选策略最后在选定pod）</li>
+</ul>
+</blockquote>
+<ul>
+<li>limits   资源限制   pod最大的使用资源</li>
+</ul>
+<p><img src="/images/cpu-requests.png" srcset="/img/loading.gif" lazyload alt="cpu-requests"></p>
+<blockquote>
+<p>执行下面yaml的内容：</p>
+</blockquote>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> Pod<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> my-demo<br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">  labels:</span><br><span class="hljs-symbol">    name:</span> myapp<br><span class="hljs-symbol">    tier:</span> appfront<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  containers:</span><br>  - name: myapp<br><span class="hljs-symbol">    image:</span> ikubernetes/stress-ng<br><span class="hljs-symbol">    command:</span> [<span class="hljs-string">&quot;/usr/bin/stress-ng&quot;</span>,<span class="hljs-string">&quot;-c 1&quot;</span>,<span class="hljs-string">&quot;--metrics-brief&quot;</span>]<br><span class="hljs-symbol">    ports:</span><br>    - name: http<br><span class="hljs-symbol">      containerPort:</span> <span class="hljs-number">80</span><br><span class="hljs-symbol">    resources:</span><br><span class="hljs-symbol">      requests:</span><br><span class="hljs-symbol">        memory:</span> <span class="hljs-string">&quot;128Mi&quot;</span><br><span class="hljs-symbol">        cpu:</span> <span class="hljs-string">&quot;200m&quot;</span><br><span class="hljs-symbol">      limits:</span><br><span class="hljs-symbol">        memory:</span> <span class="hljs-string">&quot;512Mi&quot;</span><br><span class="hljs-symbol">        cpu:</span> <span class="hljs-string">&quot;500m&quot;</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>查看结果：</p>
+</blockquote>
+<figure class="highlight tap"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs tap">$ kubectl exec my-demo -- top<br>Mem: 3914044K used, 126532K free, 205252K shrd, 2176K buff, 2650160K cached<br>CPU:  21% usr   0% sys   0% nic  78% idle   0% io   0% irq   0% sirq<br>Load average: 0.12 0.08 0.09 3/694 17<br>  PID  PPID USER     STAT   VSZ %VSZ CPU %CPU COMMAND<br>   <span class="hljs-number"> 5 </span>   <span class="hljs-number"> 1 </span>root     R    <span class="hljs-number"> 6900 </span>  0%  <span class="hljs-number"> 0 </span> 25% &#123;stress-ng-cpu&#125; /usr/bin/stress-ng<br>  <span class="hljs-number"> 14 </span>   <span class="hljs-number"> 0 </span>root     R    <span class="hljs-number"> 1512 </span>  0%  <span class="hljs-number"> 1 </span>  4% top<br>   <span class="hljs-number"> 1 </span>   <span class="hljs-number"> 0 </span>root     S    <span class="hljs-number"> 6256 </span>  0%  <span class="hljs-number"> 1 </span>  0% /usr/bin/stress-ng -c<span class="hljs-number"> 1 </span>--metrics-<br>   <span class="hljs-number"> 6 </span>   <span class="hljs-number"> 0 </span>root     S    <span class="hljs-number"> 1516 </span>  0%  <span class="hljs-number"> 1 </span>  0% top<br>  <span class="hljs-number"> 10 </span>   <span class="hljs-number"> 0 </span>root     S    <span class="hljs-number"> 1516 </span>  0%  <span class="hljs-number"> 1 </span>  0% top<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>我们看到CPU占用是25%，为什么呢？因为我们的node是2个core。我们最大限制是0.5核。所以应该是1&#x2F;4。</p>
+</blockquote>
+<h3 id="QoS（服务质量等级）"><a href="#QoS（服务质量等级）" class="headerlink" title="QoS（服务质量等级）"></a>QoS（服务质量等级）</h3><blockquote>
+<p>是作用在 Pod 上的一个配置，当 Kubernetes 创建一个 Pod 时，它就会给这个 Pod 分配一个 QoS 等级，可以是以下等级之一：</p>
+</blockquote>
+<ul>
+<li>Guaranteed：同时设置了CPU和内存的requests和limits  而且值必须相等。（这类的pod是最高优先级）</li>
+<li>Burstable：pod至少有一个容器设置了cpu或内存的requests和limits，且不满足 Guarantee 等级的要求。即内存或CPU的值设置的不同。（中等优先级）</li>
+<li>BestEffort：没有任何一个容器设置了requests或limits的属性。（最低优先级）</li>
+</ul>
+<blockquote>
+<p>Guaranteed样例：</p>
+</blockquote>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> Pod<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> my-demo<br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">  labels:</span><br><span class="hljs-symbol">    name:</span> myapp<br><span class="hljs-symbol">    tier:</span> appfront<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  containers:</span><br>  - name: myapp<br><span class="hljs-symbol">    image:</span> ikubernetes/myapp:v2<br><span class="hljs-symbol">    ports:</span><br>    - name: http<br><span class="hljs-symbol">      containerPort:</span> <span class="hljs-number">80</span><br><span class="hljs-symbol">    resources:</span><br><span class="hljs-symbol">      requests:</span><br><span class="hljs-symbol">        memory:</span> <span class="hljs-string">&quot;512Mi&quot;</span><br><span class="hljs-symbol">        cpu:</span> <span class="hljs-string">&quot;500m&quot;</span><br><span class="hljs-symbol">      limits:</span><br><span class="hljs-symbol">        memory:</span> <span class="hljs-string">&quot;512Mi&quot;</span><br><span class="hljs-symbol">        cpu:</span> <span class="hljs-string">&quot;500m&quot;</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>结果：</p>
+</blockquote>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc">$ kubectl describe pod my-demo<br><span class="hljs-code">......</span><br><span class="hljs-code">QoS Class:       Guaranteed</span><br><span class="hljs-code">......</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Burstable样例：</p>
+</blockquote>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> Pod<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> my-demo02<br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">  labels:</span><br><span class="hljs-symbol">    name:</span> myapp<br><span class="hljs-symbol">    tier:</span> appfront<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  containers:</span><br>  - name: myapp<br><span class="hljs-symbol">    image:</span> ikubernetes/myapp:v2<br><span class="hljs-symbol">    ports:</span><br>    - name: http<br><span class="hljs-symbol">      containerPort:</span> <span class="hljs-number">80</span><br><span class="hljs-symbol">    resources:</span><br><span class="hljs-symbol">      requests:</span><br><span class="hljs-symbol">        memory:</span> <span class="hljs-string">&quot;256Mi&quot;</span><br><span class="hljs-symbol">        cpu:</span> <span class="hljs-string">&quot;200m&quot;</span><br><span class="hljs-symbol">      limits:</span><br><span class="hljs-symbol">        memory:</span> <span class="hljs-string">&quot;512Mi&quot;</span><br><span class="hljs-symbol">        cpu:</span> <span class="hljs-string">&quot;500m&quot;</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>结果：</p>
+</blockquote>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc">$ kubectl describe pod my-demo02<br><span class="hljs-code">....</span><br><span class="hljs-code">QoS Class:       Burstable</span><br><span class="hljs-code">....</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>BestEffort样例：</p>
+</blockquote>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">v1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">my-demo03</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attribute">tier</span><span class="hljs-punctuation">:</span> <span class="hljs-string">appfront</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">containers</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">name: myapp</span><br>    <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ikubernetes/myapp:v2</span><br>    <span class="hljs-attribute">ports</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">name: http</span><br>      <span class="hljs-attribute">containerPort</span><span class="hljs-punctuation">:</span> <span class="hljs-string">80</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>结果：</p>
+</blockquote>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc">$ kubectl describe pod my-demo03<br><span class="hljs-code">....</span><br><span class="hljs-code">QoS Class:       BestEffort</span><br><span class="hljs-code">....</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="容器中的JVM资源限制"><a href="#容器中的JVM资源限制" class="headerlink" title="容器中的JVM资源限制"></a>容器中的JVM资源限制</h3><p>在Kubernetes环境中部署Java程序不一会就重启了，这意味着你的pod是不健康的。然后我们可以通过describe去查看一下重启的原因。发现是因为Pod超出了资源限制被kill掉，在日志最后一行会出现一个kill的字段。为什么Kubernetes会kill掉，因为它超出了Kubernetes对Pod的资源限制。默认情况下Docker容器会使用宿主机所有的资源，但如果不做资源限制，会影响整个宿主机。然后整个宿主机资源不够会实现飘移，会转移到其他主机上，然后再异常，可能会起到一种雪崩的效应，所以一般我们都是要做Pod资源限制。如果Java容器中未设置JVM的<code>-Xmx</code>（最大的堆内存使用）参数，一旦这个Pod的使用内存超出Kubernetes的limits限制，Kubernetes就会把它杀掉并重启一个新的Pod。在JVM中这个值建议要比limits要小一点，小个10%吧，因为超过这个limits限制就会杀死掉从新在拉起新的Pod。</p>
+<ul>
+<li><p>Host</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dts">cat <span class="hljs-keyword">/proc/</span>meminfo <br><span class="hljs-symbol">MemTotal:</span> <span class="hljs-number">197869260</span> kB<br><span class="hljs-symbol">MemFree:</span> <span class="hljs-number">3698100</span> kB<br><span class="hljs-symbol">MemAvailable:</span> <span class="hljs-number">62230260</span> kB<br></code></pre></td></tr></table></figure>
+</li>
+<li><p>容器</p>
+<figure class="highlight dockerfile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dockerfile">docker <span class="hljs-keyword">run</span><span class="language-bash"> -it --<span class="hljs-built_in">rm</span> alpine <span class="hljs-built_in">cat</span> /proc/meminfo</span><br>MemTotal:       <span class="hljs-number">197869260</span> kB<br>MemFree:         <span class="hljs-number">3677800</span> kB<br>MemAvailable:   <span class="hljs-number">62210088</span> kB<br></code></pre></td></tr></table></figure></li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>kubernetes之管理容器的计算资源</div>
+      <div>https://system51.github.io/2019/08/26/kubernetes-Resource-constraints/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-Resource-metrics/" title="Kubernetes之资源指标">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes之资源指标</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-Scheduler/" title="Kubernetes之调度器和调度过程">
+                        <span class="hidden-mobile">Kubernetes之调度器和调度过程</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

@@ -1,0 +1,818 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="Prometheus为何要进行服务发现&amp;emsp;&amp;emsp;Prometheus Server的数据抓取工作于Pull模型，因而，它必需要事先知道各Target的位置，然后才能从相应的Exporter中抓取数据。对于小型的系统环境来说，通过static_configs指定各Target便能解决问题，这也是最简单的配置方法；对于中大型的系统环境或具有较强动态性的容器环境来说，每个容">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Prometheus服务发现和重新打标">
+<meta property="og:url" content="https://system51.github.io/2021/05/18/Prometheus-service-discovery-and-relabel-configs/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Prometheus为何要进行服务发现&amp;emsp;&amp;emsp;Prometheus Server的数据抓取工作于Pull模型，因而，它必需要事先知道各Target的位置，然后才能从相应的Exporter中抓取数据。对于小型的系统环境来说，通过static_configs指定各Target便能解决问题，这也是最简单的配置方法；对于中大型的系统环境或具有较强动态性的容器环境来说，每个容">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-2.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-3.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-4.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-20.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-21.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-5.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-6.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-7.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-8.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-10.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-17.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-9.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-11.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-12.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-13.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-16.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-14.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-15.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-18.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-19.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-22.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-config-23.png">
+<meta property="article:published_time" content="2021-05-18T06:35:49.000Z">
+<meta property="article:modified_time" content="2021-07-02T03:53:42.555Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/Prometheus-config-2.png">
+  
+  
+  
+  <title>Prometheus服务发现和重新打标 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Prometheus服务发现和重新打标"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2021-05-18 14:35" pubdate>
+          2021年5月18日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          19k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          32 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Prometheus服务发现和重新打标</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="Prometheus为何要进行服务发现"><a href="#Prometheus为何要进行服务发现" class="headerlink" title="Prometheus为何要进行服务发现"></a>Prometheus为何要进行服务发现</h2><p>&amp;emsp;&amp;emsp;Prometheus Server的数据抓取工作于Pull模型，因而，它必需要事先知道各Target的位置，然后才能从相应的Exporter中抓取数据。对于小型的系统环境来说，通过static_configs指定各Target便能解决问题，这也是最简单的配置方法；对于中大型的系统环境或具有较强动态性的容器环境来说，每个容器都有可能是一个抓取端点他随时可能创建或删除，静态配置显然难以适用。因此，Prometheus为此专门设计了一组服务发现机制，以便于能够基于服务注册中心自动发现、检测、分类可被监控的各Target，以及更新发生了变动的Target。</p>
+<h2 id="配置Prometheus实现自动服务发现"><a href="#配置Prometheus实现自动服务发现" class="headerlink" title="配置Prometheus实现自动服务发现"></a>配置Prometheus实现自动服务发现</h2><p>&amp;emsp;&amp;emsp;Prometheus支持多种服务发现机制，具体自己需要使用哪种发现机制请查看官方网站，本文将根据本公司业务来讲解Prometheus结合consul来做服务发现和注册，这也是目前比较流行的一种做法。接下来，我们需要配置 Prometheus 来使用 Consul 自动服务发现。至于怎么安装consul请参考 <a href="https://system51.github.io/2020/12/25/consul-tls/">高可用的SSL consul cluster实践</a> 这里我就不在赘述了。注意：在注册到 Consul 时 <code>name</code> 字段可以相同，但是<code>id</code> 字段一定不能相同。</p>
+<p><code>prometheus.yml</code> 配置如下：</p>
+<figure class="highlight axapta"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs axapta">...<br>scrape_configs:<br>  - job_name: <span class="hljs-string">&#x27;prometheus&#x27;</span><br>    consul_sd_configs:<br>     - <span class="hljs-keyword">server</span>: <span class="hljs-string">&quot;192.168.28.10:8500&quot;</span><br>     - <span class="hljs-keyword">server</span>: <span class="hljs-string">&quot;192.168.28.11:8500&quot;</span><br>     - <span class="hljs-keyword">server</span>: <span class="hljs-string">&quot;192.168.28.12:8500&quot;</span><br>       datacenter: <span class="hljs-string">&#x27;dc1&#x27;</span><br>       services: []<br></code></pre></td></tr></table></figure>
+
+<p>说明一下：这里需要使用 <code>consul_sd_configs</code> 来配置使用 Consul 服务发现类型，<code>server</code> 为 Consul 的服务地址, 配置完毕后重启 Prometheus 服务，此时可以通过 Prometheus UI 页面的 Targets 下查看是否配置成功。</p>
+<p><img src="/images/Prometheus-config-2.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-2"></p>
+<p>通过consul的其中一个节点查看注册服务<br><img src="/images/Prometheus-config-3.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-3"></p>
+<p>可以看到，在 Targets 中能够成功的自动发现 Consul 中的 Services 信息，后期需要添加新的 Targets 时，只需要通过 API或JSON格式文件往 Consul 中注册服务即可，Prometheus 就能自动发现该服务，是不是很方便。</p>
+<p>不过，我们会发现有如下几个问题：</p>
+<ul>
+<li>会发现 Prometheus 同时加载出来了默认服务 consul，这个是不需要的。</li>
+<li>默认只显示 job 及 instance 两个标签，其他标签都默认属于 <code>before relabeling</code> 下，有些必要的服务信息，也想要在标签中展示，该如何操作呢？</li>
+<li>如果需要自定义一些标签，例如 team、group、project 等关键分组信息，方便后边 <code>alertmanager</code> 进行告警规则匹配，该如何处理呢？</li>
+<li>所有 Consul 中注册的 Service 都会默认加载到 Prometheus 下配置的 prometheus 组，如果有多种类型的 exporter，如何在 Prometheus 中配置分配给指定类型的组，方便直观的区别它们？</li>
+</ul>
+<p>以上问题，我们可以通过 Prometheus 配置中的 relabel_configs 参数来解决。</p>
+<h2 id="配置-relabel-configs-实现自定义标签及分类"><a href="#配置-relabel-configs-实现自定义标签及分类" class="headerlink" title="配置 relabel_configs 实现自定义标签及分类"></a>配置 relabel_configs 实现自定义标签及分类</h2><p>&amp;emsp;&amp;emsp;Prometheus 加载 Targets 后，这些 Targets 会自动包含一些默认的标签，这里的标签分两类；如果使用consul做服务发现则Target包含如下标签：不同的服务发现机制为其target添加的元标签会有所不同; Prometheus 允许用户在指标抓取前，通过 <code>relabel_configs</code> 来对 Target 标签进行重新标记(relabel) 。 常用于实现两个功能，一、将来自服务发现的元数据标签中的信息附加到指标的标签上； 二、过滤目标，可以针对标签的某个值进行过滤(处理问题一将使用这个功能)</p>
+<p>Consul元标签：</p>
+<figure class="highlight autohotkey"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs autohotkey">__met<span class="hljs-built_in">a_consul</span>_address<br>__met<span class="hljs-built_in">a_consul</span>_dc<br>__met<span class="hljs-built_in">a_consul</span>_health<br>__met<span class="hljs-built_in">a_consul</span>_metadata_&lt;key&gt;<br>__met<span class="hljs-built_in">a_consul</span>_node<br>__met<span class="hljs-built_in">a_consul</span>_service_address<br>__met<span class="hljs-built_in">a_consul</span>_service_id<br>__met<span class="hljs-built_in">a_consul</span>_service_metadata_&lt;key&gt;<br>__met<span class="hljs-built_in">a_consul</span>_service_port<br>__met<span class="hljs-built_in">a_consul</span>_service<br>__met<span class="hljs-built_in">a_consul</span>_tagged_address_&lt;key&gt;<br>__met<span class="hljs-built_in">a_consul</span>_tags<br></code></pre></td></tr></table></figure>
+
+<p>Prometheus内置标签：</p>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc"><span class="hljs-emphasis">__address__</span><br><span class="hljs-emphasis">__metrics_path__</span><br><span class="hljs-emphasis">__scheme__</span><br></code></pre></td></tr></table></figure>
+
+
+<p><img src="/images/Prometheus-config-4.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-4"></p>
+<p>在上图我们我可以看到 <code>Before relabeling</code> 是重新标记以前的，而 <code>Labels</code> 中是重新标记以后的。</p>
+<p>默认<code>target</code>的<code>job</code>标签设置为配置文件里的<code>job_name</code>的值;<br><code>__address__</code>设置为配置里的targets的值;<br>而<code>instance</code>标签的值,是重定义标签操作之后<code>__address__</code>的值<br><code>__scheme__</code>和<code>__metrics_path__</code>标签的值,也是从配置里取值的;<br><code>__param_&lt;name&gt;</code>标签的值,是传给URL的查询参数<code>&lt;name&gt;</code>的值;</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">scrape_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">job_name:</span> <span class="hljs-string">&#x27;job&#x27;</span>                           <span class="hljs-comment">#实例名称</span><br>    <span class="hljs-attr">static_configs:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">targets:</span> [<span class="hljs-string">&#x27;prometheus-server:9090&#x27;</span>]     <span class="hljs-comment">#监控主机ip</span><br>    <span class="hljs-attr">relabel_configs:</span>                          <span class="hljs-comment">#重新标记标签</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">source_labels:</span> [<span class="hljs-string">&#x27;job&#x27;</span>]                  <span class="hljs-comment">#源标签的名字</span><br>      <span class="hljs-attr">separator:</span> <span class="hljs-string">;</span>                            <span class="hljs-comment">#源标签的分隔符，当有多个源标签的值的时候默认使用`;`连接</span><br>      <span class="hljs-attr">regex:</span> <span class="hljs-string">(.*)</span>                             <span class="hljs-comment">#使用正则匹配元标签的值，.*表示匹配所有</span><br>      <span class="hljs-attr">action:</span> <span class="hljs-string">replace</span>                         <span class="hljs-comment">#动作，replace动作就是将原来标签的值传给新标签</span><br>      <span class="hljs-attr">replacement:</span> <span class="hljs-string">$1</span>                         <span class="hljs-comment">#将正则表达式匹配到的结果值引用给新标签</span><br>      <span class="hljs-attr">target_label:</span> <span class="hljs-string">idc</span>                       <span class="hljs-comment">#新标签的名称</span><br></code></pre></td></tr></table></figure>
+
+
+
+<p>对 Target 重新打标是在数据抓取之前动态重写 Target 标签的强大工具，在配置中可以定义多个relabel步骤，它们将按照定义的顺序依次执行;重新标记完成后，该 Target 上以“__”开头的所有标签都会被移除;<br>详细 <code>relabel_configs</code> 配置及说明可以参考 <code>relabel_config</code> 官网说明，这里我简单列举一下里面每个 <code>relabel_action</code> 的作用，方便下边演示。</p>
+<ul>
+<li>replace: 根据 regex 的配置匹配 <code>source_labels</code> 标签的值（注意：source_label 中有多个元标签时，则他们的值会按照 <code>separator</code> 进行拼接），并且将匹配到的值写入到 <code>target_label</code> 当中，如果有多个匹配组，则可以使用 <code>$&#123;1&#125;</code>, <code>$&#123;2&#125;</code> 确定写入的内容。如果没匹配到任何内容则不对   <code>target_label</code> 进行重写， 默认为 <code>replace</code>。</li>
+<li>keep: 丢弃 <code>source_labels</code> 的值中没有匹配到 <code>regex</code> 正则表达式内容的 Target 实例</li>
+<li>drop: 丢弃 <code>source_labels</code> 的值中匹配到 <code>regex</code> 正则表达式内容的 Target 实例</li>
+<li>hashmod: 将 <code>target_label</code> 设置为关联的 <code>source_label</code> 的哈希模块</li>
+<li>labelmap: 根据 <code>regex</code> 去匹配 Target 实例所有标签的名称（注意是名称），并且将捕获到的内容作为为新的标签名称，<code>regex</code> 匹配到标签的的值作为新标签的值</li>
+<li>labeldrop: 将 <code>regex</code> 对所有的标签名进行匹配判定，能够匹配到的标签将从该 Target 的标签集中删除;</li>
+<li>labelkeep: 将 <code>regex</code> 对所有的标签名进行匹配判定，不能匹配到的标签将从该 Target 的标签集中删除;</li>
+</ul>
+<h3 id="示例："><a href="#示例：" class="headerlink" title="示例："></a>示例：</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-bullet">-</span> <span class="hljs-attr">job_name:</span> <span class="hljs-string">&#x27;node-exporter&#x27;</span><br>  <span class="hljs-attr">consul_sd_configs:</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">server:</span> <span class="hljs-string">&quot;192.168.28.10:8500&quot;</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">server:</span> <span class="hljs-string">&quot;192.168.28.11:8500&quot;</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">server:</span> <span class="hljs-string">&quot;192.168.28.12:8500&quot;</span><br>     <span class="hljs-attr">datacenter:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>     <span class="hljs-attr">services:</span> []<br>  <span class="hljs-attr">relabel_configs:</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">source_labels:</span> [<span class="hljs-string">__meta_consul_service</span>]<br>     <span class="hljs-attr">regex:</span> <span class="hljs-string">&quot;.*node-exporter.*&quot;</span><br>     <span class="hljs-attr">action:</span> <span class="hljs-string">keep</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">source_labels:</span> [<span class="hljs-string">__scheme__</span>, <span class="hljs-string">__address__</span>, <span class="hljs-string">__metrics_path__</span>]<br>     <span class="hljs-attr">regex:</span> <span class="hljs-string">&quot;(http|https)(.*)&quot;</span>    <span class="hljs-comment"># 两个分组</span><br>     <span class="hljs-attr">separator:</span> <span class="hljs-string">&quot;&quot;</span><br>     <span class="hljs-attr">target_label:</span> <span class="hljs-string">&quot;endpoint&quot;</span><br>     <span class="hljs-attr">replacement:</span> <span class="hljs-string">&quot;$&#123;1&#125;://$&#123;2&#125;&quot;</span>   <span class="hljs-comment"># 引用两个分组</span><br>     <span class="hljs-attr">action:</span> <span class="hljs-string">replace</span><br></code></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-config-20.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-20"></p>
+<p>当有多个源标签的值时如果不设置<code>separator</code>为空则每个源标签的值将使用<code>;</code>做连接<br><img src="/images/Prometheus-config-21.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-21"></p>
+<h2 id="处理上述问题"><a href="#处理上述问题" class="headerlink" title="处理上述问题"></a>处理上述问题</h2><p>问题一，首先我们鼠标指向labels下的某一个target的元标签时可以看到，使用consul做服务发现时会自动添加的元标签。细心的我们在查看consul注册进来的服务发现<code>__meta_consul_service</code>标签的值都是<code>consul</code>。那么我们可以配置 <code>relabel_configs</code> 来实现标签过滤，只加载符合规则的服务。<br><img src="/images/Prometheus-config-5.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-5"></p>
+<p>修改 prometheus.yml 配置如下：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">scrape_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;prometheus&#x27;</span><br>    <span class="hljs-attribute">consul_sd_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.10:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.11:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.12:8500&quot;</span><br>       <span class="hljs-attribute">datacenter</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>       <span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[]</span><br>    <span class="hljs-attribute">relabel_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_service]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;consul&quot;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">drop</span><br></code></pre></td></tr></table></figure>
+<p>解释下，这里的 <code>relabel_configs</code> 配置作用为如果元标签 <code>__meta_consul_service</code> 的值是 <code>consul</code> 的服务则丢弃，<code>__meta_consul_service</code> 的值对应到 <code>Consul</code> 服务中的值为<code>&quot;name&quot;:</code>字段,重启 Prometheus 可以看到现在只获取了 node-exporter-192.168.28.13 这个服务了。</p>
+<figure class="highlight 1c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs 1c">&#123;<br>  <span class="hljs-string">&quot;service&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;id&quot;</span>: <span class="hljs-string">&quot;node-01&quot;</span>,<br>    <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;node-1&quot;</span>,           <span class="hljs-meta"># 注意：此值是可以在别的service中重复出现的</span><br>    <span class="hljs-string">&quot;tags&quot;</span>: [<span class="hljs-string">&quot;ngx_exporter&quot;</span>,<span class="hljs-string">&quot;prod&quot;</span>,<span class="hljs-string">&quot;xcws&quot;</span>,<span class="hljs-string">&quot;monitor&quot;</span>],<br>    <span class="hljs-string">&quot;address&quot;</span>: <span class="hljs-string">&quot;192.168.28.13&quot;</span>,<br>    <span class="hljs-string">&quot;port&quot;</span>: <span class="hljs-number">9100</span>,<br>    <span class="hljs-string">&quot;Meta&quot;</span>: &#123;<br>      <span class="hljs-string">&quot;app&quot;</span>: <span class="hljs-string">&quot;spring-boot&quot;</span>,<br>      <span class="hljs-string">&quot;team&quot;</span>: <span class="hljs-string">&quot;appgroup&quot;</span>,<br>      <span class="hljs-string">&quot;project&quot;</span>: <span class="hljs-string">&quot;bigdata&quot;</span><br>    &#125;,<br>    <span class="hljs-string">&quot;check&quot;</span>: &#123;<br>       <span class="hljs-string">&quot;id&quot;</span>: <span class="hljs-string">&quot;node-01&quot;</span>,<br>       <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;node-1&quot;</span>, <br>       <span class="hljs-string">&quot;http&quot;</span>: <span class="hljs-string">&quot;http://192.168.28.13:9100/metrics&quot;</span>,<br>       <span class="hljs-string">&quot;interval&quot;</span>: <span class="hljs-string">&quot;10s&quot;</span>,<br>       <span class="hljs-string">&quot;timeout&quot;</span>: <span class="hljs-string">&quot;1s&quot;</span><br>  &#125;<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-config-6.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-6"></p>
+<p>问题二和问题三可以归为一类，就是将系统默认标签或者用户自定义标签转换成可视化标签，方便查看及后续 <code>Alertmanager</code> 进行告警规则匹配分组。不过要实现给服务添加自定义标签，我们还得做一下修改，就是在注册服务时，将自定义标签信息添加到 <code>Meta Data</code> 数据中，下边来演示一下如何操作。</p>
+<p>新建 <code>consul-0.json</code> 如下：</p>
+<figure class="highlight prolog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs prolog">&#123;<br>  <span class="hljs-string">&quot;service&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;id&quot;</span>: <span class="hljs-string">&quot;node-01&quot;</span>,<br>    <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;node-1&quot;</span>,<br>    <span class="hljs-string">&quot;tags&quot;</span>: [<span class="hljs-string">&quot;ngx_exporter&quot;</span>,<span class="hljs-string">&quot;prod&quot;</span>,<span class="hljs-string">&quot;xcws&quot;</span>,<span class="hljs-string">&quot;monitor&quot;</span>],<br>    <span class="hljs-string">&quot;address&quot;</span>: <span class="hljs-string">&quot;192.168.28.13&quot;</span>,<br>    <span class="hljs-string">&quot;port&quot;</span>: <span class="hljs-number">9100</span>,<br>    <span class="hljs-string">&quot;Meta&quot;</span>: &#123;<br>      <span class="hljs-string">&quot;app&quot;</span>: <span class="hljs-string">&quot;spring-boot&quot;</span>,<br>      <span class="hljs-string">&quot;team&quot;</span>: <span class="hljs-string">&quot;appgroup&quot;</span>,<br>      <span class="hljs-string">&quot;project&quot;</span>: <span class="hljs-string">&quot;bigdata&quot;</span><br>    &#125;,<br>    <span class="hljs-string">&quot;check&quot;</span>: &#123;<br>       <span class="hljs-string">&quot;id&quot;</span>: <span class="hljs-string">&quot;node-01&quot;</span>,<br>       <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;node-1&quot;</span>, <br>       <span class="hljs-string">&quot;http&quot;</span>: <span class="hljs-string">&quot;http://192.168.28.13:9100/metrics&quot;</span>,<br>       <span class="hljs-string">&quot;interval&quot;</span>: <span class="hljs-string">&quot;10s&quot;</span>,<br>       <span class="hljs-string">&quot;timeout&quot;</span>: <span class="hljs-string">&quot;1s&quot;</span><br>  &#125;<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>说明一下：该 Json 文件为要注册的服务信息，同时往 Meta 信息中添加了 <code>app=spring-boot</code>，<code>team=appgroup</code>，<code>project=bigdata</code> 三组标签，目的就是为了方便告警分组使用。</p>
+<p>重启 Consul 服务后注册完毕，通过 Consul Web 管理页面可以查看到已注册成功，并且包含了 Meta 信息。</p>
+<p><img src="/images/Prometheus-config-7.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-7"></p>
+<p>然后修改 <code>prometheus.yml</code> 配置如下：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">scrape_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;prometheus&#x27;</span><br>    <span class="hljs-attribute">consul_sd_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.10:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.11:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.12:8500&quot;</span><br>       <span class="hljs-attribute">datacenter</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>       <span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[]</span><br>    <span class="hljs-attribute">relabel_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_service]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;consul&quot;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">drop</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">regex: __meta_consul_service_metadata_(.+)</span><br>       <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$&#123;1&#125;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">labelmap</span><br></code></pre></td></tr></table></figure>
+
+<p>解释一下，增加的配置作用为匹配 <code>__meta_consul_service_metadata_</code> 开头的标签，将捕获到的内容作为新的标签名称，匹配到标签的值作为新标签的值，而我们刚添加的三个自定义标签，系统会自动添加 <code>__meta_consul_service_metadata_app=spring-boot</code> 、<code>__meta_consul_service_metadata_team=appgroup</code>、<code>__meta_consul_service_metadata_project=bigdata</code> 三个标签，经过 relabel 后，Prometheus 将会新增 <code>app=spring-boot</code>、<code>team=appgroup</code>、<code>project=bigdata</code> 三个标签。重启 Prometheus 服务，可以看到新增了对应了三个自定义标签。</p>
+<p><img src="/images/Prometheus-config-8.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-8"></p>
+<p>relabel示例之labelmap最简单示例</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-bullet">-</span> <span class="hljs-attr">job_name:</span> <span class="hljs-string">&#x27;nodes&#x27;</span> <span class="hljs-attr">file_sd_configs:</span><br>  <span class="hljs-attr">file_sd_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">files:</span><br>    <span class="hljs-string">targets/prometheus/node*.yaml</span><br>  <span class="hljs-attr">relabel_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">regex:</span> <span class="hljs-string">&quot;(job|app)&quot;</span><br>    <span class="hljs-attr">replacement:</span> <span class="hljs-string">$&#123;1&#125;_name</span><br>    <span class="hljs-attr">action:</span> <span class="hljs-string">labelmap</span><br></code></pre></td></tr></table></figure>
+
+<p>生成的结果如下图所示(注意这里是配了的是标签名称<code>job</code>和<code>app</code>都是存在的)</p>
+<p><img src="/images/Prometheus-config-10.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-10"></p>
+<p>relabel示例之labeldrop最简单示例</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-bullet">-</span> <span class="hljs-attr">job_name:</span> <span class="hljs-string">&#x27;nodes&#x27;</span> <span class="hljs-attr">file_sd_configs:</span><br>  <span class="hljs-attr">file_sd_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">files:</span><br>    <span class="hljs-string">targets/prometheus/node*.yaml</span><br>  <span class="hljs-attr">relabel_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">regex:</span> <span class="hljs-string">&quot;(job|app)&quot;</span><br>    <span class="hljs-attr">replacement:</span> <span class="hljs-string">$&#123;1&#125;_name</span><br>    <span class="hljs-attr">action:</span> <span class="hljs-string">labelmap</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">regex:</span> <span class="hljs-string">&quot;(app)&quot;</span><br>    <span class="hljs-attr">action:</span> <span class="hljs-string">labeldrop</span>  <br></code></pre></td></tr></table></figure>
+
+<p>生成的结果如下图所示(删除标签为<code>app</code>的标签)<br><img src="/images/Prometheus-config-17.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-17"></p>
+<p>另外一种处理方式，可以看到上面的 <code>consul-0.json</code> 文件中定义了 <code>tags</code> 这个字段。我们也可以使用这里的 <code>tags</code> 的值来自定义标签。</p>
+<p><img src="/images/Prometheus-config-9.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-9"></p>
+<p>修改 <code>prometheus.yml</code> 配置如下：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">scrape_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;prometheus&#x27;</span><br>    <span class="hljs-attribute">consul_sd_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.10:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.11:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.12:8500&quot;</span><br>       <span class="hljs-attribute">datacenter</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>       <span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[]</span><br>    <span class="hljs-attribute">relabel_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_service]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;consul&quot;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">drop</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">regex: __meta_consul_service_metadata_(.+)</span><br>       <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$&#123;1&#125;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">labelmap</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [&quot;__meta_consul_tags&quot;]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;,(.+),(.+),(.+),(.+),&quot;</span><br>       <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$1</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">replace</span><br>       <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">exporter_type</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [&quot;__meta_consul_tags&quot;]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;,(.+),(.+),(.+),(.+),&quot;</span><br>       <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$2</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">replace</span><br>       <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">env</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [&quot;__meta_consul_tags&quot;]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;,(.+),(.+),(.+),(.+),&quot;</span><br>       <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$3</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">replace</span><br>       <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">job</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [&quot;__meta_consul_tags&quot;]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;,(.+),(.+),(.+),(.+),&quot;</span><br>       <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$4</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">replace</span><br>       <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">platform</span><br></code></pre></td></tr></table></figure>
+
+
+
+<p>解释一下，这里配置的 <code>__meta_consul_tags</code> 对应到 Consul 注册服务的 <code>Tags</code> 字段,使用 regex 去匹配将匹配到的结果分为4组，然后replacement可按需引用 regex 中的某个“分组”匹配到的值，并赋值给 <code>target_label</code> 标签。形成一个 <code>k=v</code> 格式。</p>
+<p>问题四，将自动发现的服务进行分类，本质上跟上边的处理方式一致，可以通过服务 Tag 来进行匹配创建不同的类型 exporter 分组。通过给每个服务标记不同的 Tag，然后通过 <code>relabel_configs</code> 来进行匹配区分。我们来更新一下原有的<code>consul-0.json</code> 文件修改服务标签，同时注册一个其他类型 exporter 的服务如下：</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs awk">&#123;<br>  <span class="hljs-string">&quot;service&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;id&quot;</span>: <span class="hljs-string">&quot;node-01&quot;</span>,<br>    <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;node-1&quot;</span>,<br>    <span class="hljs-string">&quot;tags&quot;</span>: [<span class="hljs-string">&quot;node-exporter&quot;</span>],         <span class="hljs-regexp">//</span>修改<br>    <span class="hljs-string">&quot;address&quot;</span>: <span class="hljs-string">&quot;192.168.28.13&quot;</span>,<br>    <span class="hljs-string">&quot;port&quot;</span>: <span class="hljs-number">9100</span>,<br>    <span class="hljs-string">&quot;Meta&quot;</span>: &#123;<br>      <span class="hljs-string">&quot;app&quot;</span>: <span class="hljs-string">&quot;spring-boot&quot;</span>,<br>      <span class="hljs-string">&quot;team&quot;</span>: <span class="hljs-string">&quot;appgroup&quot;</span>,<br>      <span class="hljs-string">&quot;project&quot;</span>: <span class="hljs-string">&quot;bigdata&quot;</span><br>    &#125;,<br>    <span class="hljs-string">&quot;check&quot;</span>: &#123;<br>       <span class="hljs-string">&quot;id&quot;</span>: <span class="hljs-string">&quot;node-01&quot;</span>,<br>       <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;node-1&quot;</span>, <br>       <span class="hljs-string">&quot;http&quot;</span>: <span class="hljs-string">&quot;http://192.168.28.13:9100/metrics&quot;</span>,<br>       <span class="hljs-string">&quot;interval&quot;</span>: <span class="hljs-string">&quot;10s&quot;</span>,<br>       <span class="hljs-string">&quot;timeout&quot;</span>: <span class="hljs-string">&quot;1s&quot;</span><br>  &#125;<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs awk">&#123;<br>  <span class="hljs-string">&quot;service&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;id&quot;</span>: <span class="hljs-string">&quot;cadvisor-exporter&quot;</span>,     <br>    <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;node-1&quot;</span>,<br>    <span class="hljs-string">&quot;tags&quot;</span>: [<span class="hljs-string">&quot;cadvisor-exporter&quot;</span>],      <span class="hljs-regexp">//</span>修改<br>    <span class="hljs-string">&quot;address&quot;</span>: <span class="hljs-string">&quot;192.168.28.13&quot;</span>,<br>    <span class="hljs-string">&quot;port&quot;</span>: <span class="hljs-number">8080</span>,<br>    <span class="hljs-string">&quot;Meta&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;app&quot;</span>: <span class="hljs-string">&quot;docker&quot;</span>,<br>    <span class="hljs-string">&quot;team&quot;</span>: <span class="hljs-string">&quot;cloudgroup&quot;</span>,<br>    <span class="hljs-string">&quot;project&quot;</span>: <span class="hljs-string">&quot;docker-service&quot;</span><br>    &#125;,<br>    <span class="hljs-string">&quot;check&quot;</span>: &#123;<br>       <span class="hljs-string">&quot;http&quot;</span>: <span class="hljs-string">&quot;http://192.168.28.13:8080/metrics&quot;</span>,<br>       <span class="hljs-string">&quot;interval&quot;</span>: <span class="hljs-string">&quot;10s&quot;</span>,<br>       <span class="hljs-string">&quot;timeout&quot;</span>: <span class="hljs-string">&quot;1s&quot;</span><br>  &#125;<br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+
+<p>说明一下，我们更新了原有 <code>consul-0.json</code> 文件中服务的标签为 node-exporter，同时注册一个新类型 cadvisor-exporter 服务，并设置标签为 <code>cadvisor-exporter</code>，以示区别。注册完毕，通过 <code>Consul Web</code> 控制台可以看到成功注册了这两个服务。这里需要说明一下，在上面的两个JSON文件中我们都使用的是同一个 <code>Name</code> 名字所以我们需要点进 <code>node-1</code> 这个 service 名字下才能看到两个服务</p>
+<p><img src="/images/Prometheus-config-11.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-11"></p>
+<p>最后，我们修改 <code>prometheus.yml</code> 配置如下：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">scrape_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;consul-node-exporter&#x27;</span><br>    <span class="hljs-attribute">consul_sd_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.10:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.11:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.12:8500&quot;</span><br>       <span class="hljs-attribute">datacenter</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>       <span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[]</span><br>    <span class="hljs-attribute">relabel_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_tags]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;.*node-exporter.*&quot;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">keep</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">regex: __meta_consul_service_metadata_(.+)</span><br>       <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$&#123;1&#125;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">labelmap</span><br><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;consul-cadvisor-exproter&#x27;</span><br>    <span class="hljs-attribute">consul_sd_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.10:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.11:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.12:8500&quot;</span><br>       <span class="hljs-attribute">datacenter</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>       <span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[]</span><br>    <span class="hljs-attribute">relabel_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_tags]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;.*cadvisor-exporter.*&quot;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">keep</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">regex: __meta_consul_service_metadata_(.+)</span><br>       <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$&#123;1&#125;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">labelmap</span><br><br></code></pre></td></tr></table></figure>
+<p>这里需要根据每种类型的 exporter 新增一个关联 job，同时 <code>relabel_configs</code> 中配置 <code>__meta_consul_tags</code> 以 Tag 来做匹配区分。这里的 <code>relabel_configs</code> 配置作用为丢弃元标签中 <code>__meta_consul_tags</code> 的值不包含 <code>node-exporter</code> 或 <code>cadvisor-exporter</code> 标签的服务，从上面的配置来看两个Job实现了互斥，从而实现过滤。重启 Prometheus 服务，可以看到服务已经按照类型分类了，方便查看。</p>
+<p><img src="/images/Prometheus-config-12.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-12"></p>
+<h2 id="Prometheus黑盒监控"><a href="#Prometheus黑盒监控" class="headerlink" title="Prometheus黑盒监控"></a>Prometheus黑盒监控</h2><p>&amp;emsp;&amp;emsp;常规的各种exporter都是和需要监控的机器一起安装的,如果需要监控一些tcp端口和七层应用层的状态呢,这个时候就需要黑盒监控了,不需要安装在目标机器上即可从外部去监控。（如果想做到A访问B则需要在A机器上安装blackbox让A去请求B，而不是从某一个固定的机器去访问。这样做点对点监控） blackbox默认的http监听端口是9115，blackbox.yml的配置文件里有基础的https、http、dns、tcp、icmp配置，prober 定制配置出各种监测模块(module)，在prometheus server的配置文件里声明用哪个模块去探测哪个targets。</p>
+<h3 id="安装配置blackbox-exporter"><a href="#安装配置blackbox-exporter" class="headerlink" title="安装配置blackbox_exporter"></a>安装配置blackbox_exporter</h3><p>下载blackbox_exporter</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">wget</span> https://github.com/prometheus/blackbox_exporter/releases/download/v0.<span class="hljs-number">19</span>.<span class="hljs-number">0</span>/blackbox_exporter-<span class="hljs-number">0</span>.<span class="hljs-number">19</span>.<span class="hljs-number">0</span>.linux-amd64.tar.gz<br><br><span class="hljs-attribute">tar</span> -zxv -f blackbox_exporter-<span class="hljs-number">0</span>.<span class="hljs-number">19</span>.<span class="hljs-number">0</span>.linux-amd64.tar.gz <br></code></pre></td></tr></table></figure>
+
+<p>修改 <code>blackbox.yml</code> 配置文件：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">modules:</span><br>  <span class="hljs-attr">http_2xx:</span>           <span class="hljs-comment"># 模块名字,符合规则随便命名即可</span><br>    <span class="hljs-attr">prober:</span> <span class="hljs-string">http</span>      <span class="hljs-comment"># 探针类型</span><br>    <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">valid_status_codes:</span> [<span class="hljs-number">200</span>,<span class="hljs-number">201</span>,<span class="hljs-number">202</span>,<span class="hljs-number">203</span>,<span class="hljs-number">204</span>,<span class="hljs-number">205</span>,<span class="hljs-number">206</span>,<span class="hljs-number">207</span>,<span class="hljs-number">300</span>,<span class="hljs-number">301</span>,<span class="hljs-number">302</span>,<span class="hljs-number">303</span>,<span class="hljs-number">304</span>,<span class="hljs-number">305</span>,<span class="hljs-number">306</span>,<span class="hljs-number">307</span>,<span class="hljs-number">405</span>]<br>  <span class="hljs-attr">http_post_2xx:</span><br>    <span class="hljs-attr">prober:</span> <span class="hljs-string">http</span><br>    <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">method:</span> <span class="hljs-string">POST</span><br>  <span class="hljs-attr">tcp_connect:</span><br>    <span class="hljs-attr">prober:</span> <span class="hljs-string">tcp</span><br>  <span class="hljs-attr">pop3s_banner:</span><br>    <span class="hljs-attr">prober:</span> <span class="hljs-string">tcp</span><br>    <span class="hljs-attr">tcp:</span><br>      <span class="hljs-attr">query_response:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">expect:</span> <span class="hljs-string">&quot;^+OK&quot;</span><br>      <span class="hljs-attr">tls:</span> <span class="hljs-literal">true</span><br>      <span class="hljs-attr">tls_config:</span><br>        <span class="hljs-attr">insecure_skip_verify:</span> <span class="hljs-literal">false</span><br>  <span class="hljs-attr">ssh_banner:</span><br>    <span class="hljs-attr">prober:</span> <span class="hljs-string">tcp</span><br>    <span class="hljs-attr">tcp:</span><br>      <span class="hljs-attr">query_response:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">expect:</span> <span class="hljs-string">&quot;^SSH-2.0-&quot;</span><br>  <span class="hljs-attr">irc_banner:</span><br>    <span class="hljs-attr">prober:</span> <span class="hljs-string">tcp</span><br>    <span class="hljs-attr">tcp:</span><br>      <span class="hljs-attr">query_response:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">send:</span> <span class="hljs-string">&quot;NICK prober&quot;</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">send:</span> <span class="hljs-string">&quot;USER prober prober prober :prober&quot;</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">expect:</span> <span class="hljs-string">&quot;PING :([^ ]+)&quot;</span><br>        <span class="hljs-attr">send:</span> <span class="hljs-string">&quot;PONG $&#123;1&#125;&quot;</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">expect:</span> <span class="hljs-string">&quot;^:[^ ]+ 001&quot;</span><br>  <span class="hljs-attr">icmp:</span><br>    <span class="hljs-attr">prober:</span> <span class="hljs-string">icmp</span><br></code></pre></td></tr></table></figure>
+
+
+
+<p>修改 <code>Prometheus.yml</code> 配置文件文件：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-bullet">-</span> <span class="hljs-attr">job_name:</span> <span class="hljs-string">&#x27;http_2xx&#x27;</span><br>  <span class="hljs-attr">consul_sd_configs:</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">server:</span> <span class="hljs-string">&quot;192.168.28.10:8500&quot;</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">server:</span> <span class="hljs-string">&quot;192.168.28.11:8500&quot;</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">server:</span> <span class="hljs-string">&quot;192.168.28.12:8500&quot;</span><br>     <span class="hljs-attr">datacenter:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>     <span class="hljs-attr">services:</span> []<br>  <span class="hljs-attr">metrics_path:</span> <span class="hljs-string">/probe</span><br>  <span class="hljs-attr">params:</span><br>     <span class="hljs-attr">module:</span> [<span class="hljs-string">http_2xx</span>]        <span class="hljs-comment"># HTTP URL参数</span><br>  <span class="hljs-attr">relabel_configs:</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">source_labels:</span> [<span class="hljs-string">__meta_consul_service</span>]<br>     <span class="hljs-attr">regex:</span> <span class="hljs-string">&quot;http_2xx&quot;</span><br>     <span class="hljs-attr">action:</span> <span class="hljs-string">keep</span>       <br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">source_labels:</span> [<span class="hljs-string">__meta_consul_service_address</span>]<br>     <span class="hljs-attr">target_label:</span> <span class="hljs-string">__param_target</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">source_labels:</span> [<span class="hljs-string">__param_target</span>]<br>     <span class="hljs-attr">target_label:</span> <span class="hljs-string">instance</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">target_label:</span> <span class="hljs-string">__address__</span><br>     <span class="hljs-attr">replacement:</span> <span class="hljs-number">192.168</span><span class="hljs-number">.28</span><span class="hljs-number">.10</span><span class="hljs-string">:9115</span><br></code></pre></td></tr></table></figure>
+
+<p>解释：新创建一个Job名为 <code>http_2xx</code> 并设置仅抓取 <code>__meta_consul_service</code> 元标签中值为 <code>http_2xx</code> 的target，然后将元标签<code>__meta_consul_service_address</code>的值赋值给一个新的标签<code>__param_target</code> 其中最后变成<code>target=xxx.xxx.xxx.xxx</code>的格式（xxx为IP地址），然后在将<code>__param_target</code>的值重新写入给instance这个标签，这个标签原先已经有值了，所以这里会instance原来的值会被替换为<code>__param_target</code>的值。在然后<code>__address__</code>的值会被修改为<code>192.168.28.10:9115</code>这个IP。<code>我们需要注意的是标签存在则覆盖，标签不存在则创建</code></p>
+<p><img src="/images/Prometheus-config-13.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-13"></p>
+<p>从下图可以看到实际在请求的是的是带入了一些参数<code>module=http_2xx&amp;target=www.baidu.com</code> 其中 <code>module=http_2xx</code> 是 <code>prometheus.yaml</code> 中配置的，而<code>target=www.baidu.com</code> 是<code>__param_target</code> 传入的。<br><img src="/images/Prometheus-config-16.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-16"></p>
+<p>注册服务到 Consul</p>
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@k8s</span>-n1 client]<span class="hljs-meta"># cat http_p2p.json </span><br>&#123;<br>  <span class="hljs-string">&quot;service&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;id&quot;</span>: <span class="hljs-string">&quot;test-http&quot;</span>,<br>    <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;http_2xx&quot;</span>,<br>    <span class="hljs-string">&quot;tags&quot;</span>: [<span class="hljs-string">&quot;blackbox_export&quot;</span>,<span class="hljs-string">&quot;prod&quot;</span>,<span class="hljs-string">&quot;xcws&quot;</span>,<span class="hljs-string">&quot;192.168.28.13:9115&quot;</span>,<span class="hljs-string">&quot;httpp2p&quot;</span>],<br>    <span class="hljs-string">&quot;address&quot;</span>: <span class="hljs-string">&quot;www.baidu.com&quot;</span><br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-config-14.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-14"></p>
+<p>从上面的方式我们可以做到tcp端口和七层应用层监控，但是有一个问题。所有的请求都是从<code>192.168.28.10</code>这台安装了 <code>blackbox_exporter</code>主机发起的，如果我们想做点对点监控呢？那么我们需要在发起请求的主机上安装 <code>blackbox_exporter</code>。下面将讲解如何配置点对点监控，这里用到tag的方式来进行点对点监控，需要多注意看配置文件。</p>
+<p>Consul注册文件：</p>
+<figure class="highlight prolog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs prolog">&#123;<br>  <span class="hljs-string">&quot;service&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;id&quot;</span>: <span class="hljs-string">&quot;test-http&quot;</span>,<br>    <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;http_2xx&quot;</span>,<br>    <span class="hljs-string">&quot;tags&quot;</span>: [<span class="hljs-string">&quot;blackbox_export&quot;</span>,<span class="hljs-string">&quot;prod&quot;</span>,<span class="hljs-string">&quot;xcws&quot;</span>,<span class="hljs-string">&quot;192.168.28.13:9115&quot;</span>,<span class="hljs-string">&quot;httpp2p&quot;</span>],<br>    <span class="hljs-string">&quot;address&quot;</span>: <span class="hljs-string">&quot;www.baidu.com&quot;</span><br>  &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+
+<p>Prometheus配置文件：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;http_2xx&#x27;</span><br>  <span class="hljs-attribute">consul_sd_configs</span><span class="hljs-punctuation">:</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.10:8500&quot;</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.11:8500&quot;</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.12:8500&quot;</span><br>     <span class="hljs-attribute">datacenter</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>     <span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[]</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">/probe</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-attribute">module</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[http_2xx]</span><br>  <span class="hljs-attribute">relabel_configs</span><span class="hljs-punctuation">:</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_service]</span><br>     <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;http_2xx&quot;</span><br>     <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">keep</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_service_address]</span><br>     <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">__param_target</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__param_target]</span><br>     <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">instance</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_tags]</span><br>     <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;,(.+),(.+),(.+),(.+),(.+),&quot;</span><br>     <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">replace</span><br>     <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$4</span><br>     <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">__address__</span><br></code></pre></td></tr></table></figure>
+
+<p>解释一下我们做了些什么工作，首先我们先在 <code>192.168.28.13</code> 上安装 <code>blackbox_exporter</code> 并修改 <code>blackbox.yml</code> 配置文件。从上面注册到 Consul 中的信息可以看到我们在 Tags 中添加了一个IP，然后我们在下面的Prometheus中去分组匹配，上面的tags中有5段，这里我们在Prometheus中也使用5个分组去匹配。我们可以看到 <code>192.168.28.13:9115</code> 属于第四段，所以我们在<code>replacement</code>中引用第四个分组。然后将结果赋值给新的标签<code>__address__</code>。</p>
+<p><img src="/images/Prometheus-config-15.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-15"></p>
+<p>这样配置我们可以看到发送请求的地址是 <code>192.168.28.13</code> 这个IP，而不是像最上面那样从某一个固定的IP（192.168.28.10）发起的请求。如果我们需要在多个机器上实现这种点对点监控。请在所有的机器上都安装 <code>blackbox_exporter</code> 。</p>
+<h2 id="对抓取到的metric重新打标"><a href="#对抓取到的metric重新打标" class="headerlink" title="对抓取到的metric重新打标"></a>对抓取到的metric重新打标</h2><p>对metric重新打标是在数据抓取之后动态重写metric标签的工具，在每个数据抓取配置中，可以定义多个metric relabel的步骤，它们将按照定义的顺序依次执；<code>metric_relabel_configs</code> 模块和 <code>relabel_config</code> 模块很相似。<code>metric_relabel_configs</code> 一个很常用的用途：将监控不需要的数据，直接丢掉，不在Prometheus 中保存。</p>
+<h3 id="重新标记操作一般常见的情况"><a href="#重新标记操作一般常见的情况" class="headerlink" title="重新标记操作一般常见的情况"></a>重新标记操作一般常见的情况</h3><ul>
+<li>删除不必要的指标。</li>
+<li>从指标中删除敏感或不需要的标签。</li>
+<li>添加、编辑或者修改指标的标签值或者标签格式。</li>
+</ul>
+<h3 id="一、删除不需要的指标-metric"><a href="#一、删除不需要的指标-metric" class="headerlink" title="一、删除不需要的指标(metric)"></a>一、删除不需要的指标(metric)</h3><p>Prometheus 默认会将所有拉取到的 metrics 都写入自己的存储中。如果某些 metrics 对我们并没有太多意义，可以设置直接丢掉，减少磁盘空间的浪费。例如删除 <code>go_info</code> 的指标数据。通过指标上元标签 <code>__name__</code> 引用指标名称，而后由 regex 进行匹配判定，可使用drop action删除匹配的指标，或使用keep action仅保留匹配的指标;</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">scrape_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;consul-node-exporter&#x27;</span><br>    <span class="hljs-attribute">consul_sd_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.10:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.11:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.12:8500&quot;</span><br>       <span class="hljs-attribute">datacenter</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>       <span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[]</span><br>    <span class="hljs-attribute">relabel_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_tags]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;.*node-exporter.*&quot;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">keep</span><br>    <span class="hljs-attribute">metric_relabel_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [ __name__ ]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string"> &quot;go_info&quot;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">drop</span><br><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;consul-cadvisor-exproter&#x27;</span><br>    <span class="hljs-attribute">consul_sd_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.10:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.11:8500&quot;</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">server: &quot;192.168.28.12:8500&quot;</span><br>       <span class="hljs-attribute">datacenter</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;dc1&#x27;</span><br>       <span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[]</span><br>    <span class="hljs-attribute">relabel_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_consul_tags]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;.*cadvisor-exporter.*&quot;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">keep</span><br>    <span class="hljs-attribute">metric_relabel_configs</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [ __name__ ]</span><br>       <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string"> &quot;go_info&quot;</span><br>       <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">drop</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="metric-relabel示例之删除指标"><a href="#metric-relabel示例之删除指标" class="headerlink" title="metric relabel示例之删除指标"></a>metric relabel示例之删除指标</h4><p>下面的第一个图为执行go_info为前缀的指标删除之前的查询结果，而第二个图则是删除相关指标之后的查询结果;</p>
+<ul>
+<li>提示:若删除的指标此前曾由Prometheus抓取并存储过相关的样本数据，则删除操作的 需要经过一定的时长后才会反映至查询结果中;</li>
+</ul>
+<p><img src="/images/Prometheus-config-18.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-18"></p>
+<p><img src="/images/Prometheus-config-19.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-19"></p>
+<h3 id="二、修改指标-metric-中的标签-label"><a href="#二、修改指标-metric-中的标签-label" class="headerlink" title="二、修改指标(metric) 中的标签(label)"></a>二、修改指标(metric) 中的标签(label)</h3><p>如果我们使用 Prometheus 监控 Kubernetes 运行状态；应该会遇到，在一个 <code>query</code> 中结合一个以上的<code>job_name(metric_source)</code>的情况。 不同的<code> job_name</code> 中<code>metric</code>的<code>label</code>命名可能不相同。比如：pod的名称可以使用<code>pod</code>或者 <code>pod_name</code> 这两个 <code>label</code> 记录。如果相同含义的<code>label</code>，名称却不相同；对query的编写就很困难了。至少我没有在 <code>PromQL</code> 中找到类似 <code>SQL 语句中的 as 的功能的关键词和方法</code>。 这样的话，正确的解决思路应该是在 Prometheus 拉取数据后，保存数据前；将 label 的名称进行重写；保证相同含义的 label 有相同的名称。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">metric_relabel_configs</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [pod]</span><br>  <span class="hljs-attribute">separator</span><span class="hljs-punctuation">:</span> <span class="hljs-string">;</span><br>  <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">(.+)</span><br>  <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">pod_name</span><br>  <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$1</span><br>  <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">replace</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [container]</span><br>  <span class="hljs-attribute">separator</span><span class="hljs-punctuation">:</span> <span class="hljs-string">;</span><br>  <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">(.+)</span><br>  <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">container_name</span><br>  <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$1</span><br>  <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">replace</span><br></code></pre></td></tr></table></figure>
+
+<p>如上，将指定<code>job_name</code>中，所有的<code>metrics</code>中含有名为<code>pod</code>和<code>container</code>名称的<code>label</code>分别拷贝到名为<code>pod_name</code>，<code>container_name</code>的<code>label</code>中。 注意：如果<code>metric</code> 的 <code>label</code> 的名称包含了<code>pod</code>和<code>container</code>关键词，但是不等于；则不会处理此<code>label</code>。</p>
+<h3 id="三、删除标签"><a href="#三、删除标签" class="headerlink" title="三、删除标签"></a>三、删除标签</h3><p>删除标签通常用于隐藏敏感信息或者简化时间序列。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">metric_relabel_configs</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">regex: &#x27;kernelVersion&#x27;</span><br>  <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">labeldrop</span><br></code></pre></td></tr></table></figure>
+
+<p>为了删除标签，我们指定了一个正则表达式，然后指定删除标签的操作labeldrop。 这将删除与正在表达式匹配的所有标签。</p>
+<h2 id="relabel-configs在Kubernetes中的一些用法"><a href="#relabel-configs在Kubernetes中的一些用法" class="headerlink" title="relabel_configs在Kubernetes中的一些用法"></a>relabel_configs在Kubernetes中的一些用法</h2><figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]</span><br>  <span class="hljs-attribute">separator</span><span class="hljs-punctuation">:</span> <span class="hljs-string">;</span><br>  <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Node;(.*)</span><br>  <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">node</span><br>  <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$&#123;1&#125;</span><br>  <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">replace</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">source_labels: [__meta_kubernetes_endpoint_address_target_kind, __meta_kubernetes_endpoint_address_target_name]</span><br>  <span class="hljs-attribute">separator</span><span class="hljs-punctuation">:</span> <span class="hljs-string">;</span><br>  <span class="hljs-attribute">regex</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Pod;(.*)</span><br>  <span class="hljs-attribute">target_label</span><span class="hljs-punctuation">:</span> <span class="hljs-string">pod</span><br>  <span class="hljs-attribute">replacement</span><span class="hljs-punctuation">:</span> <span class="hljs-string">$&#123;1&#125;</span><br>  <span class="hljs-attribute">action</span><span class="hljs-punctuation">:</span> <span class="hljs-string">replace</span><br></code></pre></td></tr></table></figure>
+
+<p>当<code>__meta_kubernetes_endpoint_address_target_kind</code>值是Node的时候那么他将匹配到一个<code>relabel</code>，因为正则表达式里面已经写明了一个源标签的值是Node不然匹配不到</p>
+<p><img src="/images/Prometheus-config-22.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-22"></p>
+<p>当<code>__meta_kubernetes_endpoint_address_target_kind</code>值是Pod的时候那么他将匹配到二个<code>relabel</code>，因为正则表达式里面已经写明了一个源标签的值是Pod不然匹配不到</p>
+<p><img src="/images/Prometheus-config-23.png" srcset="/img/loading.gif" lazyload alt="Prometheus-config-23"></p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Prometheus服务发现和重新打标</div>
+      <div>https://system51.github.io/2021/05/18/Prometheus-service-discovery-and-relabel-configs/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2021年5月18日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2021/05/27/PromQL/" title="探索PromQL">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">探索PromQL</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/12/25/consul-tls/" title="高可用的SSL consul cluster实践">
+                        <span class="hidden-mobile">高可用的SSL consul cluster实践</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

@@ -1,0 +1,755 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver会将用户认证为一个特定的User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与apiserver联系，当它们在联系apiserver的时候，它们会被认证为一个特定的Service Acco">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之ServiceAccount">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-ServiceAccount/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="ServiceAccount Service Account为Pod中的进程提供身份信息。当用户访问集群（例如使用kubectl命令）时，apiserver会将用户认证为一个特定的User Account（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与apiserver联系，当它们在联系apiserver的时候，它们会被认证为一个特定的Service Acco">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/serviceaccount-1.png">
+<meta property="article:published_time" content="2019-08-26T02:53:03.000Z">
+<meta property="article:modified_time" content="2020-07-03T01:49:29.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/serviceaccount-1.png">
+  
+  
+  
+  <title>Kubernetes之ServiceAccount - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes之ServiceAccount"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 10:53" pubdate>
+          2019年8月26日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          13k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          22 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes之ServiceAccount</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h3 id="ServiceAccount"><a href="#ServiceAccount" class="headerlink" title="ServiceAccount"></a>ServiceAccount</h3><blockquote>
+<p>Service Account为Pod中的进程提供身份信息。<br>当用户访问集群（例如使用kubectl命令）时，<code>apiserver</code>会将用户认证为一个特定的<code>User Account</code>（目前通常是admin，除非系统管理员自定义了集群配置）。Pod 容器中的进程也可以与<code>apiserver</code>联系，当它们在联系<code>apiserver</code>的时候，它们会被认证为一个特定的<code>Service Account</code>（例如default）。</p>
+</blockquote>
+<blockquote>
+<ul>
+<li><code>User account</code>是为人设计的，而<code>service account</code>则是为Pod中的进程调用Kubernetes API而设计；</li>
+</ul>
+</blockquote>
+<ul>
+<li><code>User account</code>是跨namespace的，而<code>service account</code>则是仅局限它所在的namespace；</li>
+<li>每个<code>namespace</code>都会自动创建一个<code>default</code> <code>service account</code></li>
+<li><code>Token controller</code>检测service account的创建，并为它们创建secret</li>
+<li>开启<code>ServiceAccount Admission Controller</code>后<ul>
+<li>每个Pod在创建后都会自动设置<code>spec.serviceAccount</code>为<code>default</code>（除非指定了其他ServiceAccout）</li>
+<li>验证Pod引用的service account已经存在，否则拒绝创建</li>
+<li>如果Pod没有指定<code>ImagePullSecrets</code>，则把service account的<code>ImagePullSecrets</code>加到Pod中</li>
+<li>每个<code>container</code>启动后都会挂载该<code>Service Account</code>的<code>token</code>和<code>ca.crt</code><br>到<code>/var/run/secrets/kubernetes.io/serviceaccount/</code></li>
+</ul>
+</li>
+</ul>
+<h3 id="使用默认的-Service-Account-访问-API-server"><a href="#使用默认的-Service-Account-访问-API-server" class="headerlink" title="使用默认的 Service Account 访问 API server"></a>使用默认的 Service Account 访问 API server</h3><blockquote>
+<p>当创建 pod 的时候，如果没有指定一个 service account，系统会自动得在与该pod 相同的 namespace 下为其指派一个default service account。如果获取刚创建的 pod 的原始 json 或 yaml 信息（例如使用kubectl get pods podename -o yaml命令），将看到spec.serviceAccountName字段已经被设置为 default。</p>
+</blockquote>
+<figure class="highlight x86asm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs x86asm">[root@k8s-master ~]# kubectl get pods<br>NAME                     READY     STATUS    RESTARTS   AGE<br>filebeat-<span class="hljs-built_in">ds</span>-hxgdx        <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">1</span>          <span class="hljs-number">34d</span><br>filebeat-<span class="hljs-built_in">ds</span>-s466l        <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">2</span>          <span class="hljs-number">34d</span><br>myapp-<span class="hljs-number">0</span>                  <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">3h</span><br>myapp-<span class="hljs-number">1</span>                  <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">3h</span><br>myapp-<span class="hljs-number">2</span>                  <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">4h</span><br>myapp-<span class="hljs-number">3</span>                  <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">4h</span><br>pod-vol-demo             <span class="hljs-number">2</span>/<span class="hljs-number">2</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">2d</span><br>redis-5b5d6fbbbd-q8ppz   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">1</span>          <span class="hljs-number">2d</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># kubectl get pods/myapp-0 -o yaml |grep &quot;serviceAccountName&quot;</span><br>  <span class="hljs-attr">serviceAccountName:</span> <span class="hljs-string">default</span><br><br>[<span class="hljs-string">root@k8s-master</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># kubectl describe pods myapp-0</span><br><span class="hljs-attr">Name:</span>               <span class="hljs-string">myapp-0</span><br><span class="hljs-attr">Namespace:</span>          <span class="hljs-string">default</span><br><span class="hljs-string">......</span><br><span class="hljs-attr">Volumes:</span><br>  <span class="hljs-string">......</span><br>  <span class="hljs-attr">default-token-j5pf5:</span><br>    <span class="hljs-attr">Type:</span>        <span class="hljs-string">Secret</span> <span class="hljs-string">(a</span> <span class="hljs-string">volume</span> <span class="hljs-string">populated</span> <span class="hljs-string">by</span> <span class="hljs-string">a</span> <span class="hljs-string">Secret)</span><br>    <span class="hljs-attr">SecretName:</span>  <span class="hljs-string">default-token-j5pf5</span><br>    <span class="hljs-attr">Optional:</span>    <span class="hljs-literal">false</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>从上面可以看到每个Pod无论定义与否都会有个存储卷，这个存储卷为default-token-*** token令牌，这就是service account是为Pod中的进程与apiserver联系提供身份认证信息。通过secret进行定义，由于认证信息属于敏感信息，所以需要保存在secret资源当中，并以存储卷的方式挂载到Pod当中。从而让Pod内运行的应用通过对应的secret中的service account来连接apiserver，并完成认证。每个 namespace 中都有一个默认的叫做 default 的 service account资源。可以使用kubectl get secret命令当前名称空间内的secret，也可以看到对应的default-token。可以使用的预制认证信息让当前名称空间中所有的pod连接至apiserver，从而保证pod与apiserver之间的通信。</p>
+</blockquote>
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@k8s</span>-master ~]<span class="hljs-meta"># kubectl get sa</span><br>NAME      SECRETS   AGE<br><span class="hljs-literal">default</span>    <span class="hljs-number">1</span>         <span class="hljs-number">50</span>d<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">~]# kubectl</span> get sa -n ingress-nginx  <span class="hljs-comment">#前期创建的ingress-nginx名称空间也存在这样的serviceaccount</span><br>NAME                           SECRETS   AGE<br>default                        <span class="hljs-number">1</span>         <span class="hljs-number">11</span>d<br>nginx-ingress-serviceaccount   <span class="hljs-number">1</span>         <span class="hljs-number">11</span>d<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">[root@k8s-master ~]# kubectl <span class="hljs-keyword">get</span> secret<br><span class="hljs-type">NAME</span>                    <span class="hljs-keyword">TYPE</span>                                  DATA      AGE<br><span class="hljs-keyword">default</span>-token-j5pf5     kubernetes.io/service-account-token   <span class="hljs-number">3</span>         <span class="hljs-number">50</span>d<br>mysecret                <span class="hljs-type">Opaque</span>                                <span class="hljs-number">2</span>         <span class="hljs-number">1</span>d<br>tomcat-ingress-secret   kubernetes.io/tls                     <span class="hljs-number">2</span>         <span class="hljs-number">10</span>d<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs stata">[root@k8s-master ~]# kubectl get secret -<span class="hljs-keyword">n</span> ingress-nginx<br>NAME                                       <span class="hljs-keyword">TYPE</span>                                  DATA      AGE<br>default-<span class="hljs-keyword">token</span>-zl49j                        kubernetes.io/service-account-<span class="hljs-keyword">token</span>   3         11d<br>nginx-ingress-serviceaccount-<span class="hljs-keyword">token</span>-mcsf4   kubernetes.io/service-account-<span class="hljs-keyword">token</span>   3         11d<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>而默认的service account 仅仅只能获取当前Pod自身的相关属性，无法观察到其他名称空间Pod的相关属性信息。如果想要扩展Pod，假设有一个Pod需要用于管理其他Pod或者是其他资源对象(例如dashboard)，是无法通过自身的名称空间的default service account进行获取其他Pod的相关属性信息的，此时就需要进行手动创建一个serviceaccount，并在创建Pod时进行定义。那么serviceaccount该如何进行定义呢？？？实际上，service accout也属于一个k8s资源，如下查看service account的定义方式：</p>
+</blockquote>
+<figure class="highlight n1ql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><code class="hljs n1ql">[root@k8s-master ~]# kubectl <span class="hljs-keyword">explain</span> sa<br>KIND:     ServiceAccount<br>VERSION:  v1<br><br>DESCRIPTION:<br>     ServiceAccount binds together: * a name, understood <span class="hljs-keyword">by</span> users, <span class="hljs-keyword">and</span> perhaps<br>     <span class="hljs-keyword">by</span> peripheral systems, <span class="hljs-keyword">for</span> an identity * a principal that can be<br>     authenticated <span class="hljs-keyword">and</span> authorized * a <span class="hljs-keyword">set</span> of secrets<br><br>FIELDS:<br>   apiVersion    &lt;<span class="hljs-keyword">string</span>&gt;<br>     APIVersion defines the versioned <span class="hljs-keyword">schema</span> of this representation of an<br>     <span class="hljs-keyword">object</span>. Servers should convert recognized schemas <span class="hljs-keyword">to</span> the latest internal<br>     <span class="hljs-keyword">value</span>, <span class="hljs-keyword">and</span> may reject unrecognized <span class="hljs-keyword">values</span>. More info:<br>     https://git.k8s.io/community/contributors/devel/api-conventions.md#resources<br><br>   automountServiceAccountToken    &lt;<span class="hljs-keyword">boolean</span>&gt;<br>     AutomountServiceAccountToken indicates whether pods running <span class="hljs-keyword">as</span> this service<br>     account should have an API token automatically mounted. Can be overridden<br>     at the pod level.<br><br>   imagePullSecrets    &lt;[]<span class="hljs-keyword">Object</span>&gt;<br>     ImagePullSecrets <span class="hljs-keyword">is</span> a list of references <span class="hljs-keyword">to</span> secrets <span class="hljs-keyword">in</span> the same <span class="hljs-keyword">namespace</span><br>     <span class="hljs-keyword">to</span> <span class="hljs-keyword">use</span> <span class="hljs-keyword">for</span> pulling <span class="hljs-keyword">any</span> images <span class="hljs-keyword">in</span> pods that reference this ServiceAccount.<br>     ImagePullSecrets are <span class="hljs-keyword">distinct</span> <span class="hljs-keyword">from</span> Secrets because Secrets can be mounted<br>     <span class="hljs-keyword">in</span> the pod, but ImagePullSecrets are only accessed <span class="hljs-keyword">by</span> the kubelet. More<br>     info:<br>     https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-<span class="hljs-keyword">on</span>-a-pod<br><br>   kind    &lt;<span class="hljs-keyword">string</span>&gt;<br>     Kind <span class="hljs-keyword">is</span> a <span class="hljs-keyword">string</span> <span class="hljs-keyword">value</span> representing the REST resource this <span class="hljs-keyword">object</span><br>     represents. Servers may <span class="hljs-keyword">infer</span> this <span class="hljs-keyword">from</span> the endpoint the client submits<br>     requests <span class="hljs-keyword">to</span>. Cannot be updated. <span class="hljs-keyword">In</span> CamelCase. More info:<br>     https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds<br><br>   metadata    &lt;<span class="hljs-keyword">Object</span>&gt;<br>     Standard <span class="hljs-keyword">object</span><span class="hljs-string">&#x27;s metadata. More info:</span><br><span class="hljs-string">     https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata</span><br><span class="hljs-string"></span><br><span class="hljs-string">   secrets    &lt;[]Object&gt;</span><br><span class="hljs-string">     Secrets is the list of secrets allowed to be used by pods running using</span><br><span class="hljs-string">     this ServiceAccount. More info:</span><br><span class="hljs-string">     https://kubernetes.io/docs/concepts/configuration/secret</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="service-account的创建"><a href="#service-account的创建" class="headerlink" title="service account的创建"></a>service account的创建</h3><figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs dts">[root@master<span class="hljs-number">-1</span> app]<span class="hljs-meta"># vim serviceaccount.yaml </span><br><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> ServiceAccount<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> admin<br><span class="hljs-symbol">  namespace:</span> default<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl apply -f serviceaccount.yaml </span><br>serviceaccount/admin created<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">[root@master<span class="hljs-number">-1</span> app]# kubectl <span class="hljs-keyword">get</span> sa<br><span class="hljs-type">NAME</span>              SECRETS   AGE<br><span class="hljs-keyword">admin</span>             <span class="hljs-number">1</span>         <span class="hljs-number">31</span>s<br><span class="hljs-keyword">default</span>           <span class="hljs-number">1</span>         <span class="hljs-number">20</span>d<br>nfs-provisioner   <span class="hljs-number">1</span>         <span class="hljs-number">18</span>d<br></code></pre></td></tr></table></figure>
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs stata">[root@master-1 <span class="hljs-keyword">app</span>]# kubectl get secret<br>NAME                          <span class="hljs-keyword">TYPE</span>                                  DATA   AGE<br>admin-<span class="hljs-keyword">token</span>-j7n8j             kubernetes.io/service-account-<span class="hljs-keyword">token</span>   3      27m<br>default-<span class="hljs-keyword">token</span>-zmv4x           kubernetes.io/service-account-<span class="hljs-keyword">token</span>   3      20d<br>mysecret                      Opaque                                2      19d<br>nfs-provisioner-<span class="hljs-keyword">token</span>-xjn7p   kubernetes.io/service-account-<span class="hljs-keyword">token</span>   3      18d<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs dts">[root@master<span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl get sa admin -o yaml</span><br><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> ServiceAccount<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  annotations:</span><br>    kubectl.kubernetes.io/last-applied-configuration: |<br>      <span class="hljs-punctuation">&#123;</span><span class="hljs-string">&quot;apiVersion&quot;</span>:<span class="hljs-string">&quot;v1&quot;</span>,<span class="hljs-string">&quot;kind&quot;</span>:<span class="hljs-string">&quot;ServiceAccount&quot;</span>,<span class="hljs-string">&quot;metadata&quot;</span>:<span class="hljs-punctuation">&#123;</span><span class="hljs-string">&quot;annotations&quot;</span>:<span class="hljs-punctuation">&#123;</span><span class="hljs-punctuation">&#125;</span>,<span class="hljs-string">&quot;name&quot;</span>:<span class="hljs-string">&quot;admin&quot;</span>,<span class="hljs-string">&quot;namespace&quot;</span>:<span class="hljs-string">&quot;default&quot;</span><span class="hljs-punctuation">&#125;</span><span class="hljs-punctuation">&#125;</span><br><span class="hljs-symbol">  creationTimestamp:</span> <span class="hljs-string">&quot;2019-02-12T03:07:07Z&quot;</span><br><span class="hljs-symbol">  name:</span> admin<br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">  resourceVersion:</span> <span class="hljs-string">&quot;2606053&quot;</span><br><span class="hljs-symbol">  selfLink:</span> <span class="hljs-keyword">/api/</span>v1<span class="hljs-keyword">/namespaces/</span>default<span class="hljs-keyword">/serviceaccounts/</span>admin<br><span class="hljs-symbol">  uid:</span> <span class="hljs-number">48250903</span><span class="hljs-number">-2e73</span><span class="hljs-number">-11e9</span>-a8c7-d8490b8af3ae<br><span class="hljs-symbol">secrets:</span><br>- name: admin-token-j7n8j<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>看到有一个 token 已经被自动创建，只需要在 pod 的spec.serviceAccountName 字段中将name设置为您想要用的 service account 名字即可。在 pod 创建之初 service account 就必须已经存在，否则创建将被拒绝。需要注意的是不能更新已创建的 pod 的 service account。</p>
+</blockquote>
+<h3 id="serviceaccount的自定义使用"><a href="#serviceaccount的自定义使用" class="headerlink" title="serviceaccount的自定义使用"></a>serviceaccount的自定义使用</h3><blockquote>
+<p>这里在default名称空间创建了一个serviceaccount为admin，可以看到已经自动生成了一个Tokens：admin-token-j7n8j，下面展示如何使用自定义的serviceaccount</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># vim pod-sa-demo.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">pod-sa-demo</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attr">tier:</span> <span class="hljs-string">frontend</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">ikubernetes/myapp:v1</span><br>    <span class="hljs-attr">ports:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http</span><br>      <span class="hljs-attr">containerPort:</span> <span class="hljs-number">80</span><br>  <span class="hljs-attr">serviceAccountName:</span> <span class="hljs-string">admin</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs stata">[root@master-1 <span class="hljs-keyword">app</span>]# kubectl apply -f pod-<span class="hljs-keyword">sa</span>-demo.yaml <br>pod/pod-<span class="hljs-keyword">sa</span>-demo created<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc">[root@master-1 app]# kubectl describe pods pod-sa-demo<br><span class="hljs-code">......</span><br><span class="hljs-code">Volumes:</span><br><span class="hljs-code">  admin-token-j7n8j:</span><br><span class="hljs-code">    Type:        Secret (a volume populated by a Secret)</span><br><span class="hljs-code">    SecretName:  admin-token-j7n8j</span><br><span class="hljs-code">    Optional:    false</span><br><span class="hljs-code">......</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="User-Account的定义及使用："><a href="#User-Account的定义及使用：" class="headerlink" title="User Account的定义及使用："></a>User Account的定义及使用：</h3><blockquote>
+<p>在K8S集群当中，每一个用户对资源的访问都是需要通过apiserver进行通信认证才能进行访问的，那么在此机制当中，对资源的访问可以是token，也可以是通过配置文件的方式进行保存和使用认证信息，kubectl命令行工具使用kubeconfig文件来查找选择群集并与群集的APIserver进行通信。可以通过kubectl config进行查看编辑kubeconfig配置文件，配置文件路径$HOME&#x2F;.kube&#x2F;config文件，eg：&#x2F;root&#x2F;.kube&#x2F;config 如下：</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master</span> <span class="hljs-string">mainfests</span>]<span class="hljs-comment"># kubectl config view</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">clusters:</span>  <span class="hljs-comment">#集群列表</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">cluster:</span><br>    <span class="hljs-attr">certificate-authority-data:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attr">server:</span> <span class="hljs-string">https://192.168.56.11:6443</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes</span><br><span class="hljs-attr">contexts:</span>  <span class="hljs-comment">#上下文列表</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">context:</span> <span class="hljs-comment">#定义哪个集群被哪个用户访问</span><br>    <span class="hljs-attr">cluster:</span> <span class="hljs-string">kubernetes</span><br>    <span class="hljs-attr">user:</span> <span class="hljs-string">kubernetes-admin</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes-admin@kubernetes</span><br><span class="hljs-attr">current-context:</span> <span class="hljs-string">kubernetes-admin@kubernetes</span>  <span class="hljs-comment">#当前上下文</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Config</span><br><span class="hljs-attr">preferences:</span> &#123;&#125;<br><span class="hljs-attr">users:</span>   <span class="hljs-comment">#用户列表</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes-admin</span><br>  <span class="hljs-attr">user:</span><br>    <span class="hljs-attr">client-certificate-data:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attr">client-key-data:</span> <span class="hljs-string">REDACTED</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<blockquote>
+<p>在上面的配置文件当中，定义了集群、上下文以及用户。其中Config也是K8S的标准资源之一，在该配置文件当中定义了一个集群列表，指定的集群可以有多个；用户列表也可以有多个，指明集群中的用户；而在上下文列表当中，是进行定义可以使用哪个用户对哪个集群进行访问，以及当前使用的上下文是什么。如图：定义了用户kubernetes-admin可以对kubernetes该集群的访问，用户kubernetes-user1对Cluster1集群的访问。</p>
+</blockquote>
+<p><img src="/images/serviceaccount-1.png" srcset="/img/loading.gif" lazyload alt="serviceaccount-1"></p>
+<h3 id="自建证书和账号进行访问apiserver演示"><a href="#自建证书和账号进行访问apiserver演示" class="headerlink" title="自建证书和账号进行访问apiserver演示"></a>自建证书和账号进行访问apiserver演示</h3><h4 id="注意：此步骤在-etc-kubernetes-pki路径下执行，因为需要用到Kubernetes-CA证书。"><a href="#注意：此步骤在-etc-kubernetes-pki路径下执行，因为需要用到Kubernetes-CA证书。" class="headerlink" title="注意：此步骤在/etc/kubernetes/pki路径下执行，因为需要用到Kubernetes CA证书。"></a>注意：此步骤在<code>/etc/kubernetes/pki</code>路径下执行，因为需要用到Kubernetes CA证书。</h4><h4 id="（1）生成证书"><a href="#（1）生成证书" class="headerlink" title="（1）生成证书"></a>（1）生成证书</h4><figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs csharp">[<span class="hljs-meta">root@k8s-master pki</span>]<span class="hljs-meta"># (umask 077;openssl genrsa -out magedu.key 2048)</span><br>Generating RSA <span class="hljs-keyword">private</span> key, <span class="hljs-number">2048</span> bit <span class="hljs-built_in">long</span> modulus<br>............................................................................................+++<br>...................................................................................+++<br>e <span class="hljs-keyword">is</span> <span class="hljs-number">65537</span> (<span class="hljs-number">0x10001</span>)<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">pki</span>]<span class="hljs-comment"># ll magedu.key </span><br>-rw------- <span class="hljs-number">1</span> root root <span class="hljs-number">1675</span> Oct <span class="hljs-number">12</span> <span class="hljs-number">23</span>:<span class="hljs-number">52</span> magedu.key<br><br></code></pre></td></tr></table></figure>
+<h4 id="（2）使用ca-crt进行签署"><a href="#（2）使用ca-crt进行签署" class="headerlink" title="（2）使用ca.crt进行签署"></a>（2）使用ca.crt进行签署</h4><figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">pki</span>]<span class="hljs-comment"># openssl req -new -key magedu.key -out magedu.csr -subj &quot;/CN=magedu&quot;  证书签署请求(CN表示用户名，O表示组)</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs stata">[root@k8s-master pki]# openssl x509 -req -<span class="hljs-keyword">in</span> magedu.csr -<span class="hljs-keyword">CA</span> ./<span class="hljs-keyword">ca</span>.crt -CAkey ./<span class="hljs-keyword">ca</span>.key -CAcreateserial -<span class="hljs-keyword">out</span> magedu.crt -days 365  #证书签署<br>Signature ok<br>subject=/CN=magedu<br>Getting <span class="hljs-keyword">CA</span> Private Key<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">pki</span>]<span class="hljs-comment"># openssl x509 -in magedu.crt -text -noout</span><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="（3）添加到用户认证"><a href="#（3）添加到用户认证" class="headerlink" title="（3）添加到用户认证"></a>（3）添加到用户认证</h4><figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[root@k8s-master pki]# kubectl<span class="hljs-built_in"> config </span>set-credentials magedu <span class="hljs-attribute">--client-certificate</span>=./magedu.crt <span class="hljs-attribute">--client-key</span>=./magedu.key <span class="hljs-attribute">--embed-certs</span>=<span class="hljs-literal">true</span><span class="hljs-built_in"></span><br><span class="hljs-built_in">User </span><span class="hljs-string">&quot;magedu&quot;</span> set.<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">pki</span>]<span class="hljs-comment"># kubectl config set-context magedu@kubernetes --cluster=kubernetes --user=magedu</span><br>Context <span class="hljs-string">&quot;magedu@kubernetes&quot;</span> created.<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># kubectl config view</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">clusters:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">cluster:</span><br>    <span class="hljs-attr">certificate-authority-data:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attr">server:</span> <span class="hljs-string">https://192.168.56.11:6443</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes</span><br><span class="hljs-attr">contexts:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">context:</span><br>    <span class="hljs-attr">cluster:</span> <span class="hljs-string">kubernetes</span><br>    <span class="hljs-attr">user:</span> <span class="hljs-string">kubernetes-admin</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes-admin@kubernetes</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">context:</span><br>    <span class="hljs-attr">cluster:</span> <span class="hljs-string">kubernetes</span><br>    <span class="hljs-attr">user:</span> <span class="hljs-string">magedu</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">magedu@kubernetes</span><br><span class="hljs-attr">current-context:</span> <span class="hljs-string">kubernetes-admin@kubernetes</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Config</span><br><span class="hljs-attr">preferences:</span> &#123;&#125;<br><span class="hljs-attr">users:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">kubernetes-admin</span><br>  <span class="hljs-attr">user:</span><br>    <span class="hljs-attr">client-certificate-data:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attr">client-key-data:</span> <span class="hljs-string">REDACTED</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">magedu</span><br>  <span class="hljs-attr">user:</span><br>    <span class="hljs-attr">client-certificate-data:</span> <span class="hljs-string">REDACTED</span><br>    <span class="hljs-attr">client-key-data:</span> <span class="hljs-string">REDACTED</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">pki</span>]<span class="hljs-comment"># kubectl config use-context magedu@kubernetes</span><br>Switched to context <span class="hljs-string">&quot;magedu@kubernetes&quot;</span>.<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[root@k8s-master pki]# kubectl <span class="hljs-built_in">get</span> pods<br><span class="hljs-literal">No</span> resources found.<br><span class="hljs-built_in">Error</span> <span class="hljs-keyword">from</span><span class="hljs-built_in"> server </span>(Forbidden): pods is forbidden:<span class="hljs-built_in"> User </span><span class="hljs-string">&quot;magedu&quot;</span> cannot list pods <span class="hljs-keyword">in</span> the namespace <span class="hljs-string">&quot;default&quot;</span><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="（4）删除用户"><a href="#（4）删除用户" class="headerlink" title="（4）删除用户"></a>（4）删除用户</h4><figure class="highlight coffeescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs coffeescript">[root@k8s-master pki]<span class="hljs-comment">#  kubectl config delete-context yedong@kubernetes</span><br>deleted context yedong@kubernetes <span class="hljs-keyword">from</span> <span class="hljs-regexp">/root/</span>.kube/config<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">pki</span>]<span class="hljs-comment"># kubectl config unset users.yedong</span><br><span class="hljs-keyword">Property</span><span class="hljs-title"> </span><span class="hljs-string">&quot;users.yedong&quot;</span> unset.<br></code></pre></td></tr></table></figure>
+
+
+
+<blockquote>
+<p>从上面的演示，当切换成magedu用户进行访问集群时，由于magedu该账户没有管理集群的权限，所以在获取pods资源信息时，会提示Forrbidden。那么下面就再来了解一下怎么对账户进行授权！！！</p>
+</blockquote>
+<h3 id="kubernetes小技巧："><a href="#kubernetes小技巧：" class="headerlink" title="kubernetes小技巧："></a>kubernetes小技巧：</h3><figure class="highlight n1ql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br></pre></td><td class="code"><pre><code class="hljs n1ql">[root@master-1 pki]# kubectl <span class="hljs-keyword">create</span> --help<br><span class="hljs-keyword">Create</span> a resource <span class="hljs-keyword">from</span> a file <span class="hljs-keyword">or</span> <span class="hljs-keyword">from</span> stdin. <br><br>JSON <span class="hljs-keyword">and</span> YAML formats are accepted.<br><br>Examples:<br>  # <span class="hljs-keyword">Create</span> a pod <span class="hljs-keyword">using</span> the data <span class="hljs-keyword">in</span> pod.json.<br>  kubectl <span class="hljs-keyword">create</span> -f ./pod.json<br>  <br>  # <span class="hljs-keyword">Create</span> a pod based <span class="hljs-keyword">on</span> the JSON passed <span class="hljs-keyword">into</span> stdin.<br>  cat pod.json | kubectl <span class="hljs-keyword">create</span> -f -<br>  <br>  # Edit the data <span class="hljs-keyword">in</span> docker-registry.yaml <span class="hljs-keyword">in</span> JSON <span class="hljs-keyword">then</span> <span class="hljs-keyword">create</span> the resource <span class="hljs-keyword">using</span> the edited data.<br>  kubectl <span class="hljs-keyword">create</span> -f docker-registry.yaml --edit -o json<br><br>Available Commands:<br>  clusterrole         <span class="hljs-keyword">Create</span> a ClusterRole.<br>  clusterrolebinding  <span class="hljs-keyword">Create</span> a ClusterRoleBinding <span class="hljs-keyword">for</span> a particular ClusterRole<br>  configmap           <span class="hljs-keyword">Create</span> a configmap <span class="hljs-keyword">from</span> a local file, directory <span class="hljs-keyword">or</span> literal <span class="hljs-keyword">value</span><br>  deployment          <span class="hljs-keyword">Create</span> a deployment <span class="hljs-keyword">with</span> the specified name.<br>  job                 <span class="hljs-keyword">Create</span> a job <span class="hljs-keyword">with</span> the specified name.<br>  <span class="hljs-keyword">namespace</span>           <span class="hljs-keyword">Create</span> a <span class="hljs-keyword">namespace</span> <span class="hljs-keyword">with</span> the specified name<br>  poddisruptionbudget <span class="hljs-keyword">Create</span> a pod disruption budget <span class="hljs-keyword">with</span> the specified name.<br>  priorityclass       <span class="hljs-keyword">Create</span> a priorityclass <span class="hljs-keyword">with</span> the specified name.<br>  quota               <span class="hljs-keyword">Create</span> a quota <span class="hljs-keyword">with</span> the specified name.<br>  <span class="hljs-keyword">role</span>                <span class="hljs-keyword">Create</span> a <span class="hljs-keyword">role</span> <span class="hljs-keyword">with</span> single rule.<br>  rolebinding         <span class="hljs-keyword">Create</span> a RoleBinding <span class="hljs-keyword">for</span> a particular <span class="hljs-keyword">Role</span> <span class="hljs-keyword">or</span> ClusterRole<br>  secret              <span class="hljs-keyword">Create</span> a secret <span class="hljs-keyword">using</span> specified subcommand<br>  service             <span class="hljs-keyword">Create</span> a service <span class="hljs-keyword">using</span> specified subcommand.<br>  serviceaccount      <span class="hljs-keyword">Create</span> a service account <span class="hljs-keyword">with</span> the specified name<br><br>Options:<br>      --allow-<span class="hljs-literal">missing</span>-template-<span class="hljs-keyword">keys</span>=<span class="hljs-literal">true</span>: <span class="hljs-keyword">If</span> <span class="hljs-literal">true</span>, <span class="hljs-keyword">ignore</span> <span class="hljs-keyword">any</span> errors <span class="hljs-keyword">in</span> templates <span class="hljs-keyword">when</span> a field <span class="hljs-keyword">or</span> <span class="hljs-keyword">map</span> <span class="hljs-keyword">key</span> <span class="hljs-keyword">is</span> <span class="hljs-literal">missing</span> <span class="hljs-keyword">in</span><br>the template. Only applies <span class="hljs-keyword">to</span> golang <span class="hljs-keyword">and</span> jsonpath output formats.<br>      --dry-run=<span class="hljs-literal">false</span>: <span class="hljs-keyword">If</span> <span class="hljs-literal">true</span>, only print the <span class="hljs-keyword">object</span> that would be sent, without sending it.<br>      --edit=<span class="hljs-literal">false</span>: Edit the API resource before creating<br>  -f, --filename=[]: Filename, directory, <span class="hljs-keyword">or</span> URL <span class="hljs-keyword">to</span> files <span class="hljs-keyword">to</span> <span class="hljs-keyword">use</span> <span class="hljs-keyword">to</span> <span class="hljs-keyword">create</span> the resource<br>  -o, --output=<span class="hljs-string">&#x27;&#x27;</span>: Output format. One of:<br>json|yaml|name|go-template|go-template-file|template|templatefile|jsonpath|jsonpath-file.<br>      --<span class="hljs-keyword">raw</span>=<span class="hljs-string">&#x27;&#x27;</span>: <span class="hljs-keyword">Raw</span> URI <span class="hljs-keyword">to</span> POST <span class="hljs-keyword">to</span> the server.  Uses the transport specified <span class="hljs-keyword">by</span> the kubeconfig file.<br>      --record=<span class="hljs-literal">false</span>: Record current kubectl command <span class="hljs-keyword">in</span> the resource annotation. <span class="hljs-keyword">If</span> <span class="hljs-keyword">set</span> <span class="hljs-keyword">to</span> <span class="hljs-literal">false</span>, <span class="hljs-keyword">do</span> <span class="hljs-keyword">not</span> record the<br>command. <span class="hljs-keyword">If</span> <span class="hljs-keyword">set</span> <span class="hljs-keyword">to</span> <span class="hljs-literal">true</span>, record the command. <span class="hljs-keyword">If</span> <span class="hljs-keyword">not</span> <span class="hljs-keyword">set</span>, default <span class="hljs-keyword">to</span> updating the existing annotation <span class="hljs-keyword">value</span> only <span class="hljs-keyword">if</span> one<br>already <span class="hljs-keyword">exists</span>.<br>  -R, --recursive=<span class="hljs-literal">false</span>: Process the directory used <span class="hljs-keyword">in</span> -f, --filename recursively. Useful <span class="hljs-keyword">when</span> you want <span class="hljs-keyword">to</span> manage<br>related manifests organized <span class="hljs-keyword">within</span> the same directory.<br>      --save-config=<span class="hljs-literal">false</span>: <span class="hljs-keyword">If</span> <span class="hljs-literal">true</span>, the configuration of current <span class="hljs-keyword">object</span> will be saved <span class="hljs-keyword">in</span> its annotation. Otherwise, the<br>annotation will be unchanged. This flag <span class="hljs-keyword">is</span> useful <span class="hljs-keyword">when</span> you want <span class="hljs-keyword">to</span> perform kubectl apply <span class="hljs-keyword">on</span> this <span class="hljs-keyword">object</span> <span class="hljs-keyword">in</span> the future.<br>  -l, --selector=<span class="hljs-string">&#x27;&#x27;</span>: Selector (label query) <span class="hljs-keyword">to</span> filter <span class="hljs-keyword">on</span>, supports <span class="hljs-string">&#x27;=&#x27;</span>, <span class="hljs-string">&#x27;==&#x27;</span>, <span class="hljs-keyword">and</span> <span class="hljs-string">&#x27;!=&#x27;</span>.(<span class="hljs-built_in">e</span>.g. -l key1=value1,key2=value2)<br>      --template=<span class="hljs-string">&#x27;&#x27;</span>: Template <span class="hljs-keyword">string</span> <span class="hljs-keyword">or</span> <span class="hljs-keyword">path</span> <span class="hljs-keyword">to</span> template file <span class="hljs-keyword">to</span> <span class="hljs-keyword">use</span> <span class="hljs-keyword">when</span> -o=go-template, -o=go-template-file. The<br>template format <span class="hljs-keyword">is</span> golang templates [http://golang.org/pkg/text/template/#pkg-overview].<br>      --<span class="hljs-keyword">validate</span>=<span class="hljs-literal">true</span>: <span class="hljs-keyword">If</span> <span class="hljs-literal">true</span>, <span class="hljs-keyword">use</span> a <span class="hljs-keyword">schema</span> <span class="hljs-keyword">to</span> <span class="hljs-keyword">validate</span> the input before sending it<br>      --windows-line-endings=<span class="hljs-literal">false</span>: Only relevant <span class="hljs-keyword">if</span> --edit=<span class="hljs-literal">true</span>. Defaults <span class="hljs-keyword">to</span> the line ending native <span class="hljs-keyword">to</span> your platform.<br><br>Usage:<br>  kubectl <span class="hljs-keyword">create</span> -f FILENAME [options]<br><br><span class="hljs-keyword">Use</span> <span class="hljs-string">&quot;kubectl &lt;command&gt; --help&quot;</span> <span class="hljs-keyword">for</span> more information about a given command.<br><span class="hljs-keyword">Use</span> <span class="hljs-string">&quot;kubectl options&quot;</span> <span class="hljs-keyword">for</span> a list of global command-line options (applies <span class="hljs-keyword">to</span> <span class="hljs-keyword">all</span> commands).<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>注释：只要支持用kubectl create创建的资源都可以用 <code>--dry-run</code>（单跑模式）并不会真正的执行，只会测试是否能创建成功，可以使用 -o yaml 导出配置文件非常方便。</p>
+</blockquote>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes之ServiceAccount</div>
+      <div>https://system51.github.io/2019/08/26/Kubernetes-ServiceAccount/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-CFSSL/" title="Kubernetes证书相关(CFSSL)">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes证书相关(CFSSL)</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-statefulset/" title="Kubernetes之statefulset控制器">
+                        <span class="hidden-mobile">Kubernetes之statefulset控制器</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

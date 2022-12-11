@@ -1,0 +1,697 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="Kubernetes 常用资源:我将它们简单的分类为以下几种资源对象：   类别 名称    工作负载型资源对象 Pod、ReplicaSet、Replication Controller、Deployment、StatefulSet、DaemonSet、Job、CronJob   服务发现及负载均衡 Service、Ingress   配置与存储 Volume、Persistent Volume">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubenetes 资源清单定义入门">
+<meta property="og:url" content="https://system51.github.io/2019/08/23/Kubenetes-Resource/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Kubernetes 常用资源:我将它们简单的分类为以下几种资源对象：   类别 名称    工作负载型资源对象 Pod、ReplicaSet、Replication Controller、Deployment、StatefulSet、DaemonSet、Job、CronJob   服务发现及负载均衡 Service、Ingress   配置与存储 Volume、Persistent Volume">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-08-23T01:37:28.000Z">
+<meta property="article:modified_time" content="2019-09-06T02:05:52.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>Kubenetes 资源清单定义入门 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubenetes 资源清单定义入门"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-23 09:37" pubdate>
+          2019年8月23日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          5.3k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          9 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubenetes 资源清单定义入门</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h3 id="Kubernetes-常用资源"><a href="#Kubernetes-常用资源" class="headerlink" title="Kubernetes 常用资源:"></a>Kubernetes 常用资源:</h3><h4 id="我将它们简单的分类为以下几种资源对象："><a href="#我将它们简单的分类为以下几种资源对象：" class="headerlink" title="我将它们简单的分类为以下几种资源对象："></a>我将它们简单的分类为以下几种资源对象：</h4><table>
+<thead>
+<tr>
+<th>类别</th>
+<th>名称</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>工作负载型资源对象</td>
+<td>Pod、ReplicaSet、Replication Controller、Deployment、StatefulSet、DaemonSet、Job、CronJob</td>
+</tr>
+<tr>
+<td>服务发现及负载均衡</td>
+<td>Service、Ingress</td>
+</tr>
+<tr>
+<td>配置与存储</td>
+<td>Volume、Persistent Volume、CSl 、 configmap、secret 、DownwardAPI</td>
+</tr>
+<tr>
+<td>集群资源</td>
+<td>Namespace、Node、Role、ClusterRole、RoleBinding、ClusterRoleBinding</td>
+</tr>
+<tr>
+<td>元数据资源</td>
+<td>HPA、PodTemplate、LimitRange</td>
+</tr>
+</tbody></table>
+<h4 id="利用命令获取一个Pod的资源清单内容并输出为yaml格式："><a href="#利用命令获取一个Pod的资源清单内容并输出为yaml格式：" class="headerlink" title="利用命令获取一个Pod的资源清单内容并输出为yaml格式："></a>利用命令获取一个Pod的资源清单内容并输出为yaml格式：</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@master</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># kubectl get pods nginx-deployment-67594d6bf6-8w947 -n kube-system -o yaml</span><br><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span>     <span class="hljs-comment"># K8S API版本，应该由两部分组成：group/version，group省略表示默认为core </span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span>           <span class="hljs-comment"># 资源类别： Pod、Deployment、Service等等</span><br><span class="hljs-attr">metadata:</span>          <span class="hljs-comment"># 资源元数据</span><br>  <span class="hljs-attr">creationTimestamp:</span> <span class="hljs-number">2018-09-27T06:29:25Z</span><br>  <span class="hljs-attr">generateName:</span> <span class="hljs-string">nginx-deployment-67594d6bf6-</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">nginx</span><br>    <span class="hljs-attr">pod-template-hash:</span> <span class="hljs-string">&quot;2315082692&quot;</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-deployment-67594d6bf6-8w947</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br>  <span class="hljs-attr">ownerReferences:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span><br>    <span class="hljs-attr">blockOwnerDeletion:</span> <span class="hljs-literal">true</span><br>    <span class="hljs-attr">controller:</span> <span class="hljs-literal">true</span><br>    <span class="hljs-attr">kind:</span> <span class="hljs-string">ReplicaSet</span><br>    <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-deployment-67594d6bf6</span><br>    <span class="hljs-attr">uid:</span> <span class="hljs-string">ceebf775-acef-11e8-b183-d8490b8af3ae</span><br>  <span class="hljs-attr">resourceVersion:</span> <span class="hljs-string">&quot;5070139&quot;</span><br>  <span class="hljs-attr">selfLink:</span> <span class="hljs-string">/api/v1/namespaces/kube-system/pods/nginx-deployment-67594d6bf6-8w947</span><br>  <span class="hljs-attr">uid:</span> <span class="hljs-string">adca27df-c21e-11e8-8dd6-d8490b8af3ae</span><br><span class="hljs-attr">spec:</span>     <span class="hljs-comment"># specifications, 资源规格。（定义资源对象期望的状态），这个是最重要的字段，用于规定接下来要创建的资源对象应该拥有的特性。然后依靠控制器确保这些特性能够被满足。</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:1.7.9</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>    <span class="hljs-attr">name:</span> <span class="hljs-string">nginx</span><br>    <span class="hljs-attr">ports:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">containerPort:</span> <span class="hljs-number">80</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>    <span class="hljs-attr">resources:</span> &#123;&#125;<br>    <span class="hljs-attr">terminationMessagePath:</span> <span class="hljs-string">/dev/termination-log</span><br>    <span class="hljs-attr">terminationMessagePolicy:</span> <span class="hljs-string">File</span><br>  <span class="hljs-attr">dnsPolicy:</span> <span class="hljs-string">ClusterFirst</span><br>  <span class="hljs-attr">nodeName:</span> <span class="hljs-string">node1</span><br>  <span class="hljs-attr">restartPolicy:</span> <span class="hljs-string">Always</span><br>  <span class="hljs-attr">schedulerName:</span> <span class="hljs-string">default-scheduler</span><br>  <span class="hljs-attr">securityContext:</span> &#123;&#125;<br>  <span class="hljs-attr">terminationGracePeriodSeconds:</span> <span class="hljs-number">30</span><br><span class="hljs-attr">status:</span>       <span class="hljs-comment"># 用于显示这个资源对象当前的状态，这个字段是只读的。</span><br>  <span class="hljs-attr">conditions:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">lastProbeTime:</span> <span class="hljs-literal">null</span><br>    <span class="hljs-attr">lastTransitionTime:</span> <span class="hljs-number">2018-09-27T06:30:35Z</span><br>    <span class="hljs-attr">status:</span> <span class="hljs-string">&quot;True&quot;</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">Initialized</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">lastProbeTime:</span> <span class="hljs-literal">null</span><br>    <span class="hljs-attr">lastTransitionTime:</span> <span class="hljs-number">2018-09-27T06:30:37Z</span><br>    <span class="hljs-attr">status:</span> <span class="hljs-string">&quot;True&quot;</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">Ready</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">lastProbeTime:</span> <span class="hljs-literal">null</span><br>    <span class="hljs-attr">lastTransitionTime:</span> <span class="hljs-literal">null</span><br>    <span class="hljs-attr">status:</span> <span class="hljs-string">&quot;True&quot;</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">ContainersReady</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">lastProbeTime:</span> <span class="hljs-literal">null</span><br>    <span class="hljs-attr">lastTransitionTime:</span> <span class="hljs-number">2018-09-27T06:29:25Z</span><br>    <span class="hljs-attr">status:</span> <span class="hljs-string">&quot;True&quot;</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">PodScheduled</span><br>  <span class="hljs-attr">containerStatuses:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">containerID:</span> <span class="hljs-string">docker://3e1b5e5f2590bf50d04c98540c937b3d3bf9ea4ffb6a5a08979ac0914f161e49</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:1.7.9</span><br>    <span class="hljs-attr">imageID:</span> <span class="hljs-string">docker-pullable://nginx@sha256:e3456c851a152494c3e4ff5fcc26f240206abac0c9d794affb40e0714846c451</span><br>    <span class="hljs-attr">lastState:</span> &#123;&#125;<br>    <span class="hljs-attr">name:</span> <span class="hljs-string">nginx</span><br>    <span class="hljs-attr">ready:</span> <span class="hljs-literal">true</span><br>    <span class="hljs-attr">restartCount:</span> <span class="hljs-number">0</span><br>    <span class="hljs-attr">state:</span><br>      <span class="hljs-attr">running:</span><br>        <span class="hljs-attr">startedAt:</span> <span class="hljs-number">2018-09-27T06:30:36Z</span><br>  <span class="hljs-attr">hostIP:</span> <span class="hljs-number">172.19</span><span class="hljs-number">.0</span><span class="hljs-number">.204</span><br>  <span class="hljs-attr">phase:</span> <span class="hljs-string">Running</span><br>  <span class="hljs-attr">podIP:</span> <span class="hljs-number">10.1</span><span class="hljs-number">.35</span><span class="hljs-number">.2</span><br>  <span class="hljs-attr">qosClass:</span> <span class="hljs-string">BestEffort</span><br>  <span class="hljs-attr">startTime:</span> <span class="hljs-number">2018-09-27T06:30:35Z</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="缺少部分："><a href="#缺少部分：" class="headerlink" title="缺少部分："></a>缺少部分：</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">tolerations:</span>        <span class="hljs-comment"># 容忍度，能够容忍哪些污点</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">effect:</span> <span class="hljs-string">NoExecute</span><br>  <span class="hljs-attr">key:</span> <span class="hljs-string">node.kubernetes.io/not-ready</span><br>  <span class="hljs-attr">operator:</span> <span class="hljs-string">Exists</span><br>  <span class="hljs-attr">tolerationSeconds:</span> <span class="hljs-number">300</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">effect:</span> <span class="hljs-string">NoExecute</span><br>  <span class="hljs-attr">key:</span> <span class="hljs-string">node.kubernetes.io/unreachable</span><br>  <span class="hljs-attr">operator:</span> <span class="hljs-string">Exists</span><br>  <span class="hljs-attr">tolerationSeconds:</span> <span class="hljs-number">300</span><br><span class="hljs-attr">volumes:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">default-token-rqmtb</span><br>  <span class="hljs-attr">secret:</span><br>    <span class="hljs-attr">defaultMode:</span> <span class="hljs-number">420</span><br>    <span class="hljs-attr">secretName:</span> <span class="hljs-string">default-token-rqmtb</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="创建资源清单的方法："><a href="#创建资源清单的方法：" class="headerlink" title="创建资源清单的方法："></a>创建资源清单的方法：</h3><figure class="highlight mipsasm"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs mipsasm">apiserver 仅接受<span class="hljs-keyword">JOSN格式的资源定义</span><br><span class="hljs-keyword"></span>yaml格式提供配置清单，apiserver自动转成<span class="hljs-keyword">json格式，然后在提交</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="大部分资源的配置清单："><a href="#大部分资源的配置清单：" class="headerlink" title="大部分资源的配置清单："></a>大部分资源的配置清单：</h3><figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs pf">apiVersion: 格式：<span class="hljs-keyword">group</span>/version 查看 kubectl apiversion<br>kind: Pod Replicaset Deployments ...<br>metadata: name namespace labels annotations<br>spec: 定义用户期望状态 disired <span class="hljs-keyword">state</span><br>status: 定义当前状态 current <span class="hljs-keyword">state</span> 该字段由kubenetes集群维护；<br></code></pre></td></tr></table></figure>
+
+<h3 id="配置清单格式："><a href="#配置清单格式：" class="headerlink" title="配置清单格式："></a>配置清单格式：</h3><figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs pf">apiVersion: v1     <span class="hljs-comment"># kubectl api-versions（查看命令）</span><br><br>kind: 资源类别（Pod Replicaset Deployments ...）<br><br>metadata: 元数据<br>    name: 资源名称<br>    namespace: 名称空间<br>    labels: 标签，键值数据。数据大小有限制。<br>    annotations: 注解，也是键值数据，但是它的数据没有大小限制。<br><br>spec: 期望的状态，disired <span class="hljs-keyword">state</span>，由用户定义，最重要。每种资源支持的字段不一样。<br>status: 当前状态，current <span class="hljs-keyword">state</span>, 本字段由K8S集群维护。<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="通过命令查看如何定义资源-标有-required-意味是必填项"><a href="#通过命令查看如何定义资源-标有-required-意味是必填项" class="headerlink" title="通过命令查看如何定义资源 (标有 required 意味是必填项)"></a>通过命令查看如何定义资源 (标有 required 意味是必填项)</h3><h4 id="kubectl-explain-命令语法："><a href="#kubectl-explain-命令语法：" class="headerlink" title="kubectl explain 命令语法："></a>kubectl explain 命令语法：</h4><figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">kubectl <span class="hljs-keyword">explain</span> RESOURCE [<span class="hljs-keyword">options</span>]<br></code></pre></td></tr></table></figure>
+
+<h4 id="示例："><a href="#示例：" class="headerlink" title="示例："></a>示例：</h4><figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs crmsh"><span class="hljs-comment">#获取pods资源及其字段的文档</span><br>kubectl explain pods<br><br><span class="hljs-comment">#获取pods资源的特定字段的文档（只要字段后面有&lt;Object&gt;关键字就表示有二级字段）</span><br>kubectl explain pods.<span class="hljs-keyword">spec</span>.containers<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight gauss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><code class="hljs gauss">[root<span class="hljs-comment">@master app]# kubectl explain pod             查看如何定义pod</span><br><span class="hljs-comment">KIND:     Pod</span><br><span class="hljs-comment">VERSION:  v1</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">DESCRIPTION:</span><br><span class="hljs-comment">     Pod is a collection of containers that can run on a host. This resource is</span><br><span class="hljs-comment">     created by clients and scheduled onto hosts.</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">FIELDS:</span><br><span class="hljs-comment">   apiVersion   &lt;string&gt;</span><br><span class="hljs-comment">     APIVersion defines the versioned schema of this representation of an</span><br><span class="hljs-comment">     object. Servers should convert recognized schemas to the latest internal</span><br><span class="hljs-comment">     value, and may reject unrecognized values. More info:</span><br><span class="hljs-comment">     https://git.k8s.io/community/contributors/devel/api-conventions.md#resources</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">   kind &lt;string&gt;</span><br><span class="hljs-comment">     Kind is a string value representing the REST resource this object</span><br><span class="hljs-comment">     represents. Servers may infer this from the endpoint the client submits</span><br><span class="hljs-comment">     requests to. Cannot be updated. In CamelCase. More info:</span><br><span class="hljs-comment">     https://git.k8s.io/community/contributors/devel/api-conventions.md#types-kinds</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">   metadata &lt;Object&gt;</span><br><span class="hljs-comment">     Standard object&#x27;s metadata. More info:</span><br><span class="hljs-comment">           https://git.k8s.io/community/contributors/devel/api-conventions.md#metadata</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">   spec &lt;Object&gt;</span><br><span class="hljs-comment">     Specification of the desired behavior of the pod. More info:</span><br><span class="hljs-comment">     https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">   status   &lt;Object&gt;</span><br><span class="hljs-comment">     Most recently observed status of the pod. This data may not be up to date.</span><br><span class="hljs-comment">     Populated by the system. Read-only. More info:</span><br><span class="hljs-comment">     https://git.k8s.io/community/contributors/devel/api-conventions.md#spec-and-status</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>注释：map类型的不需要在前面加“-”线，list类型的需要在前面加“-”线</p>
+</blockquote>
+<h3 id="定义一个简单的资源清单："><a href="#定义一个简单的资源清单：" class="headerlink" title="定义一个简单的资源清单："></a>定义一个简单的资源清单：</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-ye</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">myapp</span>              <span class="hljs-comment">#deployment的labels</span><br><span class="hljs-attr">spec:</span><br>    <span class="hljs-attr">replicas:</span> <span class="hljs-number">5</span><br>    <span class="hljs-attr">selector:</span><br>      <span class="hljs-attr">matchLabels:</span><br>        <span class="hljs-attr">app:</span> <span class="hljs-string">frontend</span><br>    <span class="hljs-attr">template:</span><br>      <span class="hljs-attr">metadata:</span><br>        <span class="hljs-attr">labels:</span><br>          <span class="hljs-attr">app:</span> <span class="hljs-string">frontend</span>      <span class="hljs-comment">#pods的labels</span><br>      <span class="hljs-attr">spec:</span><br>        <span class="hljs-attr">containers:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">nginx</span><br>          <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:1.7.9</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="kubectl-create-命令"><a href="#kubectl-create-命令" class="headerlink" title="kubectl create 命令:"></a>kubectl create 命令:</h3><h4 id="描述："><a href="#描述：" class="headerlink" title="描述："></a>描述：</h4><blockquote>
+<p>通过配置文件名或stdin创建一个集群资源对象。支持JSON和YAML格式的文件。</p>
+</blockquote>
+<h4 id="语法："><a href="#语法：" class="headerlink" title="语法："></a>语法：</h4><figure class="highlight sas"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sas">kubectl <span class="hljs-keyword">create</span> -f <span class="hljs-keyword">FILENAME</span> [<span class="hljs-keyword">options</span>]<br></code></pre></td></tr></table></figure>
+
+<h4 id="示例"><a href="#示例" class="headerlink" title="示例:"></a>示例:</h4><figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">通过pod.json文件创建资源。<br>kubectl <span class="hljs-keyword">create</span> -f pod.json<br><br>根据docker-registry.yaml文件创建资源。<br>kubectl <span class="hljs-keyword">create</span> -f docker-registry.yaml<br></code></pre></td></tr></table></figure>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubenetes 资源清单定义入门</div>
+      <div>https://system51.github.io/2019/08/23/Kubenetes-Resource/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月23日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/23/Kubernetes-Pod/" title="Kubernetes 定义Pod资源清单">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes 定义Pod资源清单</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/23/Kubectl-Command-details/" title="Kubectl 命令详解">
+                        <span class="hidden-mobile">Kubectl 命令详解</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

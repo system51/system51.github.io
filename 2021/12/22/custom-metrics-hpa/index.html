@@ -1,0 +1,812 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="背景Kubernetes 默认提供 CPU 和内存作为 HPA 弹性伸缩的指标，如果有更复杂的场景需求，比如基于业务单副本 QPS 大小来进行自动扩缩容，可以考虑自行安装 prometheus-adapter 来实现基于自定义指标的 Pod 弹性伸缩。 Promethue-adapter的作用prometheus采集到的metrics并不能直接给k8s用，因为两者数据格式不兼容，这时就需要另外一个">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes自定义指标HPA">
+<meta property="og:url" content="https://system51.github.io/2021/12/22/custom-metrics-hpa/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="背景Kubernetes 默认提供 CPU 和内存作为 HPA 弹性伸缩的指标，如果有更复杂的场景需求，比如基于业务单副本 QPS 大小来进行自动扩缩容，可以考虑自行安装 prometheus-adapter 来实现基于自定义指标的 Pod 弹性伸缩。 Promethue-adapter的作用prometheus采集到的metrics并不能直接给k8s用，因为两者数据格式不兼容，这时就需要另外一个">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/custom-metrics-hpa-1.png">
+<meta property="og:image" content="https://system51.github.io/images/custom-metrics-hpa-2.png">
+<meta property="og:image" content="https://system51.github.io/images/custom-metrics-hpa-3.png">
+<meta property="og:image" content="https://system51.github.io/images/custom-metrics-hpa-4.png">
+<meta property="article:published_time" content="2021-12-22T06:11:00.000Z">
+<meta property="article:modified_time" content="2022-12-11T13:47:17.577Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/custom-metrics-hpa-1.png">
+  
+  
+  
+  <title>Kubernetes自定义指标HPA - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes自定义指标HPA"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2021-12-22 14:11" pubdate>
+          2021年12月22日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          23k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          39 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes自定义指标HPA</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>Kubernetes 默认提供 CPU 和内存作为 HPA 弹性伸缩的指标，如果有更复杂的场景需求，比如基于业务单副本 QPS 大小来进行自动扩缩容，可以考虑自行安装 prometheus-adapter 来实现基于自定义指标的 Pod 弹性伸缩。</p>
+<h2 id="Promethue-adapter的作用"><a href="#Promethue-adapter的作用" class="headerlink" title="Promethue-adapter的作用"></a>Promethue-adapter的作用</h2><p>prometheus采集到的metrics并不能直接给k8s用，因为两者数据格式不兼容，这时就需要另外一个组件(prometheus-adapter)，将prometheus的metrics 数据格式转换成k8s API接口能识别的格式，因为prometheus-adapter是自定义API Service，所以还需要用Kubernetes aggregator在主API服务器中注册，以便直接通过&#x2F;apis&#x2F;来访问。</p>
+<p>kubernetes apiserver 提供了三种 API 用于监控指标相关的操作：</p>
+<ul>
+<li>resource metrics API：被设计用来给 k8s 核心组件提供监控指标，例如 kubectl top；</li>
+<li>custom metrics API：被设计用来给 HPA 控制器提供指标。</li>
+<li>external metrics API：被设计用来通过外部指标扩容（后面细讲）</li>
+</ul>
+<p>prometheus-adapter支持以下三种API，<code>kubectl top node/pod</code> 是 <code>resource metrics</code> 指标。所以我们可以用<code>prometheus-adapter</code>替代<code>metrics-server</code></p>
+<ul>
+<li>resource metrics API</li>
+<li>custom metrics API</li>
+<li>external metrics API</li>
+</ul>
+<h2 id="Kubernetes-API-Aggregation"><a href="#Kubernetes-API-Aggregation" class="headerlink" title="Kubernetes API Aggregation"></a>Kubernetes API Aggregation</h2><p>在 Kubernetes 1.7 版本引入了聚合层，允许第三方应用程序通过将自己注册到kube-apiserver上，仍然通过 API Server 的 HTTP URL 对新的 API 进行访问和操作。为了实现这个机制，Kubernetes 在 kube-apiserver 服务中引入了一个 API 聚合层（API Aggregation Layer），用于将扩展 API 的访问请求转发到用户服务的功能。</p>
+<p><img src="/images/custom-metrics-hpa-1.png" srcset="/img/loading.gif" lazyload alt="custom-metrics-hpa-1"></p>
+<p>当你访问 <code>apis/metrics.k8s.io/v1beta1</code> 的时候，实际上访问到的是一个叫做 kube-aggregator 的代理。而 kube-apiserver，正是这个代理的一个后端；而 Metrics Server，则是另一个后端 。通过这种方式，我们就可以很方便地扩展 Kubernetes 的 API 了。</p>
+<p>如果你使用kubeadm部署的，默认已开启。如果你使用二进制方式部署的话，需要在kube-APIServer中添加启动参数，增加以下配置：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs sh"><span class="hljs-comment"># vim /opt/kubernetes/cfg/kube-apiserver.conf</span><br>......<br>--proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt<br>--proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key<br>--requestheader-allowed-names=front-proxy-client<br>--requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt<br>--requestheader-extra-headers-prefix=X-Remote-Extra-<br>--requestheader-group-headers=X-Remote-Group<br>--requestheader-username-headers=X-Remote-User<br>......<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="资源指标与自定义指标工作流程"><a href="#资源指标与自定义指标工作流程" class="headerlink" title="资源指标与自定义指标工作流程"></a>资源指标与自定义指标工作流程</h3><p><img src="/images/custom-metrics-hpa-2.png" srcset="/img/loading.gif" lazyload alt="custom-metrics-hpa-2"></p>
+<p>(1) 资源指标工作流程: hpa -&gt; apiserver -&gt; kube aggregation -&gt; metrics-server -&gt; kubelet(cadvisor)<br>(2) 自定义资源指标工作流程: hpa -&gt; apiserver -&gt; kube aggregation  -&gt; prometheus-adapter -&gt; prometheus -&gt; pods</p>
+<h2 id="部署Prometheus-adapter"><a href="#部署Prometheus-adapter" class="headerlink" title="部署Prometheus-adapter"></a>部署Prometheus-adapter</h2><p>项目地址：<a target="_blank" rel="noopener" href="https://github.com/qist/k8s/tree/main/k8s-yaml/monitoring">https://github.com/qist/k8s/tree/main/k8s-yaml/monitoring</a></p>
+<p>在此github项目上下载<code>custom-metrics-api</code>、<code>prometheus-adapter</code>并应用，<code>custom-metrics-api</code>是创建三个APIService，还有<code>prometheus-adapter</code>是部署 <code>prometheus-adapter</code> Pod，并且添加了<code>v1beta1.metrics.k8s.io</code> APIService用于替换<code>metrics-server</code></p>
+<p>使用以下命令可以看到创建了4个APIService，当他们访问前面的连接的时候会被反代到<code>monitoring/prometheus-adapter</code> svc上，由svc后面的Pod把数据返回会给请求者。</p>
+<figure class="highlight mathematica"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs mathematica"><span class="hljs-punctuation">[</span><span class="hljs-variable">root</span><span class="hljs-operator">@</span><span class="hljs-variable">k8s</span><span class="hljs-operator">-</span><span class="hljs-variable">master</span><span class="hljs-operator">-</span><span class="hljs-number">01</span> <span class="hljs-variable">prometheus</span><span class="hljs-operator">-</span><span class="hljs-variable">adapter</span><span class="hljs-punctuation">]</span><span class="hljs-type">#</span>            <span class="hljs-variable">kubectl</span> <span class="hljs-variable">get</span> <span class="hljs-variable">apiservice</span><br><span class="hljs-operator">....</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">authentication</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>          <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">authorization</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>           <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">batch</span>                          <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">certificates</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>            <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">coordination</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>            <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">custom</span><span class="hljs-operator">.</span><span class="hljs-variable">metrics</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>          <span class="hljs-variable">monitoring</span><span class="hljs-operator">/</span><span class="hljs-variable">prometheus</span><span class="hljs-operator">-</span><span class="hljs-variable">adapter</span>   <span class="hljs-built_in">True</span>        <span class="hljs-number">31</span><span class="hljs-variable">h</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">events</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>                  <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">extensions</span>                     <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">external</span><span class="hljs-operator">.</span><span class="hljs-variable">metrics</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>        <span class="hljs-variable">monitoring</span><span class="hljs-operator">/</span><span class="hljs-variable">prometheus</span><span class="hljs-operator">-</span><span class="hljs-variable">adapter</span>   <span class="hljs-built_in">True</span>        <span class="hljs-number">31</span><span class="hljs-variable">h</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">metrics</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>                 <span class="hljs-variable">monitoring</span><span class="hljs-operator">/</span><span class="hljs-variable">prometheus</span><span class="hljs-operator">-</span><span class="hljs-variable">adapter</span>   <span class="hljs-built_in">True</span>        <span class="hljs-number">15</span><span class="hljs-variable">s</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">networking</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>              <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">node</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>                    <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">policy</span>                         <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">rbac</span><span class="hljs-operator">.</span><span class="hljs-variable">authorization</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>      <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">scheduling</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>              <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">storage</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>                 <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v1beta2</span><span class="hljs-operator">.</span><span class="hljs-variable">custom</span><span class="hljs-operator">.</span><span class="hljs-variable">metrics</span><span class="hljs-operator">.</span><span class="hljs-variable">k8s</span><span class="hljs-operator">.</span><span class="hljs-variable">io</span>          <span class="hljs-variable">monitoring</span><span class="hljs-operator">/</span><span class="hljs-variable">prometheus</span><span class="hljs-operator">-</span><span class="hljs-variable">adapter</span>   <span class="hljs-built_in">True</span>        <span class="hljs-number">31</span><span class="hljs-variable">h</span><br><span class="hljs-variable">v2beta1</span><span class="hljs-operator">.</span><span class="hljs-variable">autoscaling</span>                    <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-variable">v2beta2</span><span class="hljs-operator">.</span><span class="hljs-variable">autoscaling</span>                    <span class="hljs-variable">Local</span>                           <span class="hljs-built_in">True</span>        <span class="hljs-number">621</span><span class="hljs-variable">d</span><br><span class="hljs-operator">....</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-literal">master</span>-<span class="hljs-number">01</span> prometheus-adapter]<span class="hljs-comment"># kubectl get pod -n monitoring</span><br>NAME                                  READY   STATUS    RESTARTS   AGE<br>kube-state-metrics-<span class="hljs-number">69</span>d87f556-dcccq    <span class="hljs-number">4</span>/<span class="hljs-number">4</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">43</span>d<br><span class="hljs-keyword">node</span><span class="hljs-title">-exporter-249cv</span>                   <span class="hljs-number">2</span>/<span class="hljs-number">2</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">41</span>d<br><span class="hljs-keyword">node</span><span class="hljs-title">-exporter-4xbm2</span>                   <span class="hljs-number">2</span>/<span class="hljs-number">2</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">6</span>d6h<br><span class="hljs-keyword">node</span><span class="hljs-title">-exporter-545k4</span>                   <span class="hljs-number">2</span>/<span class="hljs-number">2</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">41</span>d<br><span class="hljs-keyword">node</span><span class="hljs-title">-exporter-8hchf</span>                   <span class="hljs-number">2</span>/<span class="hljs-number">2</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">41</span>d<br><span class="hljs-keyword">node</span><span class="hljs-title">-exporter-kxgx7</span>                   <span class="hljs-number">2</span>/<span class="hljs-number">2</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">41</span>d<br><span class="hljs-keyword">node</span><span class="hljs-title">-exporter-mfwxl</span>                   <span class="hljs-number">2</span>/<span class="hljs-number">2</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">41</span>d<br><span class="hljs-keyword">node</span><span class="hljs-title">-exporter-qrpv5</span>                   <span class="hljs-number">2</span>/<span class="hljs-number">2</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">41</span>d<br><span class="hljs-keyword">node</span><span class="hljs-title">-exporter-xhr6b</span>                   <span class="hljs-number">2</span>/<span class="hljs-number">2</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">41</span>d<br>prometheus-adapter-<span class="hljs-number">6</span>bc9d8bd9c-<span class="hljs-number">86</span>v5q   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">30h</span><br>prometheus-adapter-<span class="hljs-number">6</span>bc9d8bd9c-<span class="hljs-number">96</span>t6q   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">30h</span><br>prometheus-k8s-<span class="hljs-number">0</span>                      <span class="hljs-number">2</span>/<span class="hljs-number">2</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">7</span>d8h<br></code></pre></td></tr></table></figure>
+
+
+
+
+<h2 id="Prometheus-adapter配置写法"><a href="#Prometheus-adapter配置写法" class="headerlink" title="Prometheus-adapter配置写法"></a>Prometheus-adapter配置写法</h2><p>adapter 使用字段 rules 、resourceRules 和 externalRules 分别表示 <code>custom metrics</code>、<code>resource metrics</code> 和<code>external metrics</code>，如本例中</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br><span class="line">124</span><br><span class="line">125</span><br><span class="line">126</span><br><span class="line">127</span><br><span class="line">128</span><br><span class="line">129</span><br><span class="line">130</span><br><span class="line">131</span><br><span class="line">132</span><br><span class="line">133</span><br><span class="line">134</span><br><span class="line">135</span><br><span class="line">136</span><br><span class="line">137</span><br><span class="line">138</span><br><span class="line">139</span><br><span class="line">140</span><br><span class="line">141</span><br><span class="line">142</span><br><span class="line">143</span><br><span class="line">144</span><br><span class="line">145</span><br><span class="line">146</span><br><span class="line">147</span><br><span class="line">148</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">ConfigMap</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">adapter-config</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">monitoring</span><br><span class="hljs-attr">data:</span><br>  <span class="hljs-attr">config.yaml:</span> <span class="hljs-string">|</span><br><span class="hljs-string">    rules:</span><br><span class="hljs-string">    - seriesQuery: &#x27;&#123;__name__=~&quot;^container_.*&quot;,container!=&quot;POD&quot;,namespace!=&quot;&quot;,pod!=&quot;&quot;&#125;&#x27;</span><br><span class="hljs-string">      seriesFilters: []</span><br><span class="hljs-string">      resources:</span><br><span class="hljs-string">        overrides:</span><br><span class="hljs-string">          namespace:</span><br><span class="hljs-string">            resource: namespace</span><br><span class="hljs-string">          pod:</span><br><span class="hljs-string">            resource: pod</span><br><span class="hljs-string">      name:</span><br><span class="hljs-string">        matches: ^container_(.*)_seconds_total$</span><br><span class="hljs-string">        as: &quot;&quot;</span><br><span class="hljs-string">      metricsQuery: sum(rate(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;,container!=&quot;POD&quot;&#125;[1m])) by (&lt;&lt;.GroupBy&gt;&gt;)</span><br><span class="hljs-string">    - seriesQuery: &#x27;&#123;__name__=~&quot;^container_.*&quot;,container!=&quot;POD&quot;,namespace!=&quot;&quot;,pod!=&quot;&quot;&#125;&#x27;</span><br><span class="hljs-string">      seriesFilters:</span><br><span class="hljs-string">      - isNot: ^container_.*_seconds_total$</span><br><span class="hljs-string">      resources:</span><br><span class="hljs-string">        overrides:</span><br><span class="hljs-string">          namespace:</span><br><span class="hljs-string">            resource: namespace</span><br><span class="hljs-string">          pod:</span><br><span class="hljs-string">            resource: pod</span><br><span class="hljs-string">      name:</span><br><span class="hljs-string">        matches: ^container_(.*)_total$</span><br><span class="hljs-string">        as: &quot;&quot;</span><br><span class="hljs-string">      metricsQuery: sum(rate(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;,container!=&quot;POD&quot;&#125;[1m])) by (&lt;&lt;.GroupBy&gt;&gt;)</span><br><span class="hljs-string">    - seriesQuery: &#x27;&#123;__name__=~&quot;^container_.*&quot;,container!=&quot;POD&quot;,namespace!=&quot;&quot;,pod!=&quot;&quot;&#125;&#x27;</span><br><span class="hljs-string">      seriesFilters:</span><br><span class="hljs-string">      - isNot: ^container_.*_total$</span><br><span class="hljs-string">      resources:</span><br><span class="hljs-string">        overrides:</span><br><span class="hljs-string">          namespace:</span><br><span class="hljs-string">            resource: namespace</span><br><span class="hljs-string">          pod:</span><br><span class="hljs-string">            resource: pod</span><br><span class="hljs-string">      name:</span><br><span class="hljs-string">        matches: ^container_(.*)$</span><br><span class="hljs-string">        as: &quot;&quot;</span><br><span class="hljs-string">      metricsQuery: sum(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;,container!=&quot;POD&quot;&#125;) by (&lt;&lt;.GroupBy&gt;&gt;)</span><br><span class="hljs-string">    - seriesQuery: &#x27;&#123;namespace!=&quot;&quot;,__name__!~&quot;^container_.*&quot;&#125;&#x27;</span><br><span class="hljs-string">      seriesFilters:</span><br><span class="hljs-string">      - isNot: .*_total$</span><br><span class="hljs-string">      resources:</span><br><span class="hljs-string">        template: &lt;&lt;.Resource&gt;&gt;</span><br><span class="hljs-string">      name:</span><br><span class="hljs-string">        matches: &quot;&quot;</span><br><span class="hljs-string">        as: &quot;&quot;</span><br><span class="hljs-string">      metricsQuery: sum(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;&#125;) by (&lt;&lt;.GroupBy&gt;&gt;)</span><br><span class="hljs-string">    - seriesQuery: &#x27;&#123;namespace!=&quot;&quot;,__name__!~&quot;^container_.*&quot;&#125;&#x27;</span><br><span class="hljs-string">      seriesFilters:</span><br><span class="hljs-string">      - isNot: .*_seconds_total</span><br><span class="hljs-string">      resources:</span><br><span class="hljs-string">        template: &lt;&lt;.Resource&gt;&gt;</span><br><span class="hljs-string">      name:</span><br><span class="hljs-string">        matches: ^(.*)_total$</span><br><span class="hljs-string">        as: &quot;&quot;</span><br><span class="hljs-string">      metricsQuery: sum(rate(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;&#125;[1m])) by (&lt;&lt;.GroupBy&gt;&gt;)</span><br><span class="hljs-string">    - seriesQuery: &#x27;&#123;namespace!=&quot;&quot;,__name__!~&quot;^container_.*&quot;&#125;&#x27;</span><br><span class="hljs-string">      seriesFilters: []</span><br><span class="hljs-string">      resources:</span><br><span class="hljs-string">        template: &lt;&lt;.Resource&gt;&gt;</span><br><span class="hljs-string">      name:</span><br><span class="hljs-string">        matches: ^(.*)_seconds_total$</span><br><span class="hljs-string">        as: &quot;&quot;</span><br><span class="hljs-string">      metricsQuery: sum(rate(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;&#125;[1m])) by (&lt;&lt;.GroupBy&gt;&gt;)</span><br><span class="hljs-string">    &quot;resourceRules&quot;:</span><br><span class="hljs-string">      &quot;cpu&quot;:</span><br><span class="hljs-string">        &quot;containerLabel&quot;: &quot;container&quot;</span><br><span class="hljs-string">        &quot;containerQuery&quot;: |</span><br><span class="hljs-string">          sum by (&lt;&lt;.GroupBy&gt;&gt;) (</span><br><span class="hljs-string">            irate (</span><br><span class="hljs-string">                container_cpu_usage_seconds_total&#123;&lt;&lt;.LabelMatchers&gt;&gt;,pod!=&quot;&quot;&#125;[120s]</span><br><span class="hljs-string">            )</span><br><span class="hljs-string">          )</span><br><span class="hljs-string">        &quot;nodeQuery&quot;: |</span><br><span class="hljs-string">          sum by (&lt;&lt;.GroupBy&gt;&gt;) (</span><br><span class="hljs-string">            1 - irate(</span><br><span class="hljs-string">              node_cpu_seconds_total&#123;mode=&quot;idle&quot;&#125;[60s]</span><br><span class="hljs-string">            )</span><br><span class="hljs-string">            * on(namespace, pod) group_left(node) (</span><br><span class="hljs-string">              node_namespace_pod:kube_pod_info:&#123;&lt;&lt;.LabelMatchers&gt;&gt;&#125;</span><br><span class="hljs-string">            )</span><br><span class="hljs-string">          )</span><br><span class="hljs-string">          or sum by (&lt;&lt;.GroupBy&gt;&gt;) (</span><br><span class="hljs-string">            1 - irate(</span><br><span class="hljs-string">              windows_cpu_time_total&#123;mode=&quot;idle&quot;, job=&quot;windows-exporter&quot;,&lt;&lt;.LabelMatchers&gt;&gt;&#125;[4m]</span><br><span class="hljs-string">            )</span><br><span class="hljs-string">          )</span><br><span class="hljs-string">        &quot;resources&quot;:</span><br><span class="hljs-string">          &quot;overrides&quot;:</span><br><span class="hljs-string">            &quot;namespace&quot;:</span><br><span class="hljs-string">              &quot;resource&quot;: &quot;namespace&quot;</span><br><span class="hljs-string">            &quot;node&quot;:</span><br><span class="hljs-string">              &quot;resource&quot;: &quot;node&quot;</span><br><span class="hljs-string">            &quot;pod&quot;:</span><br><span class="hljs-string">              &quot;resource&quot;: &quot;pod&quot;</span><br><span class="hljs-string">      &quot;memory&quot;:</span><br><span class="hljs-string">        &quot;containerLabel&quot;: &quot;container&quot;</span><br><span class="hljs-string">        &quot;containerQuery&quot;: |</span><br><span class="hljs-string">          sum by (&lt;&lt;.GroupBy&gt;&gt;) (</span><br><span class="hljs-string">            container_memory_working_set_bytes&#123;&lt;&lt;.LabelMatchers&gt;&gt;,pod!=&quot;&quot;&#125;</span><br><span class="hljs-string">          )</span><br><span class="hljs-string">        &quot;nodeQuery&quot;: |</span><br><span class="hljs-string">          sum by (&lt;&lt;.GroupBy&gt;&gt;) (</span><br><span class="hljs-string">            node_memory_MemTotal_bytes&#123;job=&quot;node-exporter&quot;,&lt;&lt;.LabelMatchers&gt;&gt;&#125;</span><br><span class="hljs-string">            -</span><br><span class="hljs-string">            node_memory_MemAvailable_bytes&#123;job=&quot;node-exporter&quot;,&lt;&lt;.LabelMatchers&gt;&gt;&#125;</span><br><span class="hljs-string">          )</span><br><span class="hljs-string">          or sum by (&lt;&lt;.GroupBy&gt;&gt;) (</span><br><span class="hljs-string">            windows_cs_physical_memory_bytes&#123;job=&quot;windows-exporter&quot;,&lt;&lt;.LabelMatchers&gt;&gt;&#125;</span><br><span class="hljs-string">            -</span><br><span class="hljs-string">            windows_memory_available_bytes&#123;job=&quot;windows-exporter&quot;,&lt;&lt;.LabelMatchers&gt;&gt;&#125;</span><br><span class="hljs-string">          )</span><br><span class="hljs-string">        &quot;resources&quot;:</span><br><span class="hljs-string">          &quot;overrides&quot;:</span><br><span class="hljs-string">            &quot;node&quot;:</span><br><span class="hljs-string">              &quot;resource&quot;: &quot;node&quot;</span><br><span class="hljs-string">            &quot;namespace&quot;:</span><br><span class="hljs-string">              &quot;resource&quot;: &quot;namespace&quot;</span><br><span class="hljs-string">            &quot;pod&quot;:</span><br><span class="hljs-string">              &quot;resource&quot;: &quot;pod&quot;</span><br><span class="hljs-string">      &quot;window&quot;: &quot;5m&quot;</span><br><span class="hljs-string">    externalRules:</span><br><span class="hljs-string">    - seriesQuery: &#x27;&#123;__name__=~&quot;^.*_queue_(length|size)$&quot;,namespace!=&quot;&quot;&#125;&#x27;</span><br><span class="hljs-string">      resources:</span><br><span class="hljs-string">        overrides:</span><br><span class="hljs-string">          namespace:</span><br><span class="hljs-string">            resource: namespace</span><br><span class="hljs-string">      name:</span><br><span class="hljs-string">        matches: ^.*_queue_(length|size)$</span><br><span class="hljs-string">        as: &quot;$0&quot;</span><br><span class="hljs-string">      metricsQuery: max(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;&#125;)</span><br><span class="hljs-string">    - seriesQuery: &#x27;&#123;__name__=~&quot;^.*_queue$&quot;,namespace!=&quot;&quot;&#125;&#x27;</span><br><span class="hljs-string">      resources:</span><br><span class="hljs-string">        overrides:</span><br><span class="hljs-string">          namespace:</span><br><span class="hljs-string">            resource: namespace</span><br><span class="hljs-string">      name:</span><br><span class="hljs-string">        matches: ^.*_queue$</span><br><span class="hljs-string">        as: &quot;$0&quot;</span><br><span class="hljs-string">      metricsQuery: max(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;&#125;)</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="adapter-的配置主要分为4个"><a href="#adapter-的配置主要分为4个" class="headerlink" title="adapter 的配置主要分为4个:"></a>adapter 的配置主要分为4个:</h3><p><strong>Discovery：指定需要处理的 Prometheus 的 metrics。通过 seriesQuery 挑选需要处理的 metrics 集合，可以通过 seriesFilters 精确过滤 metrics。</strong></p>
+<p>seriesQuery 可以根据标签进行查找(如下)，也可以直接指定 metric name 查找</p>
+<figure class="highlight flix"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs flix">seriesQuery: &#x27;&#123;__name__=~<span class="hljs-string">&quot;^container_.*_total&quot;</span>,container_name!=<span class="hljs-string">&quot;POD&quot;</span>,<span class="hljs-keyword">namespace</span>!=<span class="hljs-string">&quot;&quot;</span>,pod_name!=<span class="hljs-string">&quot;&quot;</span>&#125;&#x27;<br>seriesFilters:<br>  - isNot: <span class="hljs-string">&quot;^container_.*_seconds_total&quot;</span><br></code></pre></td></tr></table></figure>
+
+<p>seriesFilters：</p>
+<figure class="highlight mercury"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs mercury"><span class="hljs-keyword">is</span>: &lt;regex&gt;, 匹配包含该正则表达式的metrics.<br>isNot: &lt;regex&gt;, 匹配不包含该正则表达式的metrics.<br></code></pre></td></tr></table></figure>
+
+
+<p><strong>Association：设置 metric 与 kubernetes resources 的映射关系，kubernetes resorces  可以通过 kubectl api-resources 命令查看。overrides 会将 Prometheus metric label与一个 kubernetes resource (下例为 deployment )关联。需要注意的是该 label 必须是一个真实的 kubernetes resource，如 metric 的 pod_name 可以映射为 kubernetes 的pod resource，但不能将 container_image 映射为 kubernetes 的 pod resource，映射错误会导致无法通过 custom metrics API 获取正确的值。这也表示 metric 中必须存在一个真实的 resource 名称，将其映射为 kubernetes resource。</strong></p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">resources:</span><br><span class="hljs-symbol">  overrides:</span><br><span class="hljs-symbol">    microservice:</span> <span class="hljs-punctuation">&#123;</span>group: <span class="hljs-string">&quot;apps&quot;</span>, resource: <span class="hljs-string">&quot;deployment&quot;</span><span class="hljs-punctuation">&#125;</span><br></code></pre></td></tr></table></figure>
+
+<p><strong>Naming：用于将 prometheus metrics 名称转化为 custom metrics API 所使用的metrics名称，但不会改变其本身的metric名称，即通过curl http:&#x2F;&#x2F;$(kubectl get service sample-app -o jsonpath&#x3D;’{ .spec.clusterIP }’)&#x2F;metrics 获得的仍然是老的 metric 名称。如果不需要可以不执行这一步。</strong></p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-meta"># 匹配将任何名称 &lt;name&gt;_total 转换为 &lt;name&gt;_per_second </span><br><span class="hljs-meta"># 例如 http_requests_total 变为 http_requests_per_second</span><br><span class="hljs-symbol">name:</span><br><span class="hljs-symbol">  matches:</span> <span class="hljs-string">&quot;^(.*)_total$&quot;</span><br><span class="hljs-symbol">  as:</span> <span class="hljs-string">&quot;$&#123;1&#125;_per_second&quot;</span><br></code></pre></td></tr></table></figure>
+
+<p>如本例中 <code>HPA</code> 后续可以通过 <code>/apis/&#123;APIService-name&#125;/v1beta1/namespaces/&#123;namespaces-name&#125;/pods/*/http_requests_per_second</code> 获取metrics</p>
+<p><strong>Querying：处理调用 custom metrics API 获取到的 metrics 的 value，该值最终提供给 HPA 进行扩缩容</strong></p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-comment"># convert cumulative cAdvisor metrics into rates calculated over 2 minutes</span><br><span class="hljs-attribute">metricsQuery</span>: <span class="hljs-string">&quot;sum(rate(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;,container_name!=&quot;</span>POD<span class="hljs-string">&quot;&#125;[2m])) by (&lt;&lt;.GroupBy&gt;&gt;)&quot;</span><br></code></pre></td></tr></table></figure>
+
+<p>metricsQuery 字段使用 Go template 将 URL 请求转变为 Prometheus 的请求，它会提取 custom metrics API 请求中的字段，并将其划分为 metric name,group-resource,以及 group-resource 中的一个或多个 objects，对应如下字段：</p>
+<ul>
+<li>Series: metric名称</li>
+<li>LabelMatchers: 以逗号分割的 objects，当前表示特定 group-resource 加上命名空间的 label(如果该 group-resource 是 namespaced 的)</li>
+<li>GroupBy：以逗号分割的 label 的集合，当前表示 LabelMatchers 中的group-resource label</li>
+</ul>
+<p>假设 metrics http_requests_per_second 如下</p>
+<figure class="highlight fsharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs fsharp"><span class="hljs-keyword">http_requests_per_second</span>&#123;pod<span class="hljs-operator">=</span><span class="hljs-string">&quot;pod1&quot;</span>,service<span class="hljs-operator">=</span><span class="hljs-string">&quot;nginx1&quot;</span>,<span class="hljs-keyword">namespace</span><span class="hljs-operator">=</span><span class="hljs-string">&quot;somens&quot;</span>&#125;<br><span class="hljs-keyword">http_requests_per_second</span>&#123;pod<span class="hljs-operator">=</span><span class="hljs-string">&quot;pod2&quot;</span>,service<span class="hljs-operator">=</span><span class="hljs-string">&quot;nginx2&quot;</span>,<span class="hljs-keyword">namespace</span><span class="hljs-operator">=</span><span class="hljs-string">&quot;somens&quot;</span>&#125;<br></code></pre></td></tr></table></figure>
+
+
+<p>当调用 <code>kubectl get --raw &quot;/apis/&#123;APIService-name&#125;/v1beta1/namespaces/somens/pods/*/http_request_per_second&quot;</code>时，metricsQuery 字段的模板的实际内容如下：</p>
+<ul>
+<li>Series: “http_requests_total”</li>
+<li>LabelMatchers: “pod&#x3D;~&quot;pod1|pod2”,namespace&#x3D;”somens”</li>
+<li>GroupBy:pod</li>
+</ul>
+<h3 id="HPA-的配置"><a href="#HPA-的配置" class="headerlink" title="HPA 的配置"></a>HPA 的配置</h3><p>HPA 通常会根据 type 从 aggregated APIs (metrics.k8s.io, custom.metrics.k8s.io, external.metrics.k8s.io)的资源路径上拉取 metrics</p>
+<p>HPA 支持的 metrics 类型有4种(下述为v2beta2的格式)：</p>
+<p>resource：目前仅支持 cpu 和 memory。target 可以指定数值(targetAverageValue) 和比例 (targetAverageUtilization) 进行扩缩容 HPA 从 metrics.k8s.io 获取 resource metrics</p>
+<p>pods：custom metrics，这类 metrics 描述了 pod 类型，target 仅支持按指定数值(targetAverageValue)进行扩缩容。targetAverageValue 用于计算所有相关 pods 上的 metrics  的平均值</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">type:</span> Pods<br><span class="hljs-symbol">pods:</span><br><span class="hljs-symbol">  metric:</span><br><span class="hljs-symbol">    name:</span> packets-per-second<br><span class="hljs-symbol">  target:</span><br><span class="hljs-symbol">    type:</span> AverageValue<br><span class="hljs-symbol">    averageValue:</span> <span class="hljs-number">1</span>k<br></code></pre></td></tr></table></figure>
+
+<p>HPA 从 custom.metrics.k8s.io 获取 custom metrics</p>
+<p>object：custom metrics，这类 metrics 描述了相同命名空间下的(非 pod )类型。target 支持通过 value 和 AverageValue 进行扩缩容，前者直接将 metric 与 target 比较进行扩缩容，后者通过 metric&#x2F; 相关的 pod 数目与 target 比较进行扩缩容</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">type:</span> Object<br><span class="hljs-symbol">object:</span><br><span class="hljs-symbol">  metric:</span><br><span class="hljs-symbol">    name:</span> requests-per-second<br><span class="hljs-symbol">  describedObject:</span><br><span class="hljs-symbol">    apiVersion:</span> extensions/v1beta1<br><span class="hljs-symbol">    kind:</span> Ingress<br><span class="hljs-symbol">    name:</span> main-route<br><span class="hljs-symbol">  target:</span><br><span class="hljs-symbol">    type:</span> Value<br><span class="hljs-symbol">    value:</span> <span class="hljs-number">2</span>k<br></code></pre></td></tr></table></figure>
+
+
+<p>external：kubernetes 1.10+支持的新功能。通常 Prometheus 能够直接从 RabbitMQ 中抓取指标。不幸的是，RabbitMQ的指标端点并没有包含<code>queue length</code>指标。为了收集这些数据，我们使用了<code>RabbitMQ Exporter</code>. 一旦我们将它连接到 RabbitMQ，我们将拥有大量的 RabbitMQ 指标，我们可以将其用作扩展的基础，然后将它们存储在其时间序。Prometheus 能够抓取这些指标列数据库中。 prometheus 中以<code>rabbitmq_queue</code>开头的任何指标都可以通过这个新的 <code>external.metrics.k8s.io</code> API 以 1 分钟间隔的速率形式提供。（也就是说 任何pod都可以用这些值来实现pod扩容，哪怕是两个业务毫无关系。但前提是需要把他注册到api-resources）</p>
+<ul>
+<li>custom.metrics.k8s.io 只支持pod 本身metrics指标来扩容</li>
+<li>external.metrics.k8s.io 可以是其它业务pod 根据这个值来扩容（例如我可以用nginx的指标值来扩 mysql，也可以用mysql_exporter的值 来扩mysql。）</li>
+</ul>
+<p>例如我们可以用<code>mongo_exporter</code>的连接数来扩容nginx，HPA 从 <code>external.metrics.k8s.io</code> 获取 external metrics</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">deployment-firstspec:</span><br>  <span class="hljs-attribute">replicas</span><span class="hljs-punctuation">:</span> <span class="hljs-string">2</span><br>  <span class="hljs-attribute">template</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">deployment-first</span><br>  <span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">containers</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">name: deployment-first</span><br>        <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx</span><br>        <span class="hljs-attribute">imagePullPolicy</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Always</span><br>      <span class="hljs-attribute">ports</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">containerPort: 80</span><br>      <span class="hljs-attribute">protocol</span><span class="hljs-punctuation">:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attribute">resources</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">requests</span><span class="hljs-punctuation">:</span><br>         <span class="hljs-attribute">cpu</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;1m&quot;</span><br>        <span class="hljs-attribute">limits</span><span class="hljs-punctuation">:</span><br>         <span class="hljs-attribute">cpu</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;100m</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> autoscaling/v2beta1<br><span class="hljs-symbol">kind:</span> HorizontalPodAutoscaler<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> app-server-mongo-conn-hpa<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  scaleTargetRef:</span><br><span class="hljs-symbol">    apiVersion:</span> apps/v1<br><span class="hljs-symbol">    kind:</span> Deployment<br><span class="hljs-symbol">    name:</span> deployment-first<br><span class="hljs-symbol">  minReplicas:</span> <span class="hljs-number">2</span><br><span class="hljs-symbol">  maxReplicas:</span> <span class="hljs-number">5</span><br><span class="hljs-symbol">  metrics:</span><br>  - type: External <br><span class="hljs-symbol">    external:</span><br>      metric<br><span class="hljs-symbol">        name:</span> mongodb_current_connection<br><span class="hljs-symbol">        selector:</span><br><span class="hljs-symbol">           matchLabels:</span><br><span class="hljs-symbol">             queue:</span> <span class="hljs-string">&quot;worker_tasks&quot;</span><br><span class="hljs-symbol">      target:</span><br><span class="hljs-symbol">        type:</span> AverageValue<br><span class="hljs-symbol">        averageValue:</span> <span class="hljs-number">30</span><br><br></code></pre></td></tr></table></figure>
+
+
+<p><img src="/images/custom-metrics-hpa-3.png" srcset="/img/loading.gif" lazyload alt="custom-metrics-hpa-3"></p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">externalRules</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">seriesQuery: &#x27;&#123;__name__=~&quot;^.*_queue_(length|size)$&quot;,namespace!=&quot;&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">resources</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">overrides</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">resource</span><span class="hljs-punctuation">:</span> <span class="hljs-string">namespace</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">matches</span><span class="hljs-punctuation">:</span> <span class="hljs-string">^.*_queue_(length|size)$</span><br>    <span class="hljs-attribute">as</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;$0&quot;</span><br>  <span class="hljs-attribute">metricsQuery</span><span class="hljs-punctuation">:</span> <span class="hljs-string">max(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;&#125;)</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">seriesQuery: &#x27;&#123;__name__=~&quot;^.*_queue$&quot;,namespace!=&quot;&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">resources</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">overrides</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">resource</span><span class="hljs-punctuation">:</span> <span class="hljs-string">namespace</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">matches</span><span class="hljs-punctuation">:</span> <span class="hljs-string">^.*_queue$</span><br>    <span class="hljs-attribute">as</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;$0&quot;</span><br>  <span class="hljs-attribute">metricsQuery</span><span class="hljs-punctuation">:</span> <span class="hljs-string">max(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;&#125;)</span><br></code></pre></td></tr></table></figure>
+
+<p>被上面的规则匹配到的指标会注册为一个新的资源对象</p>
+<figure class="highlight moonscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs moonscript">[root@k8s-master<span class="hljs-number">-01</span> ~]# kubectl api-resources<br>.....<br>ipamhandles                                          crd.projectcalico.org          <span class="hljs-literal">false</span>        IPAMHandle<br>ippools                                              crd.projectcalico.org          <span class="hljs-literal">false</span>        IPPool<br>networkpolicies                                      crd.projectcalico.org          <span class="hljs-literal">true</span>         NetworkPolicy<br>networksets                                          crd.projectcalico.org          <span class="hljs-literal">true</span>         NetworkSet<br>events                                  ev           events.k8s.<span class="hljs-built_in">io</span>                  <span class="hljs-literal">true</span>         Event<br>ingresses                               ing          extensions                     <span class="hljs-literal">true</span>         Ingress<br>node_cpu_core_throttles_total                        external.metrics.k8s.<span class="hljs-built_in">io</span>        <span class="hljs-literal">true</span>         ExternalMetricValueList<br>node_network_transmit_queue_length                   external.metrics.k8s.<span class="hljs-built_in">io</span>        <span class="hljs-literal">true</span>         ExternalMetricValueList<br>prometheus_notifications_queue_length                external.metrics.k8s.<span class="hljs-built_in">io</span>        <span class="hljs-literal">true</span>         ExternalMetricValueList<br>nodes                                                metrics.k8s.<span class="hljs-built_in">io</span>                 <span class="hljs-literal">false</span>        NodeMetrics<br>pods                                                 metrics.k8s.<span class="hljs-built_in">io</span>                 <span class="hljs-literal">true</span>         PodMetrics<br>.....<br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@k8s</span>-master<span class="hljs-number">-01</span> ~]<span class="hljs-meta"># kubectl get --raw <span class="hljs-string">&quot;/apis/external.metrics.k8s.io/v1beta1/namespaces/monitoring/node_cpu_core_throttles_total&quot;</span> | jq .                                  </span><br>&#123;<br>  <span class="hljs-string">&quot;kind&quot;</span>: <span class="hljs-string">&quot;ExternalMetricValueList&quot;</span>,<br>  <span class="hljs-string">&quot;apiVersion&quot;</span>: <span class="hljs-string">&quot;external.metrics.k8s.io/v1beta1&quot;</span>,<br>  <span class="hljs-string">&quot;metadata&quot;</span>: &#123;&#125;,<br>  <span class="hljs-string">&quot;items&quot;</span>: [<br>    &#123;<br>      <span class="hljs-string">&quot;metricName&quot;</span>: <span class="hljs-string">&quot;node_cpu_core_throttles_total&quot;</span>,<br>      <span class="hljs-string">&quot;metricLabels&quot;</span>: &#123;<br>        <span class="hljs-string">&quot;__name__&quot;</span>: <span class="hljs-string">&quot;node_cpu_core_throttles_total&quot;</span>,<br>        <span class="hljs-string">&quot;app_kubernetes_io_name&quot;</span>: <span class="hljs-string">&quot;node-exporter&quot;</span>,<br>        <span class="hljs-string">&quot;app_kubernetes_io_version&quot;</span>: <span class="hljs-string">&quot;v1.2.2&quot;</span>,<br>        <span class="hljs-string">&quot;container&quot;</span>: <span class="hljs-string">&quot;node-exporter&quot;</span>,<br>        <span class="hljs-string">&quot;core&quot;</span>: <span class="hljs-string">&quot;0&quot;</span>,<br>        <span class="hljs-string">&quot;endpoint&quot;</span>: <span class="hljs-string">&quot;https&quot;</span>,<br>        <span class="hljs-string">&quot;instance&quot;</span>: <span class="hljs-string">&quot;172.16.50.1:9100&quot;</span>,<br>        <span class="hljs-string">&quot;job&quot;</span>: <span class="hljs-string">&quot;node-exporter&quot;</span>,<br>        <span class="hljs-string">&quot;namespace&quot;</span>: <span class="hljs-string">&quot;monitoring&quot;</span>,<br>        <span class="hljs-string">&quot;package&quot;</span>: <span class="hljs-string">&quot;0&quot;</span>,<br>        <span class="hljs-string">&quot;pod&quot;</span>: <span class="hljs-string">&quot;node-exporter-8hchf&quot;</span>,<br>        <span class="hljs-string">&quot;service&quot;</span>: <span class="hljs-string">&quot;node-exporter&quot;</span>,<br>        <span class="hljs-string">&quot;service_name&quot;</span>: <span class="hljs-string">&quot;node-exporter-172.16.50.1&quot;</span><br>      &#125;,<br>      <span class="hljs-string">&quot;timestamp&quot;</span>: <span class="hljs-string">&quot;2021-12-23T08:21:49Z&quot;</span>,<br>      <span class="hljs-string">&quot;value&quot;</span>: <span class="hljs-string">&quot;0&quot;</span><br>    &#125;,<br>    &#123;<br>      <span class="hljs-string">&quot;metricName&quot;</span>: <span class="hljs-string">&quot;node_cpu_core_throttles_total&quot;</span>,<br>      <span class="hljs-string">&quot;metricLabels&quot;</span>: &#123;<br>        <span class="hljs-string">&quot;__name__&quot;</span>: <span class="hljs-string">&quot;node_cpu_core_throttles_total&quot;</span>,<br>        <span class="hljs-string">&quot;app_kubernetes_io_name&quot;</span>: <span class="hljs-string">&quot;node-exporter&quot;</span>,<br>        <span class="hljs-string">&quot;app_kubernetes_io_version&quot;</span>: <span class="hljs-string">&quot;v1.2.2&quot;</span>,<br>        <span class="hljs-string">&quot;container&quot;</span>: <span class="hljs-string">&quot;node-exporter&quot;</span>,<br>        <span class="hljs-string">&quot;core&quot;</span>: <span class="hljs-string">&quot;0&quot;</span>,<br>        <span class="hljs-string">&quot;endpoint&quot;</span>: <span class="hljs-string">&quot;https&quot;</span>,<br>        <span class="hljs-string">&quot;instance&quot;</span>: <span class="hljs-string">&quot;172.16.50.29:9100&quot;</span>,<br>        <span class="hljs-string">&quot;job&quot;</span>: <span class="hljs-string">&quot;node-exporter&quot;</span>,<br>        <span class="hljs-string">&quot;namespace&quot;</span>: <span class="hljs-string">&quot;monitoring&quot;</span>,<br>        <span class="hljs-string">&quot;package&quot;</span>: <span class="hljs-string">&quot;0&quot;</span>,<br>        <span class="hljs-string">&quot;pod&quot;</span>: <span class="hljs-string">&quot;node-exporter-mfwxl&quot;</span>,<br>        <span class="hljs-string">&quot;service&quot;</span>: <span class="hljs-string">&quot;node-exporter&quot;</span>,<br>        <span class="hljs-string">&quot;service_name&quot;</span>: <span class="hljs-string">&quot;node-exporter-172.16.50.29&quot;</span><br>      &#125;,<br>      <span class="hljs-string">&quot;timestamp&quot;</span>: <span class="hljs-string">&quot;2021-12-23T08:21:49Z&quot;</span>,<br>      <span class="hljs-string">&quot;value&quot;</span>: <span class="hljs-string">&quot;0&quot;</span><br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="Kubernetes-metrics-的获取"><a href="#Kubernetes-metrics-的获取" class="headerlink" title="Kubernetes metrics 的获取"></a>Kubernetes metrics 的获取</h3><p>假设注册的 APIService为<code>custom.metrics.k8s.io/v1beta1</code>，在注册好APIService 后 HorizontalPodAutoscaler controller 会从以 <code>/apis/custom.metrics.k8s.io/v1beta1</code> 为根 API 的路径上抓取 metrics。metrics 的 API path 可以分为 namespaced 和 non-namespaced 类型的。通过如下方式校验 HPA 是否可以获取到 metrics：</p>
+<h4 id="namespaced"><a href="#namespaced" class="headerlink" title="namespaced"></a>namespaced</h4><p>获取指定 namespace 下指定 object 类型和名称的 metrics</p>
+<figure class="highlight dust"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs dust"><span class="language-xml">kubectl get --raw &quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/</span><span class="hljs-template-variable">&#123;namespace-name&#125;</span><span class="language-xml">/</span><span class="hljs-template-variable">&#123;object-type&#125;</span><span class="language-xml">/</span><span class="hljs-template-variable">&#123;object-name&#125;</span><span class="language-xml">/</span><span class="hljs-template-variable">&#123;metric-name...&#125;</span><span class="language-xml">&quot; | jq .   </span><br></code></pre></td></tr></table></figure>
+
+<p>如获取 monitor 命名空间下名为 grafana 的 pod 的start_time_seconds metric</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs routeros">kubectl <span class="hljs-built_in">get</span> --raw <span class="hljs-string">&quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/monitor/pods/grafana/start_time_seconds&quot;</span> | jq .   <br></code></pre></td></tr></table></figure>
+
+<p>获取指定 namespace 下所有特定 object 类型的 metrics</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs routeros">kubectl <span class="hljs-built_in">get</span> --raw <span class="hljs-string">&quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/&#123;namespace-name&#125;/pods/*/&#123;metric-name...&#125;&quot;</span> | jq .   <br></code></pre></td></tr></table></figure>
+
+<p>如获取 monitor 命名空间下名为所有 pod 的 start_time_seconds metric</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs routeros">kubectl <span class="hljs-built_in">get</span> --raw <span class="hljs-string">&quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/monitor/pods/*/start_time_seconds&quot;</span> | jq .   <br></code></pre></td></tr></table></figure>
+
+<p>使用 labelSelector 可以选择带有特定 label 的 object</p>
+<figure class="highlight dust"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs dust"><span class="language-xml">kubectl get --raw &quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/</span><span class="hljs-template-variable">&#123;namespace-name&#125;</span><span class="language-xml">/</span><span class="hljs-template-variable">&#123;object-type&#125;</span><span class="language-xml">/</span><span class="hljs-template-variable">&#123;object-name&#125;</span><span class="language-xml">/</span><span class="hljs-template-variable">&#123;metric-name...&#125;</span><span class="language-xml">?labelSelector=</span><span class="hljs-template-variable">&#123;label-name&#125;</span><span class="language-xml">&quot; | jq .   </span><br></code></pre></td></tr></table></figure>
+<figure class="highlight dust"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs dust"><span class="language-xml">kubectl get --raw &quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/</span><span class="hljs-template-variable">&#123;namespace-name&#125;</span><span class="language-xml">/pods/*/</span><span class="hljs-template-variable">&#123;metric-name...&#125;</span><span class="language-xml">?labelSelector=</span><span class="hljs-template-variable">&#123;label-name&#125;</span><span class="language-xml">&quot; | jq .   </span><br></code></pre></td></tr></table></figure>
+
+<h4 id="non-namespaced"><a href="#non-namespaced" class="headerlink" title="non-namespaced"></a>non-namespaced</h4><p>non-namespaced 和 namespaced 的类似，主要有 node，namespace，PersistentVolume 等。non-namespaced 访问有些与 custom metrics API 描述不一致。</p>
+<p>访问 object 为 namespace 的方式如下如下</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs routeros">kubectl <span class="hljs-built_in">get</span> --raw <span class="hljs-string">&quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/&#123;namespace-name&#125;/metrics/&#123;metric-name...&#125;&quot;</span> | jq .   <br></code></pre></td></tr></table></figure>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs routeros">kubectl <span class="hljs-built_in">get</span> --raw <span class="hljs-string">&quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/*/metrics/&#123;metric-name...&#125;&quot;</span> | jq .   <br></code></pre></td></tr></table></figure>
+
+<p>访问 node 的方式如下</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs routeros">kubectl <span class="hljs-built_in">get</span> --raw <span class="hljs-string">&quot;/apis/custom.metrics.k8s.io/v1beta1/nodes/&#123;node-name&#125;/&#123;metric-name...&#125;&quot;</span> | jq .   <br></code></pre></td></tr></table></figure>
+
+
+
+<h2 id="示例"><a href="#示例" class="headerlink" title="示例"></a>示例</h2><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">sample-app</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">sample-app</span><br>  <span class="hljs-attr">annotations:</span><br>    <span class="hljs-attr">prometheus.io/scrape:</span> <span class="hljs-string">&quot;true&quot;</span><br>    <span class="hljs-attr">prometheus.io/port:</span> <span class="hljs-string">&quot;8080&quot;</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">8080</span><br>    <span class="hljs-attr">targetPort:</span> <span class="hljs-number">8080</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">sample-app</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">sample-app</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">sample-app</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">replicas:</span> <span class="hljs-number">1</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">matchLabels:</span><br>      <span class="hljs-attr">app:</span> <span class="hljs-string">sample-app</span><br>  <span class="hljs-attr">template:</span><br>    <span class="hljs-attr">metadata:</span><br>      <span class="hljs-attr">labels:</span><br>        <span class="hljs-attr">app:</span> <span class="hljs-string">sample-app</span><br>        <span class="hljs-attr">istio:</span> <span class="hljs-string">ingressgateway</span><br>        <span class="hljs-attr">version:</span> <span class="hljs-string">v1</span><br>      <span class="hljs-attr">annotations:</span><br>        <span class="hljs-attr">sidecar.istio.io/inject:</span> <span class="hljs-string">&quot;true&quot;</span><br>    <span class="hljs-attr">spec:</span><br>      <span class="hljs-attr">containers:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">image:</span> <span class="hljs-string">luxas/autoscale-demo:v0.1.2</span><br>        <span class="hljs-attr">name:</span> <span class="hljs-string">metrics-provider</span><br>        <span class="hljs-attr">resources:</span><br>          <span class="hljs-attr">requests:</span><br>            <span class="hljs-attr">memory:</span> <span class="hljs-string">&quot;256Mi&quot;</span><br>            <span class="hljs-attr">cpu:</span> <span class="hljs-string">&quot;500m&quot;</span><br>          <span class="hljs-attr">limits:</span><br>            <span class="hljs-attr">memory:</span> <span class="hljs-string">&quot;256Mi&quot;</span><br>            <span class="hljs-attr">cpu:</span> <span class="hljs-string">&quot;500m&quot;</span><br>        <span class="hljs-attr">ports:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http</span><br>          <span class="hljs-attr">containerPort:</span> <span class="hljs-number">8080</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">autoscaling/v2</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">HorizontalPodAutoscaler</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">sample-app</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">maxReplicas:</span> <span class="hljs-number">10</span><br>  <span class="hljs-attr">metrics:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">pods:</span><br>      <span class="hljs-attr">metric:</span><br>        <span class="hljs-attr">name:</span> <span class="hljs-string">http_requests</span><br>      <span class="hljs-attr">target:</span><br>        <span class="hljs-attr">averageValue:</span> <span class="hljs-string">500m</span><br>        <span class="hljs-attr">type:</span> <span class="hljs-string">AverageValue</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">Pods</span><br>  <span class="hljs-attr">minReplicas:</span> <span class="hljs-number">2</span><br>  <span class="hljs-attr">scaleTargetRef:</span><br>    <span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span><br>    <span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br>    <span class="hljs-attr">name:</span> <span class="hljs-string">sample-app</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+
+
+<h3 id="HPA在k8s中的结构"><a href="#HPA在k8s中的结构" class="headerlink" title="HPA在k8s中的结构"></a>HPA在k8s中的结构</h3><p>首先可以看一下HPA在k8s中的结构，这里找了一个k8s官方给出的HPA例子，我在关键字段上给出一些注释方便理解。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">autoscaling/v2beta2</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">HorizontalPodAutoscaler</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">php-apache</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">default</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-comment"># HPA的伸缩对象描述，HPA会动态修改该对象的pod数量</span><br>  <span class="hljs-attribute">scaleTargetRef</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">apps/v1</span><br>    <span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Deployment</span><br>    <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">php-apache</span><br>  <span class="hljs-comment"># HPA的最小pod数量和最大pod数量</span><br>  <span class="hljs-attribute">minReplicas</span><span class="hljs-punctuation">:</span> <span class="hljs-string">1</span><br>  <span class="hljs-attribute">maxReplicas</span><span class="hljs-punctuation">:</span> <span class="hljs-string">10</span><br>  <span class="hljs-comment"># 监控的指标数组，支持多种类型的指标共存</span><br>  <span class="hljs-attribute">metrics</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-comment"># Object类型的指标</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">type: Object</span><br>    <span class="hljs-attribute">object</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">metric</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-comment"># 指标名称</span><br>        <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">requests-per-second</span><br>      <span class="hljs-comment"># 监控指标的对象描述，指标数据来源于该对象</span><br>      <span class="hljs-attribute">describedObject</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">networking.k8s.io/v1beta1</span><br>        <span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Ingress</span><br>        <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">main-route</span><br>      <span class="hljs-comment"># Value类型的目标值，Object类型的指标只支持Value和AverageValue类型的目标值</span><br>      <span class="hljs-attribute">target</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">type</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Value</span><br>        <span class="hljs-attribute">value</span><span class="hljs-punctuation">:</span> <span class="hljs-string">10k</span><br>  <span class="hljs-comment"># Resource类型的指标</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">type: Resource</span><br>    <span class="hljs-attribute">resource</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">cpu</span><br>      <span class="hljs-comment"># Utilization类型的目标值，Resource类型的指标只支持Utilization和AverageValue类型的目标值</span><br>      <span class="hljs-attribute">target</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">type</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Utilization</span><br>        <span class="hljs-attribute">averageUtilization</span><span class="hljs-punctuation">:</span> <span class="hljs-string">50</span><br>  <span class="hljs-comment"># Pods类型的指标</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">type: Pods</span><br>    <span class="hljs-attribute">pods</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">metric</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">packets-per-second</span><br>      <span class="hljs-comment"># AverageValue类型的目标值，Pods指标类型下只支持AverageValue类型的目标值</span><br>      <span class="hljs-attribute">target</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">type</span><span class="hljs-punctuation">:</span> <span class="hljs-string">AverageValue</span><br>        <span class="hljs-attribute">averageValue</span><span class="hljs-punctuation">:</span> <span class="hljs-string">1k</span><br>  <span class="hljs-comment"># External类型的指标</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">type: External</span><br>    <span class="hljs-attribute">external</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">metric</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">queue_messages_ready</span><br>        <span class="hljs-comment"># 该字段与第三方的指标标签相关联，（此处官方文档有问题，正确的写法如下）</span><br>        <span class="hljs-attribute">selector</span><span class="hljs-punctuation">:</span><br>          <span class="hljs-attribute">matchLabels</span><span class="hljs-punctuation">:</span><br>            <span class="hljs-attribute">env</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;stage&quot;</span><br>            <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;myapp&quot;</span><br>      <span class="hljs-comment"># External指标类型下只支持Value和AverageValue类型的目标值</span><br>      <span class="hljs-attribute">target</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">type</span><span class="hljs-punctuation">:</span> <span class="hljs-string">AverageValue</span><br>        <span class="hljs-attribute">averageValue</span><span class="hljs-punctuation">:</span> <span class="hljs-string">30</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+<p>根据前面 adapter 中的配置文件去匹配，从上往下匹配，匹配到那条规则就用有那条规则做计算。</p>
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@k8s</span>-master<span class="hljs-number">-01</span> prometheus-adapter]<span class="hljs-meta"># kubectl get --raw <span class="hljs-string">&quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/pod/*/http_requests&quot;</span> | jq .</span><br>&#123;<br>  <span class="hljs-string">&quot;kind&quot;</span>: <span class="hljs-string">&quot;MetricValueList&quot;</span>,<br>  <span class="hljs-string">&quot;apiVersion&quot;</span>: <span class="hljs-string">&quot;custom.metrics.k8s.io/v1beta1&quot;</span>,<br>  <span class="hljs-string">&quot;metadata&quot;</span>: &#123;<br>    <span class="hljs-string">&quot;selfLink&quot;</span>: <span class="hljs-string">&quot;/apis/custom.metrics.k8s.io/v1beta1/namespaces/default/pod/%2A/http_requests&quot;</span><br>  &#125;,<br>  <span class="hljs-string">&quot;items&quot;</span>: [<br>    &#123;<br>      <span class="hljs-string">&quot;describedObject&quot;</span>: &#123;<br>        <span class="hljs-string">&quot;kind&quot;</span>: <span class="hljs-string">&quot;Pod&quot;</span>,<br>        <span class="hljs-string">&quot;namespace&quot;</span>: <span class="hljs-string">&quot;default&quot;</span>,<br>        <span class="hljs-string">&quot;name&quot;</span>: <span class="hljs-string">&quot;sample-app-b7b48448c-ljk2f&quot;</span>,<br>        <span class="hljs-string">&quot;apiVersion&quot;</span>: <span class="hljs-string">&quot;/v1&quot;</span><br>      &#125;,<br>      <span class="hljs-string">&quot;metricName&quot;</span>: <span class="hljs-string">&quot;http_requests&quot;</span>,<br>      <span class="hljs-string">&quot;timestamp&quot;</span>: <span class="hljs-string">&quot;2021-12-24T03:07:20Z&quot;</span>,<br>      <span class="hljs-string">&quot;value&quot;</span>: <span class="hljs-string">&quot;100m&quot;</span>,<br>      <span class="hljs-string">&quot;selector&quot;</span>: <span class="hljs-literal">null</span><br>    &#125;<br>  ]<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>被此规则匹配到</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-bullet">-</span> <span class="hljs-string">seriesQuery: &#x27;&#123;namespace!=&quot;&quot;,__name__!~&quot;^container_.*&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">seriesFilters</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">isNot: .*_seconds_total</span><br>  <span class="hljs-attribute">resources</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">template</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&lt;&lt;.Resource&gt;&gt;</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">matches</span><span class="hljs-punctuation">:</span> <span class="hljs-string">^(.*)_total$</span><br>    <span class="hljs-attribute">as</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;&quot;</span><br>  <span class="hljs-attribute">metricsQuery</span><span class="hljs-punctuation">:</span> <span class="hljs-string">sum(rate(&lt;&lt;.Series&gt;&gt;&#123;&lt;&lt;.LabelMatchers&gt;&gt;&#125;[1m])) by (&lt;&lt;.GroupBy&gt;&gt;)</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs awk">[root@k8s-master-<span class="hljs-number">01</span> prometheus-adapter]<span class="hljs-comment">#  ab -c 100 -n 1000000 http://10.96.152.103:8080/metrics </span><br>This is ApacheBench, Version <span class="hljs-number">2.3</span> &lt;<span class="hljs-variable">$Revision</span>: <span class="hljs-number">1430300</span> $&gt;<br>Copyright <span class="hljs-number">1996</span> Adam Twiss, Zeus Technology Ltd, http:<span class="hljs-regexp">//</span>www.zeustech.net/<br>Licensed to The Apache Software Foundation, http:<span class="hljs-regexp">//</span>www.apache.org/<br><br>Benchmarking <span class="hljs-number">10.96</span>.<span class="hljs-number">152.103</span> (be patient)<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs sql">[root<span class="hljs-variable">@k8s</span><span class="hljs-operator">-</span>master<span class="hljs-number">-01</span> <span class="hljs-operator">~</span>]#      kubectl <span class="hljs-keyword">get</span> pod<br>NAME                                      READY   STATUS    RESTARTS   AGE<br>nfs<span class="hljs-operator">-</span>client<span class="hljs-operator">-</span>provisioner<span class="hljs-number">-7</span>b889f4bc9<span class="hljs-operator">-</span>rb9xj   <span class="hljs-number">1</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     <span class="hljs-keyword">Running</span>   <span class="hljs-number">2</span>          <span class="hljs-number">222</span>d<br>sample<span class="hljs-operator">-</span>app<span class="hljs-operator">-</span>b7b48448c<span class="hljs-operator">-</span>ljk2f                <span class="hljs-number">1</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     <span class="hljs-keyword">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-number">54</span>m<br></code></pre></td></tr></table></figure>
+
+
+
+<p><img src="/images/custom-metrics-hpa-4.png" srcset="/img/loading.gif" lazyload alt="custom-metrics-hpa-4"></p>
+<p>成功扩容</p>
+<figure class="highlight stata"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs stata">[root@k8s-master-01 ~]#      kubectl get pod -w<br>NAME                                      READY   STATUS    RESTARTS   AGE<br>nfs-client-provisioner-7b889f4bc9-rb9xj   1/1     Running   2          222d<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-2dlvm                1/1     Running   0          81s<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-9tm79                1/1     Running   0          66s<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-9xzmb                1/1     Running   0          82s<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-h6lj6                1/1     Running   0          82s<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-jvpgn                1/1     Running   0          98s<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-knzh9                1/1     Running   0          66s<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-ljk2f                1/1     Running   0          56m<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-qhtgp                1/1     Running   0          98s<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-tc89k                1/1     Running   0          82s<br><span class="hljs-keyword">sample</span>-<span class="hljs-keyword">app</span>-b7b48448c-vgn8n                1/1     Running   0          98s<br></code></pre></td></tr></table></figure>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes自定义指标HPA</div>
+      <div>https://system51.github.io/2021/12/22/custom-metrics-hpa/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2021年12月22日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2022/05/10/kubernetes-csi-tencentcloud/" title="Kuberentes集群添加腾讯云CBS为默认存储">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kuberentes集群添加腾讯云CBS为默认存储</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2021/12/14/prometheus-and-kubernetes/" title="Prometheus监控Kubernetes">
+                        <span class="hidden-mobile">Prometheus监控Kubernetes</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

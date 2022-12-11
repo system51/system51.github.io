@@ -1,0 +1,764 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="&amp;emsp;&amp;emsp;系统资源可分为两类：可压缩资源（CPU）和不可压缩资源（memory、storage）。可压缩资源比如CPU超配后，在系统满负荷时会划分时间片分时运行进程，系统整体会变慢（一般不会导致太大的问题）。但不可压缩资源如Memory，当系统内存不足时，就有可能触发系统 OOM；这时候根据 oom score 来确定优先杀死哪个进程，而 oom_score_adj">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes 资源预留">
+<meta property="og:url" content="https://system51.github.io/2020/01/13/reserve-compute-resources-for-system-daemons/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="&amp;emsp;&amp;emsp;系统资源可分为两类：可压缩资源（CPU）和不可压缩资源（memory、storage）。可压缩资源比如CPU超配后，在系统满负荷时会划分时间片分时运行进程，系统整体会变慢（一般不会导致太大的问题）。但不可压缩资源如Memory，当系统内存不足时，就有可能触发系统 OOM；这时候根据 oom score 来确定优先杀死哪个进程，而 oom_score_adj">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2020-01-13T06:07:42.000Z">
+<meta property="article:modified_time" content="2020-11-12T06:05:37.111Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>Kubernetes 资源预留 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes 资源预留"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2020-01-13 14:07" pubdate>
+          2020年1月13日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          7.8k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          14 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes 资源预留</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>&amp;emsp;&amp;emsp;系统资源可分为两类：可压缩资源（CPU）和不可压缩资源（memory、storage）。可压缩资源比如CPU超配后，在系统满负荷时会划分时间片分时运行进程，系统整体会变慢（一般不会导致太大的问题）。但不可压缩资源如Memory，当系统内存不足时，就有可能触发系统 OOM；这时候根据 oom score 来确定优先杀死哪个进程，而 <code>oom_score_adj</code> 又是影响 oom score 的重要参数，其值越低，表示 oom 的优先级越低。在计算节点中，进程的 <code>oom_score_adj</code> 如下：</p>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th align="center">Score</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>sshd等（sshd／dmevented &#x2F; systemd-udevd）</td>
+<td align="center">-1000</td>
+</tr>
+<tr>
+<td>K8S 管理进程（kubelet &#x2F; docker &#x2F; journalctl）</td>
+<td align="center">-999</td>
+</tr>
+<tr>
+<td>Guaranteed Pod</td>
+<td align="center">-998</td>
+</tr>
+<tr>
+<td>其它进程（内核 init 进程等）</td>
+<td align="center">0</td>
+</tr>
+<tr>
+<td>Burstable Pod</td>
+<td align="center">min(max(2, 1000 – (1000 * memoryRequestBytes) &#x2F; machineMemoryCapacityBytes), 999)</td>
+</tr>
+<tr>
+<td>BestEffort Pod</td>
+<td align="center">1000</td>
+</tr>
+</tbody></table>
+<p>所以，OOM 的优先级如下：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs bash">BestEffort Pod &gt; Burstable Pod &gt; 其它进程 &gt; Guaranteed Pod &gt; kubelet/docker 等 &gt; sshd 等<br></code></pre></td></tr></table></figure>
+<p>&amp;emsp;&amp;emsp;在Kubernetes平台，默认情况下Pod能够使用节点全部可用资源。如果节点上的Pod负载较大，那么这些Pod可能会与节点上的系统守护进程和k8s组件争夺资源并导致节点资源短缺，甚至引发系统OOM，导致某些进程被Linux系统的OOM killer机制杀掉，假如被杀掉的进程是系统进程或K8S组件，会导致比较严重的问题。</p>
+<h2 id="Node-Allocatable简介"><a href="#Node-Allocatable简介" class="headerlink" title="Node Allocatable简介"></a>Node Allocatable简介</h2><p>&amp;emsp;&amp;emsp;kubelet的启动配置中有一个<code>Node Allocatable</code>特性，来为系统守护进程和k8s组件预留计算资源，使得即使节点满负载运行时，也不至于出现pod去和系统守护进程以及k8s组件争抢资源，导致节点挂掉的情况。目前支持对CPU, memory, ephemeral-storage三种资源进行预留。kubernetes官方建议根据各个节点的负载情况来具体配置相关参数。</p>
+<p>节点计算资源的分配如下图所示：</p>
+<figure class="highlight gherkin"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs gherkin"> Node Capacity<br>---------------------------<br>|<span class="hljs-string">     kube-reserved       </span>|<br>|<span class="hljs-string">-------------------------</span>|<br>|<span class="hljs-string">     system-reserved     </span>|<br>|<span class="hljs-string">-------------------------</span>|<br>|<span class="hljs-string">    eviction-threshold   </span>|<br>|<span class="hljs-string">-------------------------</span>|<br>|<span class="hljs-string">                         </span>|<br>|<span class="hljs-string">      allocatable        </span>|<br>|<span class="hljs-string">   (available for pods)  </span>|<br>|<span class="hljs-string">                         </span>|<br>|<span class="hljs-string">                         </span>|<br>---------------------------<br></code></pre></td></tr></table></figure>
+
+<p>其中各个部分的含义如下：</p>
+<ul>
+<li>Node Capacity：Node的硬件资源总量</li>
+<li>kube-reserved：给k8s系统进程预留的资源(包括kubelet、container runtime、node problem detector等，但不会给以pod形式起的k8s系统进程预留资源)</li>
+<li>system-reserved：给linux系统守护进程预留的资源</li>
+<li>eviction-threshold：通过<code>--eviction-hard</code>参数为节点预留内存，当节点可用内存值低于此值时，kubelet会进行pod的驱逐</li>
+<li>allocatable：是真正可供节点上Pod使用的容量，kube-scheduler调度Pod时的参考此值(kubectl describe node可以看到，Node上所有Pods的request量不超过Allocatable)</li>
+</ul>
+<p>节点可供Pod使用资源总量的计算公式如下：</p>
+<figure class="highlight fortran"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs fortran"><span class="hljs-keyword">allocatable</span> = [Node Capacity] - [kube-reserved] - [system-reserved] - [eviction-threshold]<br></code></pre></td></tr></table></figure>
+<p>从公式可以看出，默认情况下（不设置kube-reserved、system-reserved、eviction-threshold）节点上默认可以让Pod使用的资源总量等于节点的总容量，会导致Pod与系统进程和k8s组件争抢资源的情况发生。</p>
+<h2 id="示例场景"><a href="#示例场景" class="headerlink" title="示例场景"></a>示例场景</h2><p>下面是一个例子来说明节点<code>Allocatable</code>计算:</p>
+<ul>
+<li>节点拥有<code>32Gi memory</code> ，<code>16 CPUs</code> ， <code>100Gi</code> 存储。</li>
+<li><code>--kube-reserved</code> 设置为 <code>cpu=1,memory=2Gi,ephemeral-storage=1Gi</code>。</li>
+<li><code>--system-reserved</code> 设置为 <code>cpu=500m,memory=1Gi,ephemeral-storage=1Gi</code>。</li>
+<li><code>--eviction-hard</code> 设置为 <code>memory.available&lt;500Mi,nodefs.available&lt;10%</code>。</li>
+</ul>
+<p>在此场景下， <code>Allocatable</code> 为 <code>14.5 CPUs</code>，<code>28.5Gi</code> 内存， <code>88Gi</code> 本地存储。调度器确保该节点上所有pod上的总内存请求不超过<code>28.5Gi</code>，存储也不超过<code>88Gi</code>。当跨pod的总体内存使用量超过<code>28.5Gi</code>时，或者如果整个磁盘使用量超过<code>88Gi</code>时，Kubelet 将驱逐pod。如果节点上的所有进程都尽可能多地消耗CPU，那么pod一起消耗的CPU不能超过 <code>14.5 CPUs</code>。</p>
+<p>如果不强制执行<code>kube-reserved</code>和&#x2F;或<code>system-reserved</code>，并且系统守护进程超出了它们的保留，那么当节点内存使用总量大于<code>31.5Gi</code>或存储容量大于<code>90Gi</code>时，kubelet就会驱逐pod。</p>
+<h2 id="配置参数"><a href="#配置参数" class="headerlink" title="配置参数"></a>配置参数</h2><p>kubelet的启动参数中涉及资源预留的主要有如下几个：</p>
+<ul>
+<li><code>--cgroups-per-qos</code></li>
+<li><code>--cgroup-driver</code></li>
+<li><code>--enforce-node-allocatable=pods[,][system-reserved][,][kube-reserved]</code></li>
+<li><code>--kube-reserved=[cpu=100m][,][memory=100Mi][,][ephemeral-storage=1Gi]</code></li>
+<li><code>--kube-reserved-cgroup</code></li>
+<li><code>--system-reserved=[cpu=100mi][,][memory=100Mi][,][ephemeral-storage=1Gi]</code></li>
+<li><code>--system-reserved-cgroup</code></li>
+<li><code>--eviction-hard</code></li>
+</ul>
+<h2 id="参数详解"><a href="#参数详解" class="headerlink" title="参数详解"></a>参数详解</h2><p><code>--cgroups-per-qos</code><br>可选，默认开启。开启这个参数后，kubelet会将所有的pod创建在kubelet管理的cgroup层次结构下（这样才有了限制所有Pod使用资源总量的基础）。要想启用Node Allocatable特性，这个参数必须开启。</p>
+<p><code>--cgroup-driver</code><br>可选。指定kubelet使用的cgroup driver。默认为cgroupfs，还可以是systemd，但是这个值需要和docker runtime所使用的cgroup driver保持一致。</p>
+<p><code>--enforce-node-allocatable</code><br>指定kubelet为哪些进程做硬限制，可选的值有：pods,kube-reserved,system-reserve。</p>
+<p>这个参数默认开启并指定pods，此时kubelet会为所有pod的总cgroup做资源限制(通过cgroup中的kubepods.limit_in_bytes)，限制为公式计算出的allocatable的大小。而用cgroup做了硬限制后，当所有pod使用量达到allocatable后，会有pod被<code>OOM killer</code>机制杀掉，以保证实际使用量不会超过allocatable。（后面会有实验验证）</p>
+<p>假如想为系统进程和k8s进程也做cgroup级别的硬限制，还可以在限制列表中再加system-reserved和kube-reserved，同时还要分别加上<code>--kube-reserved-cgroup</code>和<code>--system-reserved-cgroup</code>以指定分别限制在哪个cgroup里。</p>
+<p><code>--kube-reserved</code><br>指定为k8s系统组件（kubelet、kube-proxy、dockerd等）预留的资源量，如：<code>--kube-reserved=cpu=1,memory=2Gi,ephemeral-storage=1Gi</code>。</p>
+<p>这里需要注意一点的是这里的kube-reserved只为非pod形式启动的kube组件预留资源，假如组件要是以static pod形式启动的，那并不在这个kube-reserved管理并限制的cgroup中，而是在kubepod这个cgroup中。</p>
+<p><code>--kube-reserved-cgroup</code><br>这个参数用来指定k8s系统组件所使用的cgroup。注意，这里指定的cgroup及其子系统需要预先创建好，kubelet并不会为你自动创建好。</p>
+<p><code>--system-reserved</code><br>为系统守护进程(sshd, udev等)预留的资源量，如：<code>--system-reserved=cpu=500m,memory=1Gi,ephemeral-storage=1Gi</code>。注意，除了考虑为系统进程预留的量之外，还应该为kernel和用户登录会话预留一些内存。</p>
+<p><code>--system-reserved-cgroup</code><br>这个参数用来指定系统守护进程所使用的cgroup。注意，这里指定的cgroup及其子系统需要预先创建好，kubelet并不会为你自动创建好。</p>
+<p><code>--eviction-hard</code><br>设置进行pod驱逐的阈值，这个参数只支持内存和磁盘。通过<code>--eviction-hard</code>标志预留一些内存后，当节点上的可用内存降至保留值以下时，kubelet 将会对pod进行驱逐。</p>
+<h2 id="实践"><a href="#实践" class="headerlink" title="实践"></a>实践</h2><h3 id="限制pod、k8s组件资源"><a href="#限制pod、k8s组件资源" class="headerlink" title="限制pod、k8s组件资源"></a>限制pod、k8s组件资源</h3><p>1.将以下内容添加到kubelet的 <code>/var/lib/kubelet/config.yaml</code> 文件中：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">....</span><br><span class="hljs-attr">evictionHard:</span>  <span class="hljs-comment"># 配置硬驱逐阈值</span><br>  <span class="hljs-attr">memory.available:</span> <span class="hljs-string">&quot;500Mi&quot;</span><br>  <span class="hljs-attr">nodefs.available:</span> <span class="hljs-string">&quot;10%&quot;</span><br><span class="hljs-attr">enforceNodeAllocatable:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">pods</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">kube-reserved</span>  <span class="hljs-comment"># 开启 kube 资源预留</span><br><span class="hljs-attr">kubeReserved:</span><br>  <span class="hljs-attr">cpu:</span> <span class="hljs-string">500m</span><br>  <span class="hljs-attr">memory:</span> <span class="hljs-string">1Gi</span><br>  <span class="hljs-attr">ephemeral-storage:</span> <span class="hljs-string">10Gi</span><br><span class="hljs-attr">kubeReservedCgroup:</span> <span class="hljs-string">/kubelet.slice</span>  <span class="hljs-comment"># 指定 kube 资源预留的 cgroup</span><br><span class="hljs-string">....</span><br></code></pre></td></tr></table></figure>
+
+<p>修改完成后，如果 <code>--kube-reserved-cgroup</code> 不存在，<code>Kubelet</code> 不会创建它，启动 <code>Kubelet</code> 将会失败。由于子系统较多，具体是哪一个子系统不存在不好定位，我们可以将 <code>kubelet</code> 的日志级别调整为 <code>--v=4</code>，就可以看到具体丢失的 cgroup 路径：</p>
+<figure class="highlight brainfuck"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs brainfuck"><span class="hljs-comment">$ vi /etc/sysconfig/kubelet</span><br><span class="hljs-comment">KUBELET_EXTRA_ARGS=&quot;</span><span class="hljs-literal">--</span><span class="hljs-comment">v=4</span> <span class="hljs-literal">--</span><span class="hljs-comment">logtostderr=false</span> <span class="hljs-literal">--</span><span class="hljs-comment">log</span><span class="hljs-literal">-</span><span class="hljs-comment">dir=/var/log/kubernetes/kubelet</span> <span class="hljs-literal">--</span><span class="hljs-comment">cgroup</span><span class="hljs-literal">-</span><span class="hljs-comment">driver=systemd&quot;</span><br></code></pre></td></tr></table></figure>
+
+
+<p>现在可以看到具体的 cgroup 不存在的路径信息了：(kubelet.INFO日志中)</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">The Cgroup [kubelet] has some missing paths: [<span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/</span>hugetlb<span class="hljs-regexp">/kubelet.slice /</span>sys<span class="hljs-regexp">/fs/</span>cgroup<span class="hljs-regexp">/pids/</span>kubelet.slice <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/</span>cpuset<span class="hljs-regexp">/kubelet.slice /</span>sys<span class="hljs-regexp">/fs/</span>cgroup<span class="hljs-regexp">/cpu,cpuacct/</span>kubelet.slice <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/</span>cpu,cpuacct<span class="hljs-regexp">/kubelet.slice /</span>sys<span class="hljs-regexp">/fs/</span>cgroup<span class="hljs-regexp">/memory/</span>kubelet.slice]<br></code></pre></td></tr></table></figure>
+
+
+<p>至于如何设置cgroup结构，请参考<a target="_blank" rel="noopener" href="https://github.com/kubernetes/community/blob/master/contributors/design-proposals/node/node-allocatable.md#recommended-cgroups-setup">官方建议</a>。</p>
+<p>2.为kubelet.slice创建子系统:</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs awk">$ mkdir -p <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/</span>cpu,cpuacct/kubelet.slice<br>$ mkdir -p <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/m</span>emory/kubelet.slice<br>$ mkdir -p <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/</span>systemd/kubelet.slice<br>$ mkdir -p <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/</span>pids/kubelet.slice<br>$ mkdir -p <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/</span>cpu,cpuacct/kubelet.slice<br>$ mkdir -p <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/</span>cpuset/kubelet.slice<br>$ mkdir -p <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/</span>hugetlb/kubelet.slice<br></code></pre></td></tr></table></figure>
+
+<p>注意：systemd 的 cgroup 驱动对应的 cgroup 名称是以 .slice 结尾的，比如如果你把 cgroup 名称配置成 kubelet.service，那么对应的创建的 cgroup 名称应该为 kubelet.service.slice。如果你配置的是 cgroupfs 的驱动，则用配置的值即可。无论哪种方式，通过查看错误日志都是排查问题最好的方式。</p>
+<p>我们也可以通过查看代码知道需要创建那些子系统：</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">https:<span class="hljs-regexp">//gi</span>thub.com<span class="hljs-regexp">/kubernetes/</span>kubernetes<span class="hljs-regexp">/blob/</span>v1.<span class="hljs-number">18.10</span><span class="hljs-regexp">/pkg/</span>kubelet<span class="hljs-regexp">/cm/</span>cgroup_manager_linux.go<br></code></pre></td></tr></table></figure>
+
+
+
+<p>3.重启kubelet</p>
+<h4 id="验证"><a href="#验证" class="headerlink" title="验证"></a>验证</h4><p>1.验证公式计算的allocatable与实际一致<br>按以上设置节点上所有Pod实际使用的资源总和不会超过：</p>
+<figure class="highlight fortran"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs fortran"><span class="hljs-keyword">allocatable</span> = capacity - kube-reserved - eviction-hard<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">Capacity</span>:<br>  <span class="hljs-attribute">cpu</span>:                <span class="hljs-number">4</span><br>  <span class="hljs-attribute">ephemeral</span>-storage:  <span class="hljs-number">32488964</span>Ki<br>  <span class="hljs-attribute">hugepages</span>-<span class="hljs-number">1</span>Gi:      <span class="hljs-number">0</span><br>  <span class="hljs-attribute">hugepages</span>-<span class="hljs-number">2</span>Mi:      <span class="hljs-number">0</span><br>  <span class="hljs-attribute">memory</span>:             <span class="hljs-number">7976520</span>Ki  (约<span class="hljs-number">7</span>.<span class="hljs-number">6</span>G)<br>  <span class="hljs-attribute">pods</span>:               <span class="hljs-number">110</span><br><span class="hljs-attribute">Allocatable</span>:<br>  <span class="hljs-attribute">cpu</span>:                <span class="hljs-number">3500</span>m<br>  <span class="hljs-attribute">ephemeral</span>-storage:  <span class="hljs-number">28868087349</span><br>  <span class="hljs-attribute">hugepages</span>-<span class="hljs-number">1</span>Gi:      <span class="hljs-number">0</span><br>  <span class="hljs-attribute">hugepages</span>-<span class="hljs-number">2</span>Mi:      <span class="hljs-number">0</span><br>  <span class="hljs-attribute">memory</span>:             <span class="hljs-number">6415944</span>Ki  (约<span class="hljs-number">6</span>.<span class="hljs-number">1</span>G)<br>  <span class="hljs-attribute">pods</span>:               <span class="hljs-number">110</span><br></code></pre></td></tr></table></figure>
+
+<p>根据公式 <code>capacity - kube-reserved - eviction-hard</code>，memory的allocatable的值为 <code>7.6G - 1G - 0.5G = 6.1G</code> ，与Allocatable的值一致。</p>
+<p>查看kubelet.service控制组中对内存的限制值memory.limit_in_bytes:</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs awk">$ cat <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/m</span>emory<span class="hljs-regexp">/kubelet.slice/m</span>emory.limit_in_bytes<br><span class="hljs-number">1073741824</span>(<span class="hljs-number">1</span>G)<br></code></pre></td></tr></table></figure>
+
+
+<p>2.验证公式计算的总使用量限制与实际值一致<br>查看kubepods控制组中对内存的限制值memory.limit_in_bytes（memory.limit_in_bytes值决定了Node上所有的Pod实际能使用的内存上限）</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs awk">$ cat <span class="hljs-regexp">/sys/</span>fs<span class="hljs-regexp">/cgroup/m</span>emory<span class="hljs-regexp">/kubepods.slice/m</span>emory.limit_in_bytes <br><span class="hljs-number">7094214656</span><br></code></pre></td></tr></table></figure>
+
+
+<p>根据公式 <code>capacity - kube-reserved</code>，Node上Pod能实际使用的资源上限值为：<code>7.6G - 1G = 6.6G</code>，与实际一致。</p>
+<h3 id="限制system系统资源"><a href="#限制system系统资源" class="headerlink" title="限制system系统资源"></a>限制system系统资源</h3><p>&amp;emsp;&amp;emsp;我们也可以用同样的方式为系统配置预留值，<code>system-reserved</code> 用于为诸如 sshd、udev 等系统守护进程争取资源预留，<code>system-reserved</code> 也应该为 kernel 预留 内存，因为目前 kernel 使用的内存并不记在 Kubernetes 的 pod 上。但是在执行 <code>system-reserved</code> 预留操作时请加倍小心，因为它可能导致节点上的关键系统服务 CPU 资源短缺或因为内存不足而被终止，所以如果不是自己非常清楚如何配置，可以不用配置系统预留值。<br>&amp;emsp;&amp;emsp;同样通过 kubelet 的参数 <code>--system-reserved</code> 配置系统预留值，但是也需要配置 <code>--system-reserved-cgroup</code> 参数为系统进程设置 cgroup。<br>&amp;emsp;&amp;emsp;请注意，如果 <code>--system-reserved-cgroup</code> 不存在，kubelet 不会创建它，kubelet 会启动失败。</p>
+<h2 id="建议优化"><a href="#建议优化" class="headerlink" title="建议优化"></a>建议优化</h2><figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-comment"># 节点资源预留</span><br><span class="hljs-attribute">enforce</span>-node-allocatable: &#x27;pods&#x27;<br><span class="hljs-attribute">system</span>-reserved: &#x27;cpu=<span class="hljs-number">0</span>.<span class="hljs-number">25</span>,memory=<span class="hljs-number">200</span>Mi&#x27;<br><span class="hljs-attribute">kube</span>-reserved: &#x27;cpu=<span class="hljs-number">0</span>.<span class="hljs-number">25</span>,memory=<span class="hljs-number">1500</span>Mi&#x27;<br><br><span class="hljs-comment"># POD驱逐，这个参数只支持内存和磁盘。</span><br><br><span class="hljs-comment">## 硬驱逐阈值</span><br><span class="hljs-comment">### 当节点上的可用资源降至保留值以下时，就会触发强制驱逐。强制驱逐会强制kill掉POD，不会等POD自动退出。</span><br><span class="hljs-attribute">eviction</span>-hard: &#x27;memory.available&lt;<span class="hljs-number">300</span>Mi,nodefs.available&lt;<span class="hljs-number">10</span>%,imagefs.available&lt;<span class="hljs-number">15</span>%,nodefs.inodesFree&lt;<span class="hljs-number">5</span>%&#x27;<br><br><span class="hljs-comment">## 软驱逐阈值</span><br><span class="hljs-comment">### 以下四个参数配套使用，当节点上的可用资源少于这个值时但大于硬驱逐阈值时候，会等待eviction-soft-grace-period设置的时长；</span><br><span class="hljs-comment">### 等待中每10s检查一次，当最后一次检查还触发了软驱逐阈值就会开始驱逐，驱逐不会直接Kill POD，先发送停止信号给POD，然后等待eviction-max-pod-grace-period设置的时长；</span><br><span class="hljs-comment">### 在eviction-max-pod-grace-period时长之后，如果POD还未退出则发送强制kill POD&quot;</span><br><span class="hljs-attribute">eviction</span>-soft: &#x27;memory.available&lt;<span class="hljs-number">500</span>Mi,nodefs.available&lt;<span class="hljs-number">50</span>%,imagefs.available&lt;<span class="hljs-number">50</span>%,nodefs.inodesFree&lt;<span class="hljs-number">10</span>%&#x27;<br><span class="hljs-attribute">eviction</span>-soft-grace-period: &#x27;memory.available=<span class="hljs-number">1</span>m30s&#x27;<br><span class="hljs-attribute">eviction</span>-max-pod-grace-period: &#x27;<span class="hljs-number">30</span>&#x27;<br><span class="hljs-attribute">eviction</span>-pressure-transition-period: &#x27;<span class="hljs-number">30</span>s&#x27;<br></code></pre></td></tr></table></figure>
+
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes 资源预留</div>
+      <div>https://system51.github.io/2020/01/13/reserve-compute-resources-for-system-daemons/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2020年1月13日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2020/01/14/using-sysctls-in-a-kubernetes-cluster/" title="在Kuberentes集群中使用sysctl">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">在Kuberentes集群中使用sysctl</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/12/19/prometheus-operator-monitor-etcd/" title="Prometheus Operator 监控 etcd 集群">
+                        <span class="hidden-mobile">Prometheus Operator 监控 etcd 集群</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

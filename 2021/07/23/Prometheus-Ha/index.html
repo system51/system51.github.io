@@ -1,0 +1,808 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="前面我们已经学习了 Prometheus 的使用，了解了基本的 PromQL 语句以及结合 Grafana 来进行监控图表展示，通过 AlertManager 来进行报警，这些工具结合起来已经可以帮助我们搭建一套比较完整的监控报警系统了，但是也仅仅局限于测试环境，对于生产环境来说则还有许多需要改进的地方，其中一个非常重要的就是 Prometheus 的高可用。 单台的 Prometheus 存在单">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Prometheus高可用">
+<meta property="og:url" content="https://system51.github.io/2021/07/23/Prometheus-Ha/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="前面我们已经学习了 Prometheus 的使用，了解了基本的 PromQL 语句以及结合 Grafana 来进行监控图表展示，通过 AlertManager 来进行报警，这些工具结合起来已经可以帮助我们搭建一套比较完整的监控报警系统了，但是也仅仅局限于测试环境，对于生产环境来说则还有许多需要改进的地方，其中一个非常重要的就是 Prometheus 的高可用。 单台的 Prometheus 存在单">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-1.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-2.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-12.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-3.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-8.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-9.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-7.jpeg">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-10.jpeg">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-11.jpeg">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-4.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-5.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-HA-6.png">
+<meta property="article:published_time" content="2021-07-23T03:00:18.000Z">
+<meta property="article:modified_time" content="2021-12-14T05:55:16.981Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/Prometheus-HA-1.png">
+  
+  
+  
+  <title>Prometheus高可用 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Prometheus高可用"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2021-07-23 11:00" pubdate>
+          2021年7月23日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          15k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          25 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Prometheus高可用</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>前面我们已经学习了 Prometheus 的使用，了解了基本的 PromQL 语句以及结合 Grafana 来进行监控图表展示，通过 AlertManager 来进行报警，这些工具结合起来已经可以帮助我们搭建一套比较完整的监控报警系统了，但是也仅仅局限于测试环境，对于生产环境来说则还有许多需要改进的地方，其中一个非常重要的就是 Prometheus 的高可用。</p>
+<p>单台的 Prometheus 存在单点故障的风险，随着监控规模的扩大，Prometheus 产生的数据量也会非常大，性能和存储都会面临问题。毋庸置疑，我们需要一套高可用的 Prometheus 集群。这里我根据我们公司的Prometheus架构来讲一下我们是怎么用的。</p>
+<h2 id="联邦集群"><a href="#联邦集群" class="headerlink" title="联邦集群"></a>联邦集群</h2><p>当单个 Promthues 实例无法处理大量的采集任务时，这个时候我们就可以使用基于 Prometheus 联邦集群的方式来将监控任务划分到不同的 Prometheus 实例中去。Prometheus 联邦允许一台 Prometheus Server 从另一台 Prometheus Server 抓取符合特定条件的数据。Prometheus 的联邦有不同的使用方式，分层联邦和跨服务联邦；</p>
+<h3 id="分层联邦（Hierarchical-federation）"><a href="#分层联邦（Hierarchical-federation）" class="headerlink" title="分层联邦（Hierarchical federation）"></a>分层联邦（Hierarchical federation）</h3><p>一个联邦设置可能由多个机房 Prometheus Server 和一套全局 Prometheus Server组成。每个机房的Prometheus Server负责收集本区域内的数据，全局 Prometheus 服务器从这些下层 Prometheus Server中收集和汇聚数据，并存储聚合后的数据。这样就提供了一个聚合的全局视角和详细的本地视角。<br><img src="/images/Prometheus-HA-1.png" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-1"></p>
+<h3 id="跨服务联邦（Cross-service-federation）"><a href="#跨服务联邦（Cross-service-federation）" class="headerlink" title="跨服务联邦（Cross-service federation）"></a>跨服务联邦（Cross-service federation）</h3><p>比如说有一个<code>Prometheus Server A</code>用来采集<code>node_exporter</code>的<code>Metrics</code>，而<code>Prometheus Server B</code>则用来采集<code>mysql_exporter</code>的<code>Metrics</code>，最后由全局Prometheus通过联邦的方式来汇总两个<code>Prometheus Server</code>的数据。（可以通过下图中的圆圈和正方形理解）<br><img src="/images/Prometheus-HA-2.png" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-2"></p>
+<h3 id="Prometheus联邦配置"><a href="#Prometheus联邦配置" class="headerlink" title="Prometheus联邦配置"></a>Prometheus联邦配置</h3><p>source prometheus不用修改什么，prometheus配置如下：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">global</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">60s </span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">60s</span><br>  <span class="hljs-attribute">evaluation_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">120s </span><br><span class="hljs-attribute">alerting</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">alertmanagers</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">static_configs:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>      <span class="hljs-comment"># - alertmanager:9093</span><br><span class="hljs-attribute">rule_files</span><span class="hljs-punctuation">:</span><br><span class="hljs-attribute">scrape_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;node-exporter&#x27;</span><br>    <span class="hljs-attribute">consul_sd_configs</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">server: &#x27;127.0.0.1:8500&#x27;</span><br>        <span class="hljs-attribute">datacenter</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;lzw&#x27;</span><br>        <span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span> <span class="hljs-string">[]</span><br></code></pre></td></tr></table></figure>
+
+<p>中心Prometheus从下层Prometheus中拉取数据配置如下(<code>match[]</code>参数是必须配置项):</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">global</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">    15s </span><br>  <span class="hljs-attribute">evaluation_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">30s </span><br><br><span class="hljs-attribute">alerting</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">alertmanagers</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">static_configs:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">10.15.1.29:9093 </span><br><br><span class="hljs-attribute">rule_files</span><span class="hljs-punctuation">:</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;rules/recording_rules.yaml&quot;</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;rules/alerts.yml&quot;</span><br><br><span class="hljs-attribute">scrape_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: grafana</span><br>    <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;10.15.1.29:3000&#x27;</span><br><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;cluster-a&#x27;</span><br>    <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">60s</span><br>    <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">60s</span><br>    <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>    <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>    <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=~&quot;.+&quot;&#125;&#x27;</span><br>    <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;10.15.1.30:9090&#x27;</span><br><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;cluster-b&#x27;</span><br>    <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">60s</span><br>    <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">60s</span><br>    <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>    <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>    <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=~&quot;.+&quot;&#125;&#x27;</span><br>    <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;10.15.1.31:9090&#x27;</span><br></code></pre></td></tr></table></figure>
+
+
+<table>
+<thead>
+<tr>
+<th>主机</th>
+<th>角色</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>10.15.1.29</td>
+<td>中心Prometheus</td>
+</tr>
+<tr>
+<td>10.15.1.30</td>
+<td>Prometheus Server</td>
+</tr>
+<tr>
+<td>10.15.1.31</td>
+<td>Prometheus Server</td>
+</tr>
+<tr>
+<td>10.15.1.32</td>
+<td>node_exporter被10.15.1.30采集</td>
+</tr>
+<tr>
+<td>10.15.1.46</td>
+<td>node_exporter被10.15.1.31采集</td>
+</tr>
+</tbody></table>
+<h3 id="实际生产中用例"><a href="#实际生产中用例" class="headerlink" title="实际生产中用例"></a>实际生产中用例</h3><p>在生产中不建议使用<code>&#39;&#123;job=~&quot;.+&quot;&#125;&#39;</code> 匹配拉取所有数据，由于数据量大，可能会导致中心Prometheus拉取数据失败。所以在生产中最好是分组拉取。根据分中心不同的<code>job</code>或<code>namespaces</code>标签做区分。这里还需要注意<code>scrape_interval</code> 和 <code>scrape_timeout</code> 两个参数。如果分中心promethues设置的时间为<code>30s</code>，中心Prometheus可以设置为<code>35s</code>或<code>40s</code>时间大于分中心的抓取时间，但是不能大于他的倍数例如<code>60s</code>。不然绘图偶尔会出现断断续续的情况。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;cluster-a&#x27;</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=~&quot;.+&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;172.16.60.244:9090&#x27;</span><br><br><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;kube-apiserver&#x27;</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=~&quot;kube-apiserver&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;172.16.50.31:30080&#x27;</span><br><br><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;etcd&#x27;</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=~&quot;etcd-k8s&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;172.16.50.31:30080&#x27;</span><br><br><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;ingress-nginx-endpoints&#x27;</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=~&quot;ingress-nginx-endpoints&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;172.16.50.31:30080&#x27;</span><br><br><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;kube-state-metrics&#x27;</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=~&quot;kube-state-metrics&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;172.16.50.31:30080&#x27;</span><br><br><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;kubernetes&#x27;</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=~&quot;kubernetes.*&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;172.16.50.31:30080&#x27;</span><br><br><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;kubelet&#x27;</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">45s</span><br>  <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=~&quot;kubelet&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;172.16.50.31:30080&#x27;</span><br><br><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;kube-system&#x27;</span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">35s</span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">35s</span><br>  <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;namespace=&quot;kube-system&quot;,job=~&quot;metrics-server|kube-dns&quot;&#125;&#x27;    #以名称空间做抓取过滤</span><br>  <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;172.16.50.31:30080&#x27;</span><br><br><span class="hljs-bullet">-</span> <span class="hljs-string">job_name: &#x27;pmsp&#x27;                        </span><br>  <span class="hljs-attribute">scrape_interval</span><span class="hljs-punctuation">:</span> <span class="hljs-string">35s</span><br>  <span class="hljs-attribute">scrape_timeout</span><span class="hljs-punctuation">:</span> <span class="hljs-string">35s</span><br>  <span class="hljs-attribute">honor_labels</span><span class="hljs-punctuation">:</span> <span class="hljs-string">true</span><br>  <span class="hljs-attribute">metrics_path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;/federate&#x27;</span><br>  <span class="hljs-attribute">params</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">&#x27;match[]&#x27;</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;&#123;job=&quot;svc-staffsit-java&quot;&#125;&#x27;</span><br>  <span class="hljs-attribute">static_configs</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;172.16.50.31:30080&#x27;</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<h2 id="外部存储VictoriaMetrics"><a href="#外部存储VictoriaMetrics" class="headerlink" title="外部存储VictoriaMetrics"></a>外部存储VictoriaMetrics</h2><p>VictoriaMetrics是一个快速高效且可扩展的监控解决方案和时序数据库，可以作为Prometheus的长期远端存储。这里我们架构使用Prometheus联邦模式加VictoriaMetrics作为外部存储，将中心Prometheus数据使用<code>remote_write</code>的方式写入到VictoriaMetrics中，Prometheus将传入数据写入本地存储并并行复制到远程存储。这意味着即使远程存储不可用，数据在本地存储中仍可用 <code>--storage.tsdb.retention.time</code> 持续时间。实际上VictoriaMetrics自己也有一套监控方案可以用来替代现有的Prometheus，这里我仅使用VictoriaMetrics的存储功能。</p>
+<h3 id="安装VictoriaMetrics"><a href="#安装VictoriaMetrics" class="headerlink" title="安装VictoriaMetrics"></a>安装VictoriaMetrics</h3><p>VictoriaMetrics分两个版本一个是单机版一个是集群版，我们使用单机版即可。</p>
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs autoit"><span class="hljs-meta"># 下载victoriametrics</span><br>[root<span class="hljs-symbol">@devops010015001029</span> shallwe]<span class="hljs-meta"># wget https://github.com/VictoriaMetrics/VictoriaMetrics/releases/download/v1.63.0/victoria-metrics-amd64-v1.63.0.tar.gz</span><br>[root<span class="hljs-symbol">@devops010015001029</span> shallwe]<span class="hljs-meta"># tar -zxv -f victoria-metrics-amd64-v1.63.0.tar.gz </span><br>[root<span class="hljs-symbol">@devops010015001029</span> shallwe]<span class="hljs-meta"># mkdir -pv /usr/local/victoriametrics/&#123;bin,conf,data&#125;</span><br>[root<span class="hljs-symbol">@devops010015001029</span> shallwe]<span class="hljs-meta"># mv victoria-metrics-prod /usr/local/victoriametrics/bin/</span><br>[root<span class="hljs-symbol">@devops010015001029</span> shallwe]<span class="hljs-meta"># mkdir -pv /run/victoriametrics</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="配置victoriametrics启动参数"><a href="#配置victoriametrics启动参数" class="headerlink" title="配置victoriametrics启动参数"></a>配置victoriametrics启动参数</h3><p>注意：下面部分参数需要修改，根据自己的主机情况修改，以下参数并不适用所有主机。</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-section">[root@devops010015001029 shallwe]</span><span class="hljs-comment"># vim /usr/local/victoriametrics/conf/victoriametrics</span><br><br><span class="hljs-attr">VICTORIAMETRICS_OPT</span>=-http.connTimeout=<span class="hljs-number">5</span>m \<br><span class="hljs-attr">-maxConcurrentInserts</span>=<span class="hljs-number">20000</span> \<br><span class="hljs-attr">-maxInsertRequestSize</span>=<span class="hljs-number">100</span>MB \<br><span class="hljs-attr">-maxLabelsPerTimeseries</span>=<span class="hljs-number">200</span> \<br><span class="hljs-attr">-insert.maxQueueDuration</span>=<span class="hljs-number">5</span>m \<br><span class="hljs-attr">-dedup.minScrapeInterval</span>=<span class="hljs-number">60</span>s \<br><span class="hljs-attr">-bigMergeConcurrency</span>=<span class="hljs-number">20</span> \<br><span class="hljs-attr">-retentionPeriod</span>=<span class="hljs-number">180</span>d \<br><span class="hljs-attr">-search.maxQueryDuration</span>=<span class="hljs-number">10</span>m \<br><span class="hljs-attr">-search.maxQueryLen</span>=<span class="hljs-number">30</span>MB \<br><span class="hljs-attr">-search.maxQueueDuration</span>=<span class="hljs-number">60</span>s \<br><span class="hljs-attr">-search.maxConcurrentRequests</span>=<span class="hljs-number">32</span> \<br><span class="hljs-attr">-storageDataPath</span>=/usr/local/victoriametrics/data \<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="设置开机启动"><a href="#设置开机启动" class="headerlink" title="设置开机启动"></a>设置开机启动</h3><figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-section">[root@devops010015001029 shallwe]</span><span class="hljs-comment"># vim /usr/lib/systemd/system/victoriametrics.service</span><br><br><span class="hljs-section">[Unit]</span><br><span class="hljs-attr">Description</span>=victoriametrics<br><span class="hljs-attr">After</span>=network.target<br><br><span class="hljs-section">[Service]</span><br><span class="hljs-attr">Type</span>=simple<br><span class="hljs-attr">LimitNOFILE</span>=<span class="hljs-number">1024000</span><br><span class="hljs-attr">LimitNPROC</span>=<span class="hljs-number">1024000</span><br><span class="hljs-attr">LimitCORE</span>=infinity<br><span class="hljs-attr">LimitMEMLOCK</span>=infinity<br><span class="hljs-attr">EnvironmentFile</span>=-/usr/local/victoriametrics/conf/victoriametrics<br><span class="hljs-attr">PIDFile</span>=/run/victoriametrics/victoriametrics.pid<br><span class="hljs-attr">ExecStart</span>=/usr/local/victoriametrics/bin/victoria-metrics-prod <span class="hljs-variable">$VICTORIAMETRICS_OPT</span><br><span class="hljs-attr">ExecStop</span>=/bin/kill -s SIGTERM <span class="hljs-variable">$MAINPID</span><br><span class="hljs-attr">Restart</span>=<span class="hljs-literal">on</span>-failure<br><span class="hljs-attr">RestartSec</span>=<span class="hljs-number">1</span><br><span class="hljs-attr">KillMode</span>=process<br><br><span class="hljs-section">[Install]</span><br><span class="hljs-attr">WantedBy</span>=multi-user.target<br><br><br><span class="hljs-section">[root@devops010015001029 shallwe]</span><span class="hljs-comment"># systemctl daemon-reload</span><br><span class="hljs-section">[root@devops010015001029 shallwe]</span><span class="hljs-comment"># systemctl start victoriametrics</span><br><span class="hljs-section">[root@devops010015001029 shallwe]</span><span class="hljs-comment"># systemctl status victoriametrics</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="Prometheus数据写入victoriametrics"><a href="#Prometheus数据写入victoriametrics" class="headerlink" title="Prometheus数据写入victoriametrics"></a>Prometheus数据写入victoriametrics</h3><p>将以下行添加到 Prometheus 配置文件（prometheus.yml）</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">remote_write:</span><br>- url: http:<span class="hljs-comment">//10.15.1.29:8428/api/v1/write</span><br><span class="hljs-symbol">  remote_timeout:</span> <span class="hljs-number">30</span>s<br><span class="hljs-symbol">  queue_config:</span><br><span class="hljs-symbol">    capacity:</span> <span class="hljs-number">20000</span><br><span class="hljs-symbol">    max_shards:</span> <span class="hljs-number">50</span><br><span class="hljs-symbol">    min_shards:</span> <span class="hljs-number">1</span><br><span class="hljs-symbol">    max_samples_per_send:</span> <span class="hljs-number">10000</span><br><span class="hljs-symbol">    batch_send_deadline:</span> <span class="hljs-number">60</span>s<br><span class="hljs-symbol">    min_backoff:</span> <span class="hljs-number">30</span>ms<br><span class="hljs-symbol">    max_backoff:</span> <span class="hljs-number">100</span>ms<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="prometheus的remote-write功能"><a href="#prometheus的remote-write功能" class="headerlink" title="prometheus的remote write功能"></a>prometheus的remote write功能</h3><p>prometheus配置了remote write的目标地址后，它会从WAL读取数据，然后把采样数据写入各分片的内存队列，最后发起向远程目标地址的请求。</p>
+<p>数据流的逻辑大致如下：</p>
+<figure class="highlight livescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs livescript">      |--&gt;  queue <span class="hljs-function"><span class="hljs-params">(shard_1)</span>   --&gt;</span> remote endpoint<br>WAL --|--&gt;  queue <span class="hljs-function"><span class="hljs-params">(shard_...)</span> --&gt;</span> remote endpoint<br>      |--&gt;  queue <span class="hljs-function"><span class="hljs-params">(shard_n)</span>   --&gt;</span> remote endpoint<br></code></pre></td></tr></table></figure>
+<p>需要注意的是：WAL是每两小时压缩一次，如果远程写入的目标地址挂了超过两个小时，就会导致这段时间没被发送的数据丢失。如果远程写入的目标地址无响应时间较短（两小时以内），prometheus是会重试的，这种情况不会造成数据丢失。</p>
+<p>当一个分片的队列被塞满时，promtheus将阻塞继续从WAL读取数据到任意分片。</p>
+<p>在操作过程中，prometheus根据以下条件来持续计算要是用的最佳的分片数：</p>
+<ul>
+<li>摄入样本的速率（incoming sample rate）</li>
+<li>还未发送的样本数量（number of outstanding samples not sent）</li>
+<li>发送每个样本的时间（time taken to send each sample）</li>
+</ul>
+<h4 id="内存的使用"><a href="#内存的使用" class="headerlink" title="内存的使用"></a>内存的使用</h4><p>当开启remote write功能后，prometheus内存的消耗是会上涨的。大部分反馈会上涨约25%的内存消耗，但实际数据取决于数据的分片。</p>
+<p>对于WAL中的每一个series，远程写功能会缓存一个series ID到标签值的映射，这会导致内存消耗的大量增加。</p>
+<p>除此之外，每个分片和其队列也增加了内存的使用。分片内存与 <code>number of shards * (capacity + max_samples_per_send)</code>成正比。默认的<code>capacity</code>和<code>max_samples_per_send</code>将限制每个分片的内存使用小于100KB。</p>
+<h4 id="相关参数"><a href="#相关参数" class="headerlink" title="相关参数"></a>相关参数</h4><p>remote write的相关参数在queue_config配置块:</p>
+<figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs pf"><span class="hljs-comment"># Configures the queue used to write to remote storage.</span><br>queue_config:<br>  <span class="hljs-comment"># Number of samples to buffer per shard before we block reading of more</span><br>  <span class="hljs-comment"># samples from the WAL. It is recommended to have enough capacity in each</span><br>  <span class="hljs-comment"># shard to buffer several requests to keep throughput up while processing</span><br>  <span class="hljs-comment"># occasional slow remote requests.</span><br>  [ capacity: <span class="hljs-variable">&lt;int&gt;</span> | <span class="hljs-keyword">default</span> = <span class="hljs-number">500</span> ]<br>  <span class="hljs-comment"># Maximum number of shards, i.e. amount of concurrency.</span><br>  [ max_shards: <span class="hljs-variable">&lt;int&gt;</span> | <span class="hljs-keyword">default</span> = <span class="hljs-number">1000</span> ]<br>  <span class="hljs-comment"># Minimum number of shards, i.e. amount of concurrency.</span><br>  [ min_shards: <span class="hljs-variable">&lt;int&gt;</span> | <span class="hljs-keyword">default</span> = <span class="hljs-number">1</span> ]<br>  <span class="hljs-comment"># Maximum number of samples per send.</span><br>  [ max_samples_per_send: <span class="hljs-variable">&lt;int&gt;</span> | <span class="hljs-keyword">default</span> = <span class="hljs-number">100</span>]<br>  <span class="hljs-comment"># Maximum time a sample will wait in buffer.</span><br>  [ batch_send_deadline: <span class="hljs-variable">&lt;duration&gt;</span> | <span class="hljs-keyword">default</span> = <span class="hljs-number">5</span>s ]<br>  <span class="hljs-comment"># Initial retry delay. Gets doubled for every retry.</span><br>  [ min_backoff: <span class="hljs-variable">&lt;duration&gt;</span> | <span class="hljs-keyword">default</span> = <span class="hljs-number">30</span>ms ]<br>  <span class="hljs-comment"># Maximum retry delay.</span><br>  [ max_backoff: <span class="hljs-variable">&lt;duration&gt;</span> | <span class="hljs-keyword">default</span> = <span class="hljs-number">100</span>ms ]<br></code></pre></td></tr></table></figure>
+
+<p>capacity<br>用来指定每个分片队列可容纳的样本数上限。当队列达到上限后，将停止从WAL读数据。</p>
+<p>通过设大capacity可以避免分片的阻塞，但是会导致过多的内存消耗，以及resharing时清空队列所需要的时间。<br>推荐是将capacity设为max_samples_per_send的3到10倍。</p>
+<p>max_shards<br>用来指定最大的分片数。当队列落后远程写组件，prometheus将增加分片数直到最大值，来增加吞吐量。</p>
+<p>min_shards<br>用来指定最小的分片数。这个参数对于大多数使用者来说不需要调整，因为当远程写落后时，prometheus会自动增加分片数。</p>
+<p>max_samples_per_send<br>用来指定每次批量发送给远程写目标地址的最大samples数。如果远程写地址的后端服务，处理能力有限，或对每次处理的samples数有上限，则可以考虑设小次参数。</p>
+<p>batch_send_deadline<br>指定发送一个远程写请求的最大等待时间。简单的说，batch_send_deadline和max_samples_per_send这两个参数，有一个先达到，都会发起一个远程写请求。</p>
+<p>min_backoff<br>指定当请求失败时，发起重试的最小时间间隔。增加这个值，可以使重试间隔时间更分散。每次重试后，下次重试的间隔时间将翻倍，直到达到max_backoff。</p>
+<p>max_backoff<br>指定重试间隔的最大时间。</p>
+<h3 id="Prometheus-设置开机启动"><a href="#Prometheus-设置开机启动" class="headerlink" title="Prometheus 设置开机启动"></a>Prometheus 设置开机启动</h3><p>systemd服务：</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-section">[root@devops010015001029 conf]</span><span class="hljs-comment"># vim /usr/lib/systemd/system/prometheus.service </span><br><br><span class="hljs-section">[Unit]</span><br><span class="hljs-attr">Description</span>=prometheus<br><span class="hljs-attr">Wants</span>=network-<span class="hljs-literal">on</span>line.target<br><br><span class="hljs-section">[Service]</span><br><span class="hljs-attr">LimitNOFILE</span>=<span class="hljs-number">1024000</span><br><span class="hljs-attr">LimitNPROC</span>=<span class="hljs-number">1024000</span><br><span class="hljs-attr">LimitCORE</span>=infinity<br><span class="hljs-attr">LimitMEMLOCK</span>=infinity<br><span class="hljs-attr">EnvironmentFile</span>=-/usr/local/prometheus/conf/prometheus<br><span class="hljs-attr">ExecStart</span>=/usr/local/prometheus/prometheus <span class="hljs-variable">$PROMETHEUS_OPTS</span><br><span class="hljs-attr">Restart</span>=<span class="hljs-literal">on</span>-failure<br><span class="hljs-attr">KillMode</span>=process<br><br><span class="hljs-section">[Install]</span><br><span class="hljs-attr">WantedBy</span>=multi-user.target<br></code></pre></td></tr></table></figure>
+
+<p>参数配置：</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs routeros">[root@devops010015001029 conf]# vim /usr/local/prometheus/conf/prometheus<br><br><span class="hljs-attribute">PROMETHEUS_OPTS</span>=--config.file=/usr/local/prometheus/prometheus.yml \<br>--web.<span class="hljs-attribute">listen-address</span>=:9090 \<br>--storage.tsdb.<span class="hljs-attribute">path</span>=/data/prometheus \<br>--storage.tsdb.retention.<span class="hljs-attribute">time</span>=2d \<br>--storage.tsdb.<span class="hljs-attribute">min-block-duration</span>=2h \<br>--storage.tsdb.<span class="hljs-attribute">max-block-duration</span>=2h \<br>--web.enable-lifecycle \<br></code></pre></td></tr></table></figure>
+
+<p>可配置的参数（可参考）：</p>
+<p><img src="/images/Prometheus-HA-12.png" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-12"></p>
+<h3 id="Grafana设置"><a href="#Grafana设置" class="headerlink" title="Grafana设置"></a>Grafana设置</h3><p>使用以下 URL 在 Grafana 中创建 Prometheus 数据源：</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">http:<span class="hljs-regexp">//</span>&lt;victoriametrics-addr&gt;:<span class="hljs-number">8428</span><br></code></pre></td></tr></table></figure>
+<p>替换<code>&lt;victoriametrics-addr&gt;</code>为 VictoriaMetrics 的主机名或 IP 地址。</p>
+<p><img src="/images/Prometheus-HA-3.png" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-3"></p>
+<h3 id="Prometheus本地存储"><a href="#Prometheus本地存储" class="headerlink" title="Prometheus本地存储"></a>Prometheus本地存储</h3><p>Prometheus内置了TSDB时序数据库，内置的时序数据给Prometheus带来了简单高效的使用体验，Prometheus2.0 版本引入了全新的V3存储引擎，每秒可处理数百万个样本，可以在单节点的情况下满足大部分用户的监控需求。</p>
+<h4 id="Prometheus-TSDB数据存储格式概览"><a href="#Prometheus-TSDB数据存储格式概览" class="headerlink" title="Prometheus TSDB数据存储格式概览"></a>Prometheus TSDB数据存储格式概览</h4><ul>
+<li>以每2小时为一个时间窗口，并存储为一个单独的block;</li>
+<li>block会压缩、合并历史数据块，随着压缩合并，其block数量会减少; </li>
+<li>block的大小并不固定，但最小会保存两个小时的数据;（因为有些时候你添加了样本或者减少了样本数就会导致block大小不一样）</li>
+</ul>
+<p>下图为block文件<br><img src="/images/Prometheus-HA-8.png" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-8"></p>
+<h4 id="TSDB-Block"><a href="#TSDB-Block" class="headerlink" title="TSDB Block"></a>TSDB Block</h4><p>每个block都有单独的目录，里面包含该时间窗口内所有的chunk、index、 tombstones、meta.json</p>
+<ul>
+<li>chunks: 用于保存时序数据，每个chunk的大小为512MB，超出该大小时则截断并创建为另一个Chunk;各Chunk以数字编号;</li>
+<li>index: 索引文件，它是Prometheus TSDB实现高效查询的基础;我们甚至可以通过Metrics Name和Labels查找时间序列数据在chunk文件中的位置;索引文件会将指标名称和标签索 引到样本数据的时间序列中;</li>
+<li>tombstones: 用于对数据进行软删除，即“标记删除”，以降低删除操作的成本;删除的记录并保存于tombstones文件中，而读取时间序列上的数据时，会基于tombstones进行过滤已经删除的部分;</li>
+<li>meta.json: block的元数据信息，这些元数据信息是block的合并、删除等操作的基础依赖;</li>
+</ul>
+<p>下图为Block文件中的文件<br><img src="/images/Prometheus-HA-9.png" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-9"></p>
+<h4 id="WAL"><a href="#WAL" class="headerlink" title="WAL"></a>WAL</h4><p><img src="/images/Prometheus-HA-7.jpeg" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-7"></p>
+<p>在上图中，Head块是数据库的内存部分，灰色块是磁盘上不可更改的持久块。我们有一个预写日志（WAL）用于持久写入。传入的sample（粉红色的方框）首先进入Head块，并在内存中停留一段时间，然后刷新到磁盘并映射到内存（蓝色的方框）。当这些内存映射的块或内存中的块变旧到一定程度时，它们会作为持久性块被刷新到磁盘。随着它们变旧，将合并更多的块，并在超过保留期限后将其最终删除。</p>
+<p>WAL是数据库中发生的事件的顺序日志。在写入&#x2F;修改&#x2F;删除数据库中的数据之前，首先将事件记录（附加）到WAL中，然后在数据库中执行必要的操作。</p>
+<p>不管出于何种原因，如果机器或程序崩溃，都会在此WAL中记录事件，您可以按照相同的顺序重播这些事件以恢复数据。这对于内存数据库尤其有用，在内存数据库中，如果数据库崩溃，则如果不是WAL，则内存中的所有数据都会丢失。(这里相当于redis 的AOF恢复数据是一个道理他会把文件中的命令一个一个的执行完。以达到恢复到崩溃前)</p>
+<p><img src="/images/Prometheus-HA-10.jpeg" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-10"><br>Sample存储在称为“chunk”的压缩单元中。收到sample后，它将被提取到“active chunk”（红色块）中。这是我们可以主动写入数据的唯一单元。</p>
+<p><img src="/images/Prometheus-HA-11.jpeg" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-11"><br>在将sample提交到chunk中的同时，我们还将其记录在磁盘（棕色块）的预写日志（WAL）中以确保持久性（尽管这意味着即使机器突然崩溃也可以从中恢复内存中的数据）。</p>
+<h4 id="Prometheus存储配置"><a href="#Prometheus存储配置" class="headerlink" title="Prometheus存储配置"></a>Prometheus存储配置</h4><p>配置参数</p>
+<ul>
+<li>–storage.tsdb.path: 数据存储路径，WAL日志亦会存储于该目录下，默认为data;</li>
+<li>–storage.tsdb.retention.time: 样本数据在存储中保存的时长，超过该时长的数据就会被删除;默认为15d;</li>
+<li>–storage.tsdb.retention.size: 每个Block的最大字节数(不包括WAL文件)，支持B、KB、 MB、GB、TB、PB和EB，例如512MB等(此参数是实验性的，在未来版本中可能会更改);</li>
+<li>–storage.tsdb.wal-compression: 是否启用WAL的压缩机制，2.20及以后的版本中默认即为启用;</li>
+</ul>
+<h2 id="Alertmanager高可用"><a href="#Alertmanager高可用" class="headerlink" title="Alertmanager高可用"></a>Alertmanager高可用</h2><p>为了提升Promthues的服务可用性，通常用户会部署两个或者两个以上的Promthus Server。这样解决了Prometheus高可用的问题，但是我们的Alertmanager目前仍然纯在单点故障风险。当Alertmanager单点失效后，告警的后续所有业务全部失效。</p>
+<p>如下所示，最直接的方式，就是尝试部署多套Alertmanager。但是由于Alertmanager之间不存在并不了解彼此的存在，因此则会出现告警通知被不同的Alertmanager重复发送多次的问题。<br><img src="/images/Prometheus-HA-4.png" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-4"></p>
+<p>为了解决这一问题，如下所示。Alertmanager引入了Gossip机制。Gossip机制为多个Alertmanager之间提供了信息传递的机制。确保及时在多个Alertmanager分别接收到相同告警信息的情况下，也只有一个告警通知被发送给Receiver。<br><img src="/images/Prometheus-HA-5.png" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-5"></p>
+<h3 id="创建Alertmanager集群"><a href="#创建Alertmanager集群" class="headerlink" title="创建Alertmanager集群"></a>创建Alertmanager集群</h3><p>为了能够让Alertmanager节点之间进行通讯，需要在Alertmanager启动时设置相应的参数。其中主要的参数包括：</p>
+<figure class="highlight dsconfig"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs dsconfig"><span class="hljs-built_in">--cluster.listen-address</span> <span class="hljs-string">string</span>       <span class="hljs-comment"># 当前实例集群服务监听地址</span><br><span class="hljs-built_in">--cluster.peer</span> <span class="hljs-string">value</span>                  <span class="hljs-comment"># 初始化时关联的其它实例的集群服务地址</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="alertmanager-启动配置文件"><a href="#alertmanager-启动配置文件" class="headerlink" title="alertmanager 启动配置文件"></a>alertmanager 启动配置文件</h3><p>实例a1</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-section">[root@devops010015001029 ~]</span><span class="hljs-comment"># vim /usr/local/alertmanager/conf/alertmanager</span><br><br><span class="hljs-attr">ALERTMANAGER_OPT</span>=--config.file=/usr/local/alertmanager/alertmanager.yml \<br><span class="hljs-attr">--storage.path</span>=/usr/local/alertmanager/data \<br><span class="hljs-attr">--data.retention</span>=<span class="hljs-number">120</span>h \<br><span class="hljs-attr">--web.listen-address</span>=:<span class="hljs-number">9093</span> \<br><span class="hljs-attr">--cluster.listen-address</span>=<span class="hljs-string">&#x27;0.0.0.0:9094&#x27;</span> \<br><span class="hljs-attr">--log.level</span>=debug \<br></code></pre></td></tr></table></figure>
+
+<p>实例a2</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-section">[root@devops010015001030 ~]</span><span class="hljs-comment"># vim /usr/local/alertmanager/conf/alertmanager</span><br><br><span class="hljs-attr">ALERTMANAGER_OPT</span>=--config.file=/usr/local/alertmanager/alertmanager.yml \<br><span class="hljs-attr">--storage.path</span>=/usr/local/alertmanager/data \<br><span class="hljs-attr">--data.retention</span>=<span class="hljs-number">120</span>h \<br><span class="hljs-attr">--web.listen-address</span>=:<span class="hljs-number">9093</span> \<br><span class="hljs-attr">--cluster.listen-address</span>=<span class="hljs-string">&#x27;0.0.0.0:9094&#x27;</span> \<br><span class="hljs-attr">--cluster.peer</span>=<span class="hljs-string">&#x27;10.15.1.29:9094&#x27;</span> \<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="配置alertmanager-启动脚本"><a href="#配置alertmanager-启动脚本" class="headerlink" title="配置alertmanager 启动脚本"></a>配置alertmanager 启动脚本</h3><figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-section">[root@devops010015001029 ~]</span><span class="hljs-comment"># vim /usr/lib/systemd/system/alertmanager.service</span><br><br><span class="hljs-section">[Unit]</span><br><span class="hljs-attr">Description</span>=alertmanager<br><br><br><span class="hljs-section">[Service]</span><br><span class="hljs-attr">LimitNOFILE</span>=<span class="hljs-number">1024000</span><br><span class="hljs-attr">LimitNPROC</span>=<span class="hljs-number">1024000</span><br><span class="hljs-attr">LimitCORE</span>=infinity<br><span class="hljs-attr">LimitMEMLOCK</span>=infinity<br><span class="hljs-attr">EnvironmentFile</span>=-/usr/local/alertmanager/conf/alertmanager<br><span class="hljs-attr">ExecStart</span>=/usr/local/alertmanager/alertmanager <span class="hljs-variable">$ALERTMANAGER_OPT</span><br><span class="hljs-attr">Restart</span>=<span class="hljs-literal">on</span>-failure<br><span class="hljs-attr">KillMode</span>=process<br><br><br><span class="hljs-section">[Install]</span><br><span class="hljs-attr">WantedBy</span>=multi-user.target<br><br><br><span class="hljs-section">[root@devops010015001029 conf]</span><span class="hljs-comment"># systemctl daemon-reload</span><br><span class="hljs-section">[root@devops010015001029 conf]</span><span class="hljs-comment"># systemctl start alertmanager.service </span><br><span class="hljs-section">[root@devops010015001029 conf]</span><span class="hljs-comment"># systemctl status alertmanager.service </span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<p>启动完成后访问任意Alertmanager节点<code>http://localhost:9093/#/status</code>可以查看当前Alertmanager集群的状态。<br><img src="/images/Prometheus-HA-6.png" srcset="/img/loading.gif" lazyload alt="Prometheus-HA-6"></p>
+<h3 id="多实例Prometheus与Alertmanager集群"><a href="#多实例Prometheus与Alertmanager集群" class="headerlink" title="多实例Prometheus与Alertmanager集群"></a>多实例Prometheus与Alertmanager集群</h3><p>由于Gossip机制的实现，在Promthues和Alertmanager实例之间不要使用任何的负载均衡，需要确保Promthues将告警发送到所有的Alertmanager实例中：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-comment"># Alertmanager configuration</span><br><span class="hljs-attribute">alerting</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">alertmanagers</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">static_configs:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">targets:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">10.15.1.29:9093</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">10.15.1.30:9093</span><br></code></pre></td></tr></table></figure>
+<p>注意：如果是多个Prometheus Server两边的告警规则一定要一样，不然当某天一台Prometheus宕机以后另外一台没有告警规则导致无法告警。</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Prometheus高可用</div>
+      <div>https://system51.github.io/2021/07/23/Prometheus-Ha/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2021年7月23日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2021/12/06/kubeadm-use-containerd/" title="Kubeadm使用Containerd">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubeadm使用Containerd</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2021/07/12/Alertmanager/" title="AlertManager实现监控告警">
+                        <span class="hidden-mobile">AlertManager实现监控告警</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

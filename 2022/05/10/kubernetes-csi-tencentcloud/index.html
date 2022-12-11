@@ -1,0 +1,839 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="前言目前公司已经将有状态服务部署在 Kubernetes 集群中，所以对存储能力的需求也越来越强烈。由于我们使用的是灵雀云的产品，部署在腾讯云上所以这里我们使用腾讯云的 CBS 做存储，腾讯自己有自己的开源 CSI 插件来对接 CBS。 kubernetes-csi-tencentcloudkubernetes-csi-tencentcloud 是腾讯云 Cloud Block Storage 服">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kuberentes集群添加腾讯云CBS为默认存储">
+<meta property="og:url" content="https://system51.github.io/2022/05/10/kubernetes-csi-tencentcloud/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="前言目前公司已经将有状态服务部署在 Kubernetes 集群中，所以对存储能力的需求也越来越强烈。由于我们使用的是灵雀云的产品，部署在腾讯云上所以这里我们使用腾讯云的 CBS 做存储，腾讯自己有自己的开源 CSI 插件来对接 CBS。 kubernetes-csi-tencentcloudkubernetes-csi-tencentcloud 是腾讯云 Cloud Block Storage 服">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2022-05-10T05:26:23.000Z">
+<meta property="article:modified_time" content="2022-05-22T10:06:18.733Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>Kuberentes集群添加腾讯云CBS为默认存储 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kuberentes集群添加腾讯云CBS为默认存储"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2022-05-10 13:26" pubdate>
+          2022年5月10日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          9.3k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          16 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kuberentes集群添加腾讯云CBS为默认存储</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>目前公司已经将有状态服务部署在 <code>Kubernetes</code> 集群中，所以对存储能力的需求也越来越强烈。由于我们使用的是灵雀云的产品，部署在腾讯云上所以这里我们使用腾讯云的 <code>CBS</code> 做存储，腾讯自己有自己的开源 <code>CSI</code> 插件来对接 <code>CBS</code>。</p>
+<h1 id="kubernetes-csi-tencentcloud"><a href="#kubernetes-csi-tencentcloud" class="headerlink" title="kubernetes-csi-tencentcloud"></a>kubernetes-csi-tencentcloud</h1><p><code>kubernetes-csi-tencentcloud</code> 是腾讯云 <code>Cloud Block Storage</code> 服务的一个满足 <a target="_blank" rel="noopener" href="https://github.com/container-storage-interface/spec">CSI</a> 标准实现的插件。这个插件可以让你在 Kubernetes 上使用 Cloud Block Storage。</p>
+<h2 id="特性"><a href="#特性" class="headerlink" title="特性"></a>特性</h2><ul>
+<li><strong>Static Provisioning</strong> - 为一个已有的CBS盘创建PV，并在容器中使用PVC来使用它</li>
+<li><strong>Dynamic Provisioning</strong> - 在容器需要使用时，根据PVC去创建CBS盘<ul>
+<li>specify zone - 指定要在哪个zone创建CBS盘<ul>
+<li><code>allowedTopologies</code> - topology key是<code>topology.com.tencent.cloud.csi.cbs/zone</code>.</li>
+<li><code>diskZone</code> in <code>StorageClass.parameters</code> - <code>diskZone</code>中配置的zone优先级最高. 之后才是<code>allowedTopologies</code>中的zone</li>
+</ul>
+</li>
+<li><strong>Topology-Aware</strong> - pod被调度完以后，在相应node所在zone创建CBS盘. 如果同时<code>diskZone</code>已配置，优先<code>diskZone</code></li>
+</ul>
+</li>
+<li><strong>Volume Snapshot</strong> - 磁盘快照</li>
+<li><strong>Volume Resizing</strong> - 磁盘扩容</li>
+<li><strong>Volume Attach Limit</strong> - 单节点最大能attach的CBS盘数量.(每个节点最大可attach 20块CBS盘)</li>
+</ul>
+<h2 id="在-Kubernetes-上安装"><a href="#在-Kubernetes-上安装" class="headerlink" title="在 Kubernetes 上安装"></a>在 Kubernetes 上安装</h2><p><strong>注意</strong>:<br>在讲述<strong>前置要求</strong>之前，对于各组件设置参数启动项有些要注意的地方：</p>
+<ul>
+<li>有些feature gates在GA以后的版本不能再被显式设置，否则可能导致报错。实际上这些feature gates在beta版本开始则无需添加。下表整理了涉及到feature gates的beta版本的表格，在给kubelet、master&#x2F;controllermanager、scheduler设置启动参数时，可以基于此来做取舍.（举例：KubeletPluginsWatcher在1.12及以上版本则无须添加）</li>
+</ul>
+<table>
+<thead>
+<tr>
+<th>特性</th>
+<th>默认值</th>
+<th>阶段</th>
+<th>起始</th>
+<th>直到</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>VolumeSnapshotDataSource</code></td>
+<td><code>true</code></td>
+<td>Beta</td>
+<td>1.17</td>
+<td>-</td>
+</tr>
+<tr>
+<td><code>CSINodeInfo</code></td>
+<td><code>true</code></td>
+<td>Beta</td>
+<td>1.14</td>
+<td>1.16</td>
+</tr>
+<tr>
+<td><code>CSIDriverRegistry</code></td>
+<td><code>true</code></td>
+<td>Beta</td>
+<td>1.14</td>
+<td>1.17</td>
+</tr>
+<tr>
+<td><code>KubeletPluginsWatcher</code></td>
+<td><code>true</code></td>
+<td>Beta</td>
+<td>1.12</td>
+<td>1.12</td>
+</tr>
+<tr>
+<td><code>VolumeScheduling</code></td>
+<td><code>true</code></td>
+<td>Beta</td>
+<td>1.10</td>
+<td>1.12</td>
+</tr>
+<tr>
+<td><code>ExpandCSIVolumes</code></td>
+<td><code>true</code></td>
+<td>Beta</td>
+<td>1.16</td>
+<td>-</td>
+</tr>
+</tbody></table>
+<p><strong>前置要求:</strong></p>
+<ul>
+<li>Kubernetes v1.13.x及以上</li>
+<li>kube-apiserver 和 kubelet 的 <code>--allow-privileged</code> flag 都要设置为 true (针对 v1.15.x 及以上版本, kubelet 默认设置 <code>--allow-privileged</code> 为 true，如果仍然显式设置，则会报错 )</li>
+<li>所有节点的 kubelet 需要添加的启动项为:  <code>--feature-gates=VolumeSnapshotDataSource=true,CSINodeInfo=true,CSIDriverRegistry=true,KubeletPluginsWatcher=true</code></li>
+<li>apiserver&#x2F;controller-manager:  <code>--feature-gates=VolumeSnapshotDataSource=true,CSINodeInfo=true,CSIDriverRegistry=true</code></li>
+<li>scheduler:  <code>--feature-gates=VolumeSnapshotDataSource=true,CSINodeInfo=true,CSIDriverRegistry=true,VolumeScheduling=true</code></li>
+</ul>
+<h4 id="Clone-仓库"><a href="#Clone-仓库" class="headerlink" title="Clone 仓库"></a>Clone 仓库</h4><p>注： <code>kubernetes-csi-tencentcloud</code>中包括 CBS CSI， CFS CSI 与 COSFS CSI。这里我就只用CBS块存储了。其他两个也用过，感觉用起来还是不太适合。</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">git clone https:<span class="hljs-regexp">//gi</span>thub.com<span class="hljs-regexp">/TencentCloud/</span>kubernetes-csi-tencentcloud.git<br></code></pre></td></tr></table></figure>
+
+
+<h4 id="使用腾讯云-API-Credential-创建-kubernetes-secret"><a href="#使用腾讯云-API-Credential-创建-kubernetes-secret" class="headerlink" title="使用腾讯云 API Credential 创建 kubernetes secret:"></a>使用腾讯云 API Credential 创建 kubernetes secret:</h4><p><em><strong>注： 如果是自建集群，必须创建；而如果是TKE集群环境，可以不创建该secret，driver中默认会根据TKE_QCSRole获取临时秘钥。</strong></em></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment">#  参考示例 deploy/kubernetes/secret.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Secret</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">cbs-csi-api-key</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br><span class="hljs-attr">data:</span><br>  <span class="hljs-comment"># 需要注意的是,secret 的 value 需要进行 base64 编码</span><br>  <span class="hljs-comment">#   echo -n &quot;&lt;SECRET_ID&gt;&quot; | base64</span><br>  <span class="hljs-attr">TENCENTCLOUD_CBS_API_SECRET_ID:</span> <span class="hljs-string">&quot;&lt;SECRET_ID&gt;&quot;</span><br>  <span class="hljs-attr">TENCENTCLOUD_CBS_API_SECRET_KEY:</span> <span class="hljs-string">&quot;&lt;SECRET_KEY&gt;&quot;</span><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="创建rbac"><a href="#创建rbac" class="headerlink" title="创建rbac"></a>创建rbac</h4><p>创建attacher,provisioner,plugin需要的rbac：</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs sh">kubectl apply -f  deploy/cbs/kubernetes/csi-controller-rbac.yaml<br>kubectl apply -f  deploy/cbs/kubernetes/csi-node-rbac.yaml<br></code></pre></td></tr></table></figure>
+
+<h4 id="创建controller-node和plugin"><a href="#创建controller-node和plugin" class="headerlink" title="创建controller,node和plugin"></a>创建controller,node和plugin</h4><p>Kubernetes v1.18.x及以上版本创建controller plugin和node plugin</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs sh">kubectl apply -f  deploy/cbs/kubernetes/csi-controller-new.yaml<br>kubectl apply -f  deploy/cbs/kubernetes/csi-node-new.yaml<br>kubectl apply -f  deploy/cbs/kubernetes/snapshot-crd.yaml<br></code></pre></td></tr></table></figure>
+
+<p>Kubernetes v1.18.x以下版本创建controller plugin和node plugin</p>
+<figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs sh">kubectl apply -f  deploy/cbs/kubernetes/csi-controller-old.yaml<br>kubectl apply -f  deploy/cbs/kubernetes/csi-node-old.yaml<br>kubectl apply -f  deploy/cbs/kubernetes/snapshot-crd.yaml<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="组件说明"><a href="#组件说明" class="headerlink" title="组件说明"></a>组件说明</h3><p>CBS-CSI 组件在集群内部署后，包含以下组件：</p>
+<ul>
+<li>DaemonSet：每个 Node 提供一个 DaemonSet，简称为 NodePlugin。由 CBS-CSI Driver 和 node-driver-registrar 两个容器组成，负责向节点注册 Driver，并提供挂载能力。</li>
+<li>StatefulSet 和 Deployment：简称为 Controller。由 Driver 和多个 Sidecar（external-provisioner、external-attacher、external-resizer、external-snapshotter、snapshot-controller）一起构成，提供创删卷、attach、detach、扩容、快照等能力。</li>
+</ul>
+<h3 id="简单测试验证"><a href="#简单测试验证" class="headerlink" title="简单测试验证"></a>简单测试验证</h3><figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs sh"><span class="hljs-comment"># 创建storageclass</span><br>kubectl apply -f  deploy/examples/storageclass-basic.yaml<br><span class="hljs-comment"># 创建pvc</span><br>kubectl apply -f  deploy/examples/pvc.yaml<br><span class="hljs-comment"># 创建申请pvc的pod</span><br>kubectl apply -f  deploy/examples/app.yaml<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="StorageClass-支持的参数"><a href="#StorageClass-支持的参数" class="headerlink" title="StorageClass 支持的参数"></a>StorageClass 支持的参数</h3><p><strong>Note</strong>：可以参考<a target="_blank" rel="noopener" href="https://github.com/TencentCloud/kubernetes-csi-tencentcloud/blob/master/deploy/cbs/examples/storageclass-examples.yaml">示例</a></p>
+<ul>
+<li>如果您集群中的节点存在多个可用区，那么您可以开启cbs存储卷的拓扑感知调度，需要在storageclass中添加<code>volumeBindingMode: WaitForFirstConsumer</code>，如deploy&#x2F;examples&#x2F;storageclass-topology.yaml，否则可能会出现cbs存储卷因跨可用区而挂载失败。</li>
+<li>diskType: 代表要创建的 cbs 盘的类型；值为 <code>CLOUD_PREMIUM</code> 代表创建高性能云盘，值为 <code>CLOUD_SSD</code> 代表创建 ssd 云盘，值为 <code>CLOUD_HSSD</code> 代表创建增强型SSD云盘，</li>
+<li>diskChargeType: 代表云盘的付费类型；值为 <code>PREPAID</code> 代表预付费，值为 <code>POSTPAID_BY_HOUR</code> 代表按量付费，需要注意的是，当值为 <code>PREPAID</code> 的时候需要指定额外的参数</li>
+<li>diskChargeTypePrepaidPeriod：代表购买云盘的时长，当付费类型为 <code>PREPAID</code> 时需要指定，可选的值包括 <code>1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 24, 36</code>，单位为月</li>
+<li>diskChargePrepaidRenewFlag: 代表云盘的自动续费策略，当付费类型为 <code>PREPAID</code> 时需要指定，值为<code>NOTIFY_AND_AUTO_RENEW</code> 代表通知过期且自动续费，值为 <code>NOTIFY_AND_MANUAL_RENEW</code> 代表通知过期不自动续费，值为 <code>DISABLE_NOTIFY_AND_MANUAL_RENEW</code> 代表不通知过期不自动续费</li>
+<li>encrypt: 代表云盘是否加密，当指定此参数时，唯一可选的值为 <code>ENCRYPT</code></li>
+<li>disktags: 可以给云盘加tag。形式如 <code>a:b,c:d</code></li>
+<li>throughputperformance: 对hssd&#x2F;tssd盘，如果需要达到最大性能，可以填入额外性能。具体取值参见<a target="_blank" rel="noopener" href="https://cloud.tencent.com/document/product/362/51896">https://cloud.tencent.com/document/product/362/51896</a></li>
+<li>cdcid: 独占集群ID</li>
+</ul>
+<h2 id="不同类型云盘的大小限制"><a href="#不同类型云盘的大小限制" class="headerlink" title="不同类型云盘的大小限制"></a>不同类型云盘的大小限制</h2><p><em>云盘大小仅支持 10 的倍数（如: 100, 110, 120）</em></p>
+<ul>
+<li>高性能云硬盘提供最小 10 GB 到最大 32000 GB 的规格选择。</li>
+<li>SSD云硬盘提供最小 20 GB 到最大 32000 GB 的规格选择，单块 SSD 云硬盘最高可提供 26000 随机读写IOPS、260MB&#x2F;s吞吐量的存储性能。</li>
+<li>增强型SSD云硬盘提供最小 20 GB 到最大 32000 GB 的规格选择，单盘最高可提供 100000 随机读写IOPS、1000MB&#x2F;s吞吐量的存储性能。</li>
+</ul>
+<h2 id="通过-CBS-CSI-避免云硬盘跨可用区挂载"><a href="#通过-CBS-CSI-避免云硬盘跨可用区挂载" class="headerlink" title="通过 CBS-CSI 避免云硬盘跨可用区挂载"></a>通过 CBS-CSI 避免云硬盘跨可用区挂载</h2><h3 id="操作场景"><a href="#操作场景" class="headerlink" title="操作场景"></a>操作场景</h3><p>云硬盘不支持跨可用区挂载到节点，在跨可用区的集群环境中，推荐通过 CBS-CSI <strong>拓扑感知</strong>特性来避免跨可用区挂载问题。</p>
+<h3 id="实现原理"><a href="#实现原理" class="headerlink" title="实现原理"></a>实现原理</h3><p>拓扑感知调度需要多个 Kubernetes 组件配合完成，包括 Scheduler、PV controller、external-provisioner。具体流程如下：</p>
+<ol>
+<li>PV controller 观察 PVC 对象，检查 Storageclass 的 VolumeBindingMode 是否为 <strong>WaitForFirstConsumer</strong>，如是，则不会立即处理该 PVC 的创建事件，等待 Scheduler 处理。</li>
+<li>Scheduler 调度 Pod 后，会将 nodeName 以 annotation 的方式加入到 PVC 对象上 <code>volume.kubernetes.io/selected-node: 10.0.0.72</code>。</li>
+<li>PV controller 获取到 PVC 对象的更新事件后，将开始处理 annotation（<code>volume.kubernetes.io/selected-node</code>），根据 nodeName 获取 Node 对象，传入到 external-provisioner 中。</li>
+<li>external-provisioner 根据传过来的 Node 对象的 label 获取可用区（<code>failure-domain.beta.kubernetes.io/zone</code>）后在对应可用区创建 PV，达到和 Pod 相同可用区的效果，避免云硬盘和 Node 在不同可用区而无法挂载问题。</li>
+</ol>
+<h3 id="前提条件"><a href="#前提条件" class="headerlink" title="前提条件"></a>前提条件</h3><ul>
+<li>已安装1.14或以上版本的 <a target="_blank" rel="noopener" href="https://cloud.tencent.com/document/product/457/32189">TKE 集群</a>。</li>
+<li>已将  <a target="_blank" rel="noopener" href="https://github.com/TencentCloud/kubernetes-csi-tencentcloud/blob/master/docs/README_CBS.md">CBS-CSI</a> 或 In-Tree 组件更新为最新版本。</li>
+</ul>
+<h3 id="操作步骤"><a href="#操作步骤" class="headerlink" title="操作步骤"></a>操作步骤</h3><p>使用以下 YAML，在 Storageclass 中设置 volumeBindingMode 为 <strong>WaitForFirstConsumer</strong>。示例如下：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">kind:</span> <span class="hljs-string">StorageClass</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">cbs-topo</span><br><span class="hljs-attr">parameters:</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">cbs</span><br><span class="hljs-attr">provisioner:</span> <span class="hljs-string">com.tencent.cloud.csi.cbs</span><br><span class="hljs-attr">reclaimPolicy:</span> <span class="hljs-string">Delete</span><br><span class="hljs-attr">volumeBindingMode:</span> <span class="hljs-string">WaitForFirstConsumer</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>CBS-CSI 和 In-Tree 组件均支持该操作。</p>
+</blockquote>
+<h2 id="在线扩容云硬盘"><a href="#在线扩容云硬盘" class="headerlink" title="在线扩容云硬盘"></a>在线扩容云硬盘</h2><h3 id="操作场景-1"><a href="#操作场景-1" class="headerlink" title="操作场景"></a>操作场景</h3><p>TKE 支持在线扩容 PV、对应的云硬盘及文件系统，即不需要重启 Pod 即可完成扩容。为确保文件系统的稳定性，建议在云硬盘文件系统处于未挂载状态时进行操作。</p>
+<h3 id="前提条件-1"><a href="#前提条件-1" class="headerlink" title="前提条件"></a>前提条件</h3><ul>
+<li>已创建1.16或以上版本的 <a target="_blank" rel="noopener" href="https://cloud.tencent.com/document/product/457/32189">TKE 集群</a>。</li>
+<li>已将 <a target="_blank" rel="noopener" href="https://github.com/TencentCloud/kubernetes-csi-tencentcloud/blob/master/docs/README_CBS.md">CBS-CSI</a> 更新为最新版本。</li>
+<li>（可选）为避免扩容失败导致数据丢失，可以在扩容前 <a target="_blank" rel="noopener" href="https://cloud.tencent.com/document/product/457/67080">使用快照备份数据</a>。</li>
+</ul>
+<h3 id="操作步骤-1"><a href="#操作步骤-1" class="headerlink" title="操作步骤"></a>操作步骤</h3><h4 id="创建允许扩容的-StorageClass"><a href="#创建允许扩容的-StorageClass" class="headerlink" title="创建允许扩容的 StorageClass"></a>创建允许扩容的 StorageClass</h4><p>使用以下 YAML 创建允许扩容的 StorageClass，在 Storageclass 中设置 <code>allowVolumeExpansion</code> 为 <code>true</code>。示例如下：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">allowVolumeExpansion:</span> <span class="hljs-literal">true</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">storage.k8s.io/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">StorageClass</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">cbs-csi-expand</span><br><span class="hljs-attr">parameters:</span><br>  <span class="hljs-attr">diskType:</span> <span class="hljs-string">CLOUD_PREMIUM</span><br><span class="hljs-attr">provisioner:</span> <span class="hljs-string">com.tencent.cloud.csi.cbs</span><br><span class="hljs-attr">reclaimPolicy:</span> <span class="hljs-string">Delete</span><br><span class="hljs-attr">volumeBindingMode:</span> <span class="hljs-string">Immediate</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="在线扩容"><a href="#在线扩容" class="headerlink" title="在线扩容"></a>在线扩容</h3><p>提供以下两种扩容方式：</p>
+<table>
+<thead>
+<tr>
+<th>扩容方式</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>重启 Pod 的情况下在线扩容</td>
+<td>待扩容的云硬盘文件系统未被挂载，能够避免扩容出错以及方式2存在的问题。<strong>推荐使用该方式进行扩容</strong>。</td>
+</tr>
+<tr>
+<td>不重启 Pod 的情况下在线扩容</td>
+<td>在节点上挂载着待扩容的云硬盘文件系统，如果存在 I&#x2F;O 进程，将可能出现文件系统扩容错误。</td>
+</tr>
+</tbody></table>
+<h4 id="重启Pod情况下在线扩容"><a href="#重启Pod情况下在线扩容" class="headerlink" title="重启Pod情况下在线扩容"></a>重启Pod情况下在线扩容</h4><p>1.执行以下命令，确认扩容前 PV 和文件系统状态。示例如下，PV 和文件系统大小均为30G：</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs gradle">$ kubectl exec ivantestweb-<span class="hljs-number">0</span> df <span class="hljs-regexp">/usr/</span>share<span class="hljs-regexp">/nginx/</span>html<br>Filesystem     <span class="hljs-number">1</span>K-blocks  Used Available Use% Mounted on<br><span class="hljs-regexp">/dev/</span>vdd        <span class="hljs-number">30832548</span> <span class="hljs-number">44992</span>  <span class="hljs-number">30771172</span>   <span class="hljs-number">1</span>% <span class="hljs-regexp">/usr/</span>share<span class="hljs-regexp">/nginx/</span>html<br><br>$ kubectl get pv pvc-e193201e-<span class="hljs-number">6</span>f6d-<span class="hljs-number">48</span>cf-b96d-ccc09225cf9c <br>NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                        STORAGECLASS   REASON   AGE<br>pvc-e193201e-<span class="hljs-number">6</span>f6d-<span class="hljs-number">48</span>cf-b96d-ccc09225cf9c   <span class="hljs-number">30</span>Gi       RWO            <span class="hljs-keyword">Delete</span>           Bound    <span class="hljs-keyword">default</span>/www1-ivantestweb-<span class="hljs-number">0</span>   cbs-csi                 <span class="hljs-number">20</span>h<br></code></pre></td></tr></table></figure>
+
+<p>2.执行以下命令，为 PV 对象打上一个非法 zone 标签，旨在下一步重启 Pod 后，使 Pod 无法调度到某个节点上。示例如下：</p>
+<figure class="highlight maxima"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs maxima">$ kubectl <span class="hljs-built_in">label</span> <span class="hljs-built_in">pv</span> pvc-e193201e-6f6d-48<span class="hljs-built_in">cf</span>-b96d-ccc09225cf9c failure-<span class="hljs-built_in">domain</span>.<span class="hljs-built_in">beta</span>.kubernetes.io/zone=nozone<br></code></pre></td></tr></table></figure>
+
+<p>3.执行以下命令重启 Pod，重启后由于 Pod 对应的 PV 的标签表明的是非法 zone，Pod 将处于 Pending 状态。示例如下：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs sql">$ kubectl <span class="hljs-keyword">delete</span> pod ivantestweb<span class="hljs-number">-0</span><br><br>$ kubectl <span class="hljs-keyword">get</span> pod ivantestweb<span class="hljs-number">-0</span><br>NAME            READY   STATUS    RESTARTS   AGE<br>ivantestweb<span class="hljs-number">-0</span>   <span class="hljs-number">0</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     Pending   <span class="hljs-number">0</span>          <span class="hljs-number">25</span>s<br><br>$ kubectl <span class="hljs-keyword">describe</span> pod ivantestweb<span class="hljs-number">-0</span><br>Events:<br>Type     Reason            Age                 <span class="hljs-keyword">From</span>               Message<br><span class="hljs-comment">----     ------            ----                ----               -------</span><br>Warning  FailedScheduling  <span class="hljs-number">40</span>s (x3 <span class="hljs-keyword">over</span> <span class="hljs-number">2</span>m3s)  <span class="hljs-keyword">default</span><span class="hljs-operator">-</span>scheduler  <span class="hljs-number">0</span><span class="hljs-operator">/</span><span class="hljs-number">1</span> nodes <span class="hljs-keyword">are</span> available: <span class="hljs-number">1</span> node(s) had <span class="hljs-keyword">no</span> available volume zone.<br></code></pre></td></tr></table></figure>
+
+<p>4.执行以下命令，修改 PVC 对象中的容量，将容量扩容至40G。示例如下：</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">kubectl</span> patch pvc www1-ivantestweb-<span class="hljs-number">0</span> -p &#x27;&#123;<span class="hljs-string">&quot;spec&quot;</span>:&#123;<span class="hljs-string">&quot;resources&quot;</span>:&#123;<span class="hljs-string">&quot;requests&quot;</span>:&#123;<span class="hljs-string">&quot;storage&quot;</span>:<span class="hljs-string">&quot;40Gi&quot;</span>&#125;&#125;&#125;&#125;&#x27;<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>注意：扩容后的PVC对象容量的大小必须为10的倍数，不同云硬盘类型所支持的存储容量规格可参考说明 <a target="_blank" rel="noopener" href="https://cloud.tencent.com/document/product/362/5744#.E6.93.8D.E4.BD.9C.E6.AD.A5.E9.AA.A4">创建云硬盘</a>。</p>
+</blockquote>
+<p>5.执行以下命令，去除 PV 对象之前打上的标签， 标签去除之后 Pod 即可调度成功。示例如下：</p>
+<figure class="highlight maxima"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs maxima">$ kubectl <span class="hljs-built_in">label</span> <span class="hljs-built_in">pv</span> pvc-e193201e-6f6d-48<span class="hljs-built_in">cf</span>-b96d-ccc09225cf9c failure-<span class="hljs-built_in">domain</span>.<span class="hljs-built_in">beta</span>.kubernetes.io/zone-<br>persistentvolume/pvc-e193201e-6f6d-48<span class="hljs-built_in">cf</span>-b96d-ccc09225cf9c labeled<br></code></pre></td></tr></table></figure>
+
+<p>6.执行以下命令，可以查看到 Pod 状态为 Running、对应的 PV 和文件系统扩容成功，从30G扩容到40G。示例如下：</p>
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">$ kubectl <span class="hljs-keyword">get</span> pod ivantestweb<span class="hljs-number">-0</span><br><span class="hljs-type">NAME</span>            READY   STATUS    RESTARTS   AGE<br>ivantestweb<span class="hljs-number">-0</span>   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">17</span>m<br><br>$ kubectl <span class="hljs-keyword">get</span> pv pvc-e193201e<span class="hljs-number">-6</span>f6d<span class="hljs-number">-48</span>cf-b96d-ccc09225cf9c<br><span class="hljs-type">NAME</span>                                       CAPACITY   <span class="hljs-keyword">ACCESS</span> MODES   RECLAIM <span class="hljs-keyword">POLICY</span>   STATUS   CLAIM                        STORAGECLASS   REASON   AGE<br>pvc-e193201e<span class="hljs-number">-6</span>f6d<span class="hljs-number">-48</span>cf-b96d-ccc09225cf9c   <span class="hljs-number">40</span>Gi       RWO            <span class="hljs-keyword">Delete</span>           Bound    <span class="hljs-keyword">default</span>/www1-ivantestweb<span class="hljs-number">-0</span>   cbs-csi                 <span class="hljs-number">20</span>h<br><br>$ kubectl <span class="hljs-keyword">get</span> pvc www1-ivantestweb<span class="hljs-number">-0</span><br><span class="hljs-type">NAME</span>                 STATUS   VOLUME                                     CAPACITY   <span class="hljs-keyword">ACCESS</span> MODES   STORAGECLASS   AGE<br>www1-ivantestweb<span class="hljs-number">-0</span>   Bound    pvc-e193201e<span class="hljs-number">-6</span>f6d<span class="hljs-number">-48</span>cf-b96d-ccc09225cf9c   <span class="hljs-number">40</span>Gi       RWO            cbs-csi        <span class="hljs-number">20</span>h<br><br>$ kubectl exec ivantestweb<span class="hljs-number">-0</span> df /usr/<span class="hljs-keyword">share</span>/nginx/html<br>Filesystem     <span class="hljs-number">1</span>K-blocks  Used Available Use% Mounted <span class="hljs-keyword">on</span><br>/dev/vdd        <span class="hljs-number">41153760</span> <span class="hljs-number">49032</span>  <span class="hljs-number">41088344</span>   <span class="hljs-number">1</span>% /usr/<span class="hljs-keyword">share</span>/nginx/html<br></code></pre></td></tr></table></figure>
+
+
+<h4 id="不重启Pod情况下在线扩容"><a href="#不重启Pod情况下在线扩容" class="headerlink" title="不重启Pod情况下在线扩容"></a>不重启Pod情况下在线扩容</h4><p>1.执行以下命令，确认扩容前 PV 和文件系统状态。示例如下，PV 和文件系统大小均为20G：</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs gradle">$ kubectl exec ivantestweb-<span class="hljs-number">0</span> df <span class="hljs-regexp">/usr/</span>share<span class="hljs-regexp">/nginx/</span>html<br>Filesystem     <span class="hljs-number">1</span>K-blocks  Used Available Use% Mounted on<br><span class="hljs-regexp">/dev/</span>vdd        <span class="hljs-number">20511312</span> <span class="hljs-number">45036</span>  <span class="hljs-number">20449892</span>   <span class="hljs-number">1</span>% <span class="hljs-regexp">/usr/</span>share<span class="hljs-regexp">/nginx/</span>html<br><br>$ kubectl get pv pvc-e193201e-<span class="hljs-number">6</span>f6d-<span class="hljs-number">48</span>cf-b96d-ccc09225cf9c<br>NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                        STORAGECLASS   REASON   AGE<br>pvc-e193201e-<span class="hljs-number">6</span>f6d-<span class="hljs-number">48</span>cf-b96d-ccc09225cf9c   <span class="hljs-number">20</span>Gi       RWO            <span class="hljs-keyword">Delete</span>           Bound    <span class="hljs-keyword">default</span>/www1-ivantestweb-<span class="hljs-number">0</span>   cbs-csi                 <span class="hljs-number">20</span>h<br></code></pre></td></tr></table></figure>
+
+<p>2.执行以下命令，修改 PVC 对象中的容量，将容量扩容至30G。示例如下：</p>
+<figure class="highlight jboss-cli"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs jboss-cli">$ kubectl <span class="hljs-keyword">patch</span> pvc www1-ivantestweb-0 -p &#x27;&#123;<span class="hljs-string">&quot;spec&quot;</span>:&#123;<span class="hljs-string">&quot;resources&quot;</span>:&#123;<span class="hljs-string">&quot;requests&quot;</span>:&#123;<span class="hljs-string">&quot;storage&quot;</span>:<span class="hljs-string">&quot;30Gi&quot;</span>&#125;&#125;&#125;&#125;&#x27;<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>扩容后的PVC对象容量的大小必须为10的倍数，不同硬盘类型所支持的存储容量规格可参考说明 <a target="_blank" rel="noopener" href="https://cloud.tencent.com/document/product/362/5744#.E6.93.8D.E4.BD.9C.E6.AD.A5.E9.AA.A4">创建云硬盘</a>。</p>
+</blockquote>
+<p>3.执行以下命令，可以查看到 PV 和文件系统已扩容至30G。示例如下：</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs gradle">$ kubectl exec ivantestweb-<span class="hljs-number">0</span> df <span class="hljs-regexp">/usr/</span>share<span class="hljs-regexp">/nginx/</span>html<br>Filesystem     <span class="hljs-number">1</span>K-blocks  Used Available Use% Mounted on<br><span class="hljs-regexp">/dev/</span>vdd        <span class="hljs-number">30832548</span> <span class="hljs-number">44992</span>  <span class="hljs-number">30771172</span>   <span class="hljs-number">1</span>% <span class="hljs-regexp">/usr/</span>share<span class="hljs-regexp">/nginx/</span>html<br><br>$ kubectl get pv pvc-e193201e-<span class="hljs-number">6</span>f6d-<span class="hljs-number">48</span>cf-b96d-ccc09225cf9c<br>NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                        STORAGECLASS   REASON   AGE<br>pvc-e193201e-<span class="hljs-number">6</span>f6d-<span class="hljs-number">48</span>cf-b96d-ccc09225cf9c   <span class="hljs-number">30</span>Gi       RWO            <span class="hljs-keyword">Delete</span>           Bound    <span class="hljs-keyword">default</span>/www1-ivantestweb-<span class="hljs-number">0</span>   cbs-csi                 <span class="hljs-number">20</span>h<br></code></pre></td></tr></table></figure>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kuberentes集群添加腾讯云CBS为默认存储</div>
+      <div>https://system51.github.io/2022/05/10/kubernetes-csi-tencentcloud/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2022年5月10日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2021/12/22/custom-metrics-hpa/" title="Kubernetes自定义指标HPA">
+                        <span class="hidden-mobile">Kubernetes自定义指标HPA</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

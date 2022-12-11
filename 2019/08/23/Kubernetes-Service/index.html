@@ -1,0 +1,867 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="概述： Service是Kubernetes中最核心的概念，正是因为对此概念的支持，Kubernetes在某种角度下可以被看成是一种微服务平台。Kubernetes中的pod并不稳定，比如由ReplicaSet、Deployment、DaemonSet等副本控制器创建的pod，其副本数量、pod名称、pod所运行的节点、pod的IP地址等，会随着集群规模、节点状态、用户缩放等因素动态变化。Serv">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之Service">
+<meta property="og:url" content="https://system51.github.io/2019/08/23/Kubernetes-Service/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="概述： Service是Kubernetes中最核心的概念，正是因为对此概念的支持，Kubernetes在某种角度下可以被看成是一种微服务平台。Kubernetes中的pod并不稳定，比如由ReplicaSet、Deployment、DaemonSet等副本控制器创建的pod，其副本数量、pod名称、pod所运行的节点、pod的IP地址等，会随着集群规模、节点状态、用户缩放等因素动态变化。Serv">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/service-kube-proxy.png">
+<meta property="og:image" content="https://system51.github.io/images/service-kube-proxy2.png">
+<meta property="og:image" content="https://system51.github.io/images/service-1.png">
+<meta property="article:published_time" content="2019-08-23T08:08:02.000Z">
+<meta property="article:modified_time" content="2019-09-11T02:07:07.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/service-kube-proxy.png">
+  
+  
+  
+  <title>Kubernetes之Service - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes之Service"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-23 16:08" pubdate>
+          2019年8月23日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          13k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          21 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes之Service</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h3 id="概述："><a href="#概述：" class="headerlink" title="概述："></a>概述：</h3><blockquote>
+<p>Service是Kubernetes中最核心的概念，正是因为对此概念的支持，Kubernetes在某种角度下可以被看成是一种微服务平台。Kubernetes中的pod并不稳定，比如由ReplicaSet、Deployment、DaemonSet等副本控制器创建的pod，其副本数量、pod名称、pod所运行的节点、pod的IP地址等，会随着集群规模、节点状态、用户缩放等因素动态变化。Service是一组逻辑pod的抽象，为一组pod提供统一入口，用户只需与service打交道，service提供DNS解析名称，负责追踪pod动态变化并更新转发表，通过负载均衡算法最终将流量转发到后端的pod。</p>
+</blockquote>
+<h3 id="Service的实现模型："><a href="#Service的实现模型：" class="headerlink" title="Service的实现模型："></a>Service的实现模型：</h3><blockquote>
+<p>在 Kubernetes 集群中，每个 Node 运行一个 kube-proxy 进程。kube-proxy 负责为 Service 实现了一种 VIP（虚拟 IP）的形式，而不是 ExternalName 的形式。 在 Kubernetes v1.0 版本，代理完全在 userspace。在 Kubernetes v1.1 版本，新增了 iptables 代理，但并不是默认的运行模式。 从 Kubernetes v1.2 起，默认就是 iptables 代理。在Kubernetes v1.8.0-beta.0中，添加了ipvs代理。在 Kubernetes v1.0 版本，Service 是 “4层”（TCP&#x2F;UDP over IP）概念。 在 Kubernetes v1.1 版本，新增了 Ingress API（beta 版），用来表示 “7层”（HTTP）服务。</p>
+</blockquote>
+<blockquote>
+<p>kube-proxy 这个组件始终监视着apiserver中有关service的变动信息，获取任何一个与service资源相关的变动状态，通过watch监视，一旦有service资源相关的变动和创建，kube-proxy都要转换为当前节点上的能够实现资源调度规则（例如：iptables、ipvs）</p>
+</blockquote>
+<p><img src="/images/service-kube-proxy.png" srcset="/img/loading.gif" lazyload alt="service-kube-proxy"></p>
+<blockquote>
+<p>如果某个服务后端pod发生变化，标签选择器适应的pod有多一个，适应的信息会立即反映到apiserver上,而kube-proxy一定可以watch到etc中的信息变化，而将它立即转为ipvs或者iptables中的规则，这一切都是动态和实时的，删除一个pod也是同样的原理。如图：</p>
+</blockquote>
+<p><img src="/images/service-kube-proxy2.png" srcset="/img/loading.gif" lazyload alt="service-kube-proxy2"></p>
+<h3 id="原理："><a href="#原理：" class="headerlink" title="原理："></a>原理：</h3><blockquote>
+<p>本节定义一个service示例并说明其工作原理。假设已经通过Deployment副本控制器创建了3个pod，每个pod包含”app&#x3D;Myapp”标签，每个pod暴露端口9376。之所以假设已经有3个pod实例是为了方便说明service工作原理，推荐的做法是先创建service后创建pod。以下是service声明：(service是靠标签选择器来识别是不是同一个service，service不是一个应用程序也不是一个组件，只是在iptables创建了一个DNAT转发规则而已。)</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">my-service</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">MyApp</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">80</span><br>    <span class="hljs-attr">targetPort:</span> <span class="hljs-number">9376</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<h3 id="工作过程如下-（Endpoint-x3D-Pod-IP-ContainerPort）："><a href="#工作过程如下-（Endpoint-x3D-Pod-IP-ContainerPort）：" class="headerlink" title="工作过程如下 （Endpoint&#x3D;Pod IP+ContainerPort）："></a>工作过程如下 （Endpoint&#x3D;Pod IP+ContainerPort）：</h3></blockquote>
+<ul>
+<li>为实例分配置集群虚拟IP。如果在声明时明确指定集群虚拟IP，则分配指定IP，如未指定则自动分配。</li>
+<li>根据实例名称、分配的集群虚拟IP、端口号创建DNS条目。</li>
+<li>根据标签选择器聚合符合条件的节点，并创建相应endpoint，endpoint包含所有符合条件pod的ip地址与端口号。</li>
+<li>kube-proxy运行在集群中每一个节点上，并持续监控集群中service、endpoint变更，根据监控结果设置转发规则，将一个集群虚拟IP、端口与一个或者多个pod的IP、端口映射起来。</li>
+<li>当在集群内部通过服务名称访问创建的service时，首先由DNS将服务名称转换成集群虚拟IP与端口号，kube-proxy根据转发规则对service的流量计算负载均衡、转发到位于后端的pod。</li>
+</ul>
+<h3 id="无标签选择器service"><a href="#无标签选择器service" class="headerlink" title="无标签选择器service"></a>无标签选择器service</h3><blockquote>
+<p>当与service对应的后端位于集群外部时，因为集群中没有相关的pod实例，因此这种情况下就不需要标签选择器。有标签选择器时系统自动查询pod并创建相应的endpoint，无标签选择器时需要用户手动创建endpoint。<br>如下情况下可以使用：</p>
+</blockquote>
+<ul>
+<li>希望在生产环境中使用外部的数据库集群，但测试环境使用自己的数据库。</li>
+<li>希望服务指向另一个 Namespace 中或其它集群中的服务。</li>
+<li>正在将工作负载转移到 Kubernetes 集群，和运行在 Kubernetes 集群之外的 backend。</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment">#定义如下service：</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">my-service</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">80</span><br>    <span class="hljs-attr">targetPort:</span> <span class="hljs-number">9376</span><br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>由于这个 Service 没有标签选择器，就不会创建相关的 Endpoints 对象。可以手动将 Service 映射到指定的 Endpoints：</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">kind:</span> <span class="hljs-string">Endpoints</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">my-service</span><br><span class="hljs-attr">subsets:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">addresses:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">1.2</span><span class="hljs-number">.3</span><span class="hljs-number">.4</span><br>    <span class="hljs-attr">ports:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">port:</span> <span class="hljs-number">9376</span><br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>注意：Endpoint IP 地址不能是 loopback（127.0.0.0&#x2F;8）、 link-local（169.254.0.0&#x2F;16）、或者 link-local 多播（224.0.0.0&#x2F;24）。<br>注意：除需要手动创建endpoint外，无标签选择器与有标签选择器的servcie工作过程完全相同。请求将被路由到用户定义的 Endpoint（该示例中为 1.2.3.4:9376）</p>
+</blockquote>
+<h3 id="kube-proxy有以下三种工作模式"><a href="#kube-proxy有以下三种工作模式" class="headerlink" title="kube-proxy有以下三种工作模式:"></a>kube-proxy有以下三种工作模式:</h3><blockquote>
+<ul>
+<li>userspace 代理模式：</li>
+</ul>
+</blockquote>
+<ul>
+<li>iptables 代理模式：</li>
+<li>ipvs 代理模式：</li>
+</ul>
+<h3 id="ipvs-vs-iptables"><a href="#ipvs-vs-iptables" class="headerlink" title="ipvs vs. iptables"></a>ipvs vs. iptables</h3><blockquote>
+<p>我们知道kube-proxy支持 iptables 和 ipvs 两种模式， 在kubernetes v1.8 中引入了 ipvs 模式，在 v1.9 中处于 beta 阶段，在 v1.11 中已经正式可用了。iptables 模式在 v1.1 中就添加支持了，从 v1.2 版本开始 iptables 就是 kube-proxy 默认的操作模式，ipvs 和 iptables 都是基于netfilter的，那么 ipvs 模式和 iptables 模式之间有哪些差异呢？</p>
+</blockquote>
+<ul>
+<li>1、ipvs 为大型集群提供了更好的可扩展性和性能</li>
+<li>2、ipvs 支持比 iptables 更复杂的负载均衡算法（最小负载、最少连接、加权等等）</li>
+<li>3、ipvs 支持服务器健康检查和连接重试等功能</li>
+</ul>
+<h3 id="ipvs-依赖-iptables"><a href="#ipvs-依赖-iptables" class="headerlink" title="ipvs 依赖 iptables"></a>ipvs 依赖 iptables</h3><blockquote>
+<p>ipvs 会使用 iptables 进行包过滤、SNAT、masquared(伪装)。具体来说，ipvs 将使用ipset来存储需要DROP或masquared的流量的源或目标地址，以确保 iptables 规则的数量是恒定的，这样我们就不需要关心我们有多少服务了</p>
+</blockquote>
+<blockquote>
+<p>既然每个Pod都会被分配一个单独的IP地址，而且每个Pod都提供了一个独立的Endpoint(Pod IP+ContainerPort)以被客户端访问，现在多个Pod副本组成了一个集群来提供服务，那么客户端如何来访问它们呢？一般的做法是部署一个负载均衡器（软件或硬件），为这组Pod开启一个对外的服务端口如9376端口，并且将这些Pod的Endpoint列表加入9376端口的转发列表中，客户端就可以通过负载均衡器的对外IP地址+服务端口来访问服务，而客户端的请求最后会被转发到哪个Pod，则由负载均衡器的算法所决定。</p>
+</blockquote>
+<blockquote>
+<p>Kubernetes也遵循了上述常规做法，运行在每个Node上的kube-proxy进程其实就是一个智能的软件负载均衡器，它负责把对Service的请求转发到后端的某个Pod实例上，并在内部实现服务的负载均衡与会话机制。但Kubernetes发明了一种很巧妙又影响深远的设计：Service不是共用一个负载均衡的IP地址，而是每个Service分配了全局唯一的虚拟IP地址，这个虚拟IP地址被称为Cluster IP。这样一来，每个服务就变成了具备唯一IP地址的“通信节点”，服务调用就变成了最基础的TCP网络通信问题。</p>
+</blockquote>
+<blockquote>
+<p>我们知道，Pod的Endpoint地址会随着Pod的销毁和重新创建而发生改变，因为新Pod的IP地址与之前旧Pod的不同。而Service一旦被创建，Kubernetes就会自动为它分配一个可用的Cluster IP，而且在Service的整个生命周期内。它的Cluster IP不会发生改变。于是，服务发现这个棘手的问题在Kubernetes的架构里也得到轻松解决：只要用Service的Name与Service的Cluster IP地址做一个DNS域名映射即可完美解决问题。现在想想，这真是一个很棒的设计。</p>
+</blockquote>
+<h3 id="定义-Service"><a href="#定义-Service" class="headerlink" title="定义 Service"></a>定义 Service</h3><blockquote>
+<p>说了这么久，下面我们动手创建一个Service，来加深对它的理解。首先我们创建一个名为tomcat-service.yaml的定义文件，内容如下：</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">tomcat-service</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">port:</span> <span class="hljs-number">8080</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">tier:</span> <span class="hljs-string">frontend</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>上述内容定义了一个名为“tomcat-service”的Service，它的服务端口为8080，拥有“tier-frontend”这个Label的所有Pod实例都属于它，运行下面的命令进行创建：</p>
+</blockquote>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs nginx"><span class="hljs-comment"># kubectl create -f tomcat-service.yaml</span><br><span class="hljs-attribute">service</span> <span class="hljs-string">&quot;tomcat-service&quot;</span> created<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>运行下面的命令可以查看tomcat-service的Endpoint列表，其中172.17.1.3是Pod的IP地址，端口8080是Container暴露的端口：</p>
+</blockquote>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-comment"># kubectl get endpoints</span><br><span class="hljs-attribute">NAME</span>            ENDPOINTS           AGE<br><span class="hljs-attribute">kubernetes</span>      <span class="hljs-number">192.168.18.131:6443</span>     <span class="hljs-number">15</span>d<br><span class="hljs-attribute">tomcat</span>-service  <span class="hljs-number">172.17.1.3:8080</span>         <span class="hljs-number">1</span>m<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>你可能有疑问：“说好的Service的Cluster IP呢？怎么没有看到？”我们运行下面的命令即可看到tomcat-service被分配的Cluster IP及更多的信息：</p>
+</blockquote>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-comment"># kubectl get svc tomcat-service -o yaml</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> Service<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  creationTimestamp:</span> <span class="hljs-number">2018</span><span class="hljs-number">-10</span><span class="hljs-number">-17</span>T10:<span class="hljs-number">04</span>:<span class="hljs-number">21</span>Z<br><span class="hljs-symbol">  name:</span> tomcat-service<br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">  resourceVersion:</span> <span class="hljs-string">&quot;10169415&quot;</span><br><span class="hljs-symbol">  selfLink:</span> <span class="hljs-keyword">/api/</span>v1<span class="hljs-keyword">/namespaces/</span>default<span class="hljs-keyword">/services/</span>tomcat-service<br><span class="hljs-symbol">  uid:</span> <span class="hljs-number">04</span>caf53f-d1f4<span class="hljs-number">-11e8</span><span class="hljs-number">-83</span>a3<span class="hljs-number">-5254008</span>f2a0b<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  clusterIP:</span> <span class="hljs-number">10.254</span><span class="hljs-number">.169</span><span class="hljs-number">.39</span><br><span class="hljs-symbol">  ports:</span><br>  - port: <span class="hljs-number">8080</span><br><span class="hljs-symbol">    protocol:</span> TCP<br><span class="hljs-symbol">    targetPort:</span> <span class="hljs-number">8080</span><br><span class="hljs-symbol">  selector:</span><br><span class="hljs-symbol">    tier:</span> frontend<br><span class="hljs-symbol">  sessionAffinity:</span> None<br><span class="hljs-symbol">  type:</span> ClusterIP<br><span class="hljs-symbol">status:</span><br><span class="hljs-symbol">  loadBalancer:</span> <span class="hljs-punctuation">&#123;</span><span class="hljs-punctuation">&#125;</span><br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>在spec.ports的定义中，targetPort属性用来确定提供该服务的容器所暴露（EXPOSE）的端口号，即具体业务进程在容器内的targetPort上提供TCP&#x2F;IP接入；而port属性则定义了Service的虚拟端口。如果没有指定targetPort，则默认targetPort与port相同。</p>
+</blockquote>
+<h3 id="选择自己的-IP-地址"><a href="#选择自己的-IP-地址" class="headerlink" title="选择自己的 IP 地址"></a>选择自己的 IP 地址</h3><blockquote>
+<p>在 Service 创建的请求中，可以通过设置 spec.clusterIP 字段来指定自己的集群 IP 地址。比如，希望替换一个已经已存在的 DNS 条目，或者遗留系统已经配置了一个固定的 IP 且很难重新配置。用户选择的 IP 地址必须合法，并且这个 IP 地址在 service-cluster-ip-range CIDR 范围内，这对 API Server 来说是通过一个标识来指定的。如果 IP 地址不合法，API Server 会返回 HTTP 状态码 422，表示值不合法。</p>
+</blockquote>
+<h3 id="Service多端口问题。"><a href="#Service多端口问题。" class="headerlink" title="Service多端口问题。"></a>Service多端口问题。</h3><blockquote>
+<p>很多服务都存在多个端口的问题，通常一个端口提供业务服务，另外一个端口提供管理服务，比如Mycat、Codis等常见中间件。Kubernetes Service支持多个Endpoint，在存在多个Endpoint的情况下，要求每个Endpoint定义一个名字区分。下面是Tomcat多端口的Service定义样例：</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">tomcat-service</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">port:</span> <span class="hljs-number">8080</span><br>   <span class="hljs-attr">name:</span> <span class="hljs-string">service-port</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">port:</span> <span class="hljs-number">8005</span><br>   <span class="hljs-attr">name:</span> <span class="hljs-string">shutdown-port</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">tier:</span> <span class="hljs-string">frontend</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>多端口为什么需要給每个端口命名呢？这就涉及Kubernetes的服务发现机制了，我们接下来进行讲解。</p>
+</blockquote>
+<h3 id="Kubernetes的服务发现机制"><a href="#Kubernetes的服务发现机制" class="headerlink" title="Kubernetes的服务发现机制"></a>Kubernetes的服务发现机制</h3><blockquote>
+<p>kubernetes 提供了 service 的概念可以通过 VIP 访问 pod 提供的服务，但是在使用的时候还有一个问题：怎么知道某个应用的 VIP？比如我们有两个应用，一个 app，一个 是 db，每个应用使用RC(控制器)进行管理，并通过 service 暴露出端口提供服务。app 需要连接到 db 应用，我们只知道 db 应用的名称，但是并不知道它的 VIP 地址。</p>
+</blockquote>
+<h4 id="环境变量方式"><a href="#环境变量方式" class="headerlink" title="环境变量方式"></a>环境变量方式</h4><blockquote>
+<p>最早时Kubernetes采用了Linux环境变量的方式解决这个问题，即每个Service生成一些对应的Linux环境变量（ENV），并在每个Pod的容器在启动时，自动注入这些环境变量。<br>不同服务的环境变量用名称区分，例如：<br>{SVCNAME}_SERVICE_HOST and {SVCNAME}_SERVICE_PORT<br>如果服务有多个端口则端口的环境变量名称为 {SVCNAME}<em>SERVICE</em>{PORTNAME}_PORT。<br>以下是tomcat-service产生的环境变量条目：</p>
+</blockquote>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs ini"><span class="hljs-attr">TOMCAT_SERVICE_SERVICE_HOST</span>=<span class="hljs-number">10.254</span>.<span class="hljs-number">93.4</span><br><span class="hljs-attr">TOMCAT_SERVICE_SERVICE_PORT_SERVICE_PORT</span>=<span class="hljs-number">8080</span><br><span class="hljs-attr">TOMCAT_SERVICE_SERVICE_PORT_SHUTDOWN_PORT</span>=<span class="hljs-number">8005</span><br><span class="hljs-attr">TOMCAT_SERVICE_SERVICE_PORT</span>=<span class="hljs-number">8080</span><br><span class="hljs-attr">TOMCAT_SERVICE_PORT</span>=tcp://<span class="hljs-number">10.254</span>.<span class="hljs-number">93.4</span>:<span class="hljs-number">8080</span><br><span class="hljs-attr">TOMCAT_SERVICE_PORT_8080_TCP_ADDR</span>=<span class="hljs-number">10.254</span>.<span class="hljs-number">93.4</span><br><span class="hljs-attr">TOMCAT_SERVICE_PORT_8080_TCP</span>=tcp://<span class="hljs-number">10.254</span>.<span class="hljs-number">93.4</span>:<span class="hljs-number">8080</span><br><span class="hljs-attr">TOMCAT_SERVICE_PORT_8080_TCP_PROTO</span>=tcp<br><span class="hljs-attr">TOMCAT_SERVICE_PORT_8080_TCP_PORT</span>=<span class="hljs-number">8080</span><br><span class="hljs-attr">TOMCAT_SERVICE_PORT_8005_TCP</span>=tcp://<span class="hljs-number">10.254</span>.<span class="hljs-number">93.4</span>:<span class="hljs-number">8005</span><br><span class="hljs-attr">TOMCAT_SERVICE_PORT_8005_TCP_ADDR</span>=<span class="hljs-number">10.254</span>.<span class="hljs-number">93.4</span><br><span class="hljs-attr">TOMCAT_SERVICE_PORT_8005_TCP_PROTO</span>=tcp<br><span class="hljs-attr">TOMCAT_SERVICE_PORT_8005_TCP_PORT</span>=<span class="hljs-number">8005</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h4 id="DNS方式："><a href="#DNS方式：" class="headerlink" title="DNS方式："></a>DNS方式：</h4><blockquote>
+<p>一个可选（尽管强烈推荐）集群插件 是 DNS 服务器。 DNS 服务器监视着创建新 Service 的 Kubernetes API，从而为每一个 Service 创建一组 DNS 记录。 如果整个集群的 DNS 一直被启用，那么所有的 Pod 应该能够自动对 Service 进行名称解析。</p>
+</blockquote>
+<blockquote>
+<p>例如，有一个名称为 “my-service” 的 Service，它在 Kubernetes 集群中名为 “my-ns” 的 Namespace 中，为 “my-service.my-ns” 创建了一条 DNS 记录。 在名称为 “my-ns” 的 Namespace 中的 Pod 应该能够简单地通过名称查询找到 “my-service”。 在另一个 Namespace 中的 Pod 必须限定名称为 “my-service.my-ns”。 这些名称查询的结果是 Cluster IP。</p>
+</blockquote>
+<blockquote>
+<p>Kubernetes 也支持对端口名称的 DNS SRV（Service）记录。 如果名称为 “my-service.my-ns” 的 Service 有一个名为 “http” 的 TCP 端口，可以对 “_http._tcp.my-service.my-ns” 执行 DNS SRV 查询，得到 “http” 的端口号。</p>
+</blockquote>
+<blockquote>
+<p>Kubernetes DNS 服务器是唯一的一种能够访问 ExternalName 类型的 Service 的方式。 更多信息可以查看DNS Pod 和 Service。</p>
+</blockquote>
+<h3 id="Headless-Service（无头服务）："><a href="#Headless-Service（无头服务）：" class="headerlink" title="Headless Service（无头服务）："></a>Headless Service（无头服务）：</h3><blockquote>
+<p>在定义service时，如果.spec.clusterIP被指定为固定值则为服务分配指定的IP，如果.spec.clusterIP字段没有出现在配置中，则自动分配集群虚拟IP。但如果.spect.clusterIP的值被指定为”None”，此时创建的服务就被称为无头服务，其行为与普通服务有很大区别。首先不为服务分配集群虚拟IP，自然也就不能在DNS插件中添加服务相关条目。运行在各节点上的kube-proxy不为其添加转发规则，自然也就无法利用kube-proxy的转发、负载均衡功能。</p>
+</blockquote>
+<blockquote>
+<p>虽然不向DNS插件添加服务相关条目，但可能添加其它条目，DNS 如何实现自动配置，依赖于 Service 是否定义了 selector。</p>
+</blockquote>
+<h4 id="配置-Selector："><a href="#配置-Selector：" class="headerlink" title="配置 Selector："></a>配置 Selector：</h4><blockquote>
+<p>此种情况下，系统仍然根据标签选择器创建endpoint，并根据endpoint向DNS插件中添加条目。比如命名空间为”my-ns”，服务名称为”my-headless”，endpoing指向的pod名称为pod1、pod2，则向DNS插件中添加的条目类似于”pod1.my-headless.my-ns”与”pod1.my-headless.my-ns”，此时DNS中的条目直接指向pod。在StatefulSet类型资源中，使用无头服务为其中的pod提供名称解析服务，只所以可行，其实是因为StatefulSet能保证其管理的pod有序，名称地址等特征保持不变。</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment">#配置如下：</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-service</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">clusterIP:</span> <span class="hljs-string">None</span><br>  <span class="hljs-attr">ports:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">8080</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">80</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">nginx</span><br><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="不配置-Selector："><a href="#不配置-Selector：" class="headerlink" title="不配置 Selector："></a>不配置 Selector：</h4><blockquote>
+<p>对没有定义 selector 的 Headless Service，Endpoint 控制器不会创建 Endpoints 记录。 然而 DNS 系统会查找并配置，无论是：</p>
+</blockquote>
+<ul>
+<li>ExternalName 类型 Service 的 CNAME 记录</li>
+<li>记录：与 Service 共享一个名称的任何 Endpoints，以及所有其它类型</li>
+</ul>
+<h3 id="DNS解析正常-Service如下："><a href="#DNS解析正常-Service如下：" class="headerlink" title="DNS解析正常 Service如下："></a>DNS解析正常 Service如下：</h3><figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">[root@devops192168111034 K8s-res]# kubectl <span class="hljs-keyword">get</span> svc<br><span class="hljs-type">NAME</span>            <span class="hljs-keyword">TYPE</span>        <span class="hljs-keyword">CLUSTER</span>-IP       <span class="hljs-keyword">EXTERNAL</span>-IP   PORT(S)    AGE<br>kubernetes      ClusterIP   <span class="hljs-number">10.254</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>       &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">443</span>/TCP    <span class="hljs-number">41</span>d<br>nginx-service   ClusterIP   <span class="hljs-number">10.254</span><span class="hljs-number">.142</span><span class="hljs-number">.201</span>   &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">8080</span>/TCP   <span class="hljs-number">5</span>s<br><br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs css"><span class="hljs-selector-attr">[root@devops192168111034 K8s-res]</span># dig -t <span class="hljs-selector-tag">A</span> nginx-service<span class="hljs-selector-class">.default</span><span class="hljs-selector-class">.svc</span><span class="hljs-selector-class">.cluster</span><span class="hljs-selector-class">.local</span>. <span class="hljs-keyword">@10</span>.254.0.2<br><br>; &lt;&lt;&gt;&gt; DiG <span class="hljs-number">9.9</span>.<span class="hljs-number">4</span>-RedHat-<span class="hljs-number">9.9</span>.<span class="hljs-number">4</span>-<span class="hljs-number">72</span><span class="hljs-selector-class">.el7</span> &lt;&lt;&gt;&gt; -t <span class="hljs-selector-tag">A</span> nginx-service<span class="hljs-selector-class">.default</span><span class="hljs-selector-class">.svc</span><span class="hljs-selector-class">.cluster</span><span class="hljs-selector-class">.local</span>. <span class="hljs-keyword">@10</span>.254.0.2<br>;; global options: +cmd<br>;; Got answer:<br>;; -&gt;&gt;<span class="hljs-selector-tag">HEADER</span>&lt;&lt;- opcode: QUERY, status: NOERROR, id: <span class="hljs-number">42184</span><br>;; flags: qr aa rd ra; QUERY: <span class="hljs-number">1</span>, ANSWER: <span class="hljs-number">1</span>, AUTHORITY: <span class="hljs-number">0</span>, ADDITIONAL: <span class="hljs-number">1</span><br><br>;; OPT PSEUDOSECTION:<br>; EDNS: version: <span class="hljs-number">0</span>, flags:; udp: <span class="hljs-number">4096</span><br>;; QUESTION <span class="hljs-selector-tag">SECTION</span>:<br>;nginx-service<span class="hljs-selector-class">.default</span><span class="hljs-selector-class">.svc</span><span class="hljs-selector-class">.cluster</span><span class="hljs-selector-class">.local</span>. IN <span class="hljs-selector-tag">A</span><br><br>;; ANSWER <span class="hljs-selector-tag">SECTION</span>:<br>nginx-service.default.svc.cluster.local. <span class="hljs-number">5</span> IN A <span class="hljs-number">10.254</span>.<span class="hljs-number">142.201</span><br><br>;; Query <span class="hljs-selector-tag">time</span>: <span class="hljs-number">1</span> msec<br>;; SERVER: <span class="hljs-number">10.254</span>.<span class="hljs-number">0.2</span>#<span class="hljs-number">53</span>(<span class="hljs-number">10.254</span>.<span class="hljs-number">0.2</span>)<br>;; WHEN: Tue Jan <span class="hljs-number">08</span> <span class="hljs-number">15</span>:<span class="hljs-number">36</span>:<span class="hljs-number">51</span> CST <span class="hljs-number">2019</span><br>;; MSG SIZE  rcvd: <span class="hljs-number">123</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="DNS解析Headless-Service如下："><a href="#DNS解析Headless-Service如下：" class="headerlink" title="DNS解析Headless Service如下："></a>DNS解析Headless Service如下：</h3><figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs pgsql"><br>[root@devops192168111034 K8s-res]# kubectl <span class="hljs-keyword">get</span> svc<br><span class="hljs-type">NAME</span>            <span class="hljs-keyword">TYPE</span>        <span class="hljs-keyword">CLUSTER</span>-IP   <span class="hljs-keyword">EXTERNAL</span>-IP   PORT(S)    AGE<br>kubernetes      ClusterIP   <span class="hljs-number">10.254</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>   &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">443</span>/TCP    <span class="hljs-number">41</span>d<br>nginx-service   ClusterIP   <span class="hljs-keyword">None</span>         &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">8080</span>/TCP   <span class="hljs-number">44</span>m<br><br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@devops192168091021</span> <span class="hljs-string">overlord</span>]<span class="hljs-comment"># dig -t A nginx-service.default.svc.cluster.local. @10.254.0.2</span><br><br><span class="hljs-string">;</span> <span class="hljs-string">&lt;&lt;&gt;&gt;</span> <span class="hljs-string">DiG</span> <span class="hljs-number">9.9</span><span class="hljs-number">.4</span><span class="hljs-string">-RedHat-9.9.4-72.el7</span> <span class="hljs-string">&lt;&lt;&gt;&gt;</span> <span class="hljs-string">-t</span> <span class="hljs-string">A</span> <span class="hljs-string">nginx-service.default.svc.cluster.local.</span> <span class="hljs-string">@10.254.0.2</span><br><span class="hljs-string">;;</span> <span class="hljs-attr">global options:</span> <span class="hljs-string">+cmd</span><br><span class="hljs-string">;;</span> <span class="hljs-attr">Got answer:</span><br><span class="hljs-string">;;</span> <span class="hljs-string">-&gt;&gt;HEADER&lt;&lt;-</span> <span class="hljs-attr">opcode:</span> <span class="hljs-string">QUERY,</span> <span class="hljs-attr">status:</span> <span class="hljs-string">NOERROR,</span> <span class="hljs-attr">id:</span> <span class="hljs-number">57770</span><br><span class="hljs-string">;;</span> <span class="hljs-attr">flags:</span> <span class="hljs-string">qr</span> <span class="hljs-string">aa</span> <span class="hljs-string">rd</span> <span class="hljs-string">ra;</span> <span class="hljs-attr">QUERY:</span> <span class="hljs-number">1</span><span class="hljs-string">,</span> <span class="hljs-attr">ANSWER:</span> <span class="hljs-number">2</span><span class="hljs-string">,</span> <span class="hljs-attr">AUTHORITY:</span> <span class="hljs-number">0</span><span class="hljs-string">,</span> <span class="hljs-attr">ADDITIONAL:</span> <span class="hljs-number">1</span><br><br><span class="hljs-string">;;</span> <span class="hljs-attr">OPT PSEUDOSECTION:</span><br><span class="hljs-string">;</span> <span class="hljs-attr">EDNS: version:</span> <span class="hljs-number">0</span><span class="hljs-string">,</span> <span class="hljs-string">flags:;</span> <span class="hljs-attr">udp:</span> <span class="hljs-number">4096</span><br><span class="hljs-string">;;</span> <span class="hljs-attr">QUESTION SECTION:</span><br><span class="hljs-string">;nginx-service.default.svc.cluster.local.</span> <span class="hljs-string">IN</span> <span class="hljs-string">A</span><br><br><span class="hljs-string">;;</span> <span class="hljs-attr">ANSWER SECTION:</span><br><span class="hljs-string">nginx-service.default.svc.cluster.local.</span> <span class="hljs-number">5</span> <span class="hljs-string">IN</span> <span class="hljs-string">A</span> <span class="hljs-number">10.30</span><span class="hljs-number">.25</span><span class="hljs-number">.2</span>     <span class="hljs-comment">#同一个域名解析到不同的IP上</span><br><span class="hljs-string">nginx-service.default.svc.cluster.local.</span> <span class="hljs-number">5</span> <span class="hljs-string">IN</span> <span class="hljs-string">A</span> <span class="hljs-number">10.30</span><span class="hljs-number">.55</span><span class="hljs-number">.2</span><br><br><span class="hljs-string">;;</span> <span class="hljs-attr">Query time:</span> <span class="hljs-number">0</span> <span class="hljs-string">msec</span><br><span class="hljs-string">;;</span> <span class="hljs-attr">SERVER:</span> <span class="hljs-number">10.254</span><span class="hljs-number">.0</span><span class="hljs-number">.2</span><span class="hljs-comment">#53(10.254.0.2)</span><br><span class="hljs-string">;;</span> <span class="hljs-attr">WHEN:</span> <span class="hljs-string">Tue</span> <span class="hljs-string">Jan</span> <span class="hljs-number">08</span> <span class="hljs-number">14</span><span class="hljs-string">:54:17</span> <span class="hljs-string">CST</span> <span class="hljs-number">2019</span><br><span class="hljs-string">;;</span> <span class="hljs-attr">MSG SIZE  rcvd:</span> <span class="hljs-number">178</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+
+<h3 id="外部系统访问Service的问题"><a href="#外部系统访问Service的问题" class="headerlink" title="外部系统访问Service的问题"></a>外部系统访问Service的问题</h3><blockquote>
+<p>本文以上示例都以默认服务类型为前提，实际上kubernetes暴露服务IP的类型有四种，service.spec.type允许指定一个需要的类型，默认是 ClusterIP 类型。Type 的取值以及行为如下：</p>
+</blockquote>
+<ul>
+<li>ClusterIP：通过集群的内部 IP 暴露服务，选择该值，服务只能够在集群内部可以访问，这也是默认的 ServiceType。</li>
+<li>NodePort：通过每个 Node 上的 IP 和静态端口（NodePort）暴露服务。NodePort 服务会路由到 ClusterIP 服务，这个 ClusterIP 服务会自动创建。通过请求 <NodeIP>:<NodePort>，可以从集群的外部访问一个 NodePort 服务。</li>
+<li>LoadBalancer：使用云提供商的负载均衡器，可以向外部暴露服务。外部的负载均衡器可以路由到 NodePort 服务和 ClusterIP 服务。</li>
+<li>ExternalName：通过返回 CNAME 和它的值，可以将服务映射到 externalName 字段的内容（例如， foo.bar.example.com）。没有任何类型代理被创建，这只有 Kubernetes 1.7 或更高版本的 kube-dns 才支持。</li>
+</ul>
+<blockquote>
+<p>首先，Node IP是Kubernetes集群中每个节点的物理网卡的IP地址，这是一个真实存在的物理网络，所有属于这个网络的服务器之间都能通过这个网络直接通信，不管它们中是否有部分节点不属于这个Kubernetes集群。这也表明了Kubernetes集群之外的节点访问Kubernetes集群之内的某个节点或者TCP&#x2F;IP服务时，必须要通过Node IP进行通信。</p>
+</blockquote>
+<blockquote>
+<p>其次，Pod IP是每个Pod的IP地址，它是Docker Engine根据docker0网桥的IP地址段进行分配的，通常是一个虚拟的二层网络，前面我们说过，Kubernetes里一个Pod里的容器访问另外一个Pod里的容器，就是通过Pod IP所在的虚拟二层网络进行通信的，而真实的TCP&#x2F;IP流量则是通过Node IP所在的物理网卡流出的。</p>
+</blockquote>
+<blockquote>
+<p>最后，我们说说Service的Cluster IP，它也是一个虚拟的IP，但更像是一个“伪造”的IP网络，原因有以下几点。</p>
+</blockquote>
+<ul>
+<li>Cluster IP仅仅作用于Kubernetes Service这个对象，并由Kubernetes管理和分配IP地址（来源于Cluster IP地址池）。</li>
+<li>Cluster IP无法被Ping，因为没有一个“实体网络对象”来响应。</li>
+<li>Cluster IP只能结合Service Port组成一个具体的通信端口，单独的Cluster IP不具备TCP&#x2F;IP通信的基础，并且它们属于Kubernetes集群这样一个封闭的空间，集群之外的节点如果要访问这个通信端口，则需要做一些额外的工作。</li>
+<li>在Kubernetes集群之内，Node IP网、Pod IP网与Clsuter IP之间的通信，采用的是Kubernetes自己设计的一种编程方式的特殊的路由规则，与我们所熟知的IP路由有很大的不同。</li>
+</ul>
+<blockquote>
+<p>根据上面的分析和总结，我们基本明白了：Service的Cluster IP属于Kubernetes集群内部的地址，无法在集群外部直接使用这个地址。那么矛盾来了：实际上我们开发的业务系统中肯定多少由一部分服务是要提供給Kubernetes集群外部的应用或者用户来使用的，典型的例子就是Web端的服务模块，比如上面的tomcat-service，那么用户怎么访问它？</p>
+</blockquote>
+<blockquote>
+<p>采用NodePort是解决上述问题的最直接、最常用的做法。具体做法如下，以tomcat-service为例，我们在Service的定义里做如下扩展即可（黑体字部分）：</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">tomcat-service</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">NodePort</span><br>  <span class="hljs-attr">ports:</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-attr">port:</span> <span class="hljs-number">8080</span><br>     <span class="hljs-attr">nodePort:</span> <span class="hljs-number">31002</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">tier:</span> <span class="hljs-string">frontend</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>其中，nodePort:31002这个属性表明我们手动指定tomcat-service的NodePort为31002，否则Kubernetes会自动分配一个可用的端口。接下来，我们在浏览器里访问http:&#x2F;&#x2F;<nodePort IP>:31002，就可以看到Tomcat的欢迎界面了，如图所示。</p>
+</blockquote>
+<p><img src="/images/service-1.png" srcset="/img/loading.gif" lazyload alt="service-1"></p>
+<h3 id="通过NodePort访问Service"><a href="#通过NodePort访问Service" class="headerlink" title="通过NodePort访问Service"></a>通过NodePort访问Service</h3><blockquote>
+<p>NodePort的实现方式是在Kubernetes集群里的每个Node上为需要外部访问的Service开启一个对应的TCP监听端口，外部系统只要用任意一个Node的IP地址+具体的NodePort端口号即可访问此服务，在任意Node上运行netstat命令，我们就可以看到有NodePort端口被监听：</p>
+</blockquote>
+<figure class="highlight elixir"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs elixir"><span class="hljs-comment"># netstat -tlp|grep 31002</span><br>tcp6       <span class="hljs-number">0</span>      <span class="hljs-number">0</span> [::]<span class="hljs-symbol">:</span><span class="hljs-number">31002</span>              [::]<span class="hljs-symbol">:*</span>                  <span class="hljs-title class_">LISTEN</span>      <span class="hljs-number">19043</span>/kube-proxy<br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>但NodePort还没有完全解决外部访问Service的所有问题，比如负载均衡问题，假如我们的集群中有10个Node，则此时最好有一个负载均衡器，外部的请求只需要访问此负载均衡器的IP地址，由负载均衡负责转发流量到后面某个Node的NodePort上。</p>
+</blockquote>
+<h3 id="externalIPs"><a href="#externalIPs" class="headerlink" title="externalIPs"></a>externalIPs</h3><blockquote>
+<p>注意事项：对于使用了<code>externalIPs</code>的Service，当开启IPVS后，<code>externalIP</code>也会作为VIP被ipvs接管，因此如果在externalIp指定的Kubernetes集群中Node节点的IP，需将externalIp替换成预先规划好的VIP(在同一网段找一个未被使用的IP)，否则会出现VIP和Node节点IP冲突的问题。使用命令行将VIP绑定到物理网卡上<code>ens192</code>网口，而不是绑定到<code>kube-ipvs0</code>网口</p>
+</blockquote>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">ip</span> addr add <span class="hljs-number">192.168.110.209</span>/<span class="hljs-number">24</span> brd <span class="hljs-number">192.168.110.255</span> dev ens192<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Service</span><br><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">v1</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">andmu-open-be-app</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">sh-andmuopen</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">selector</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">k8s-app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">andmu-open-be-app</span><br>  <span class="hljs-attribute">ports</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">name: http</span><br>    <span class="hljs-attribute">port</span><span class="hljs-punctuation">:</span> <span class="hljs-string">80</span><br>    <span class="hljs-attribute">targetPort</span><span class="hljs-punctuation">:</span> <span class="hljs-string">80</span><br>  <span class="hljs-attribute">externalIPs</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">192.168.110.209</span><br></code></pre></td></tr></table></figure>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes之Service</div>
+      <div>https://system51.github.io/2019/08/23/Kubernetes-Service/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月23日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/23/kubernetes-DNS/" title="kubernetes之DNS">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">kubernetes之DNS</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/23/Kubernetes-CronJob/" title="Kubernetes之CronJob">
+                        <span class="hidden-mobile">Kubernetes之CronJob</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

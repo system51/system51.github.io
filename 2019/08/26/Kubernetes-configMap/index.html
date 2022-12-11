@@ -1,0 +1,753 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="我们知道，在几乎所有的应用开发中，都会涉及到配置文件的变更，比如说在web的程序中，需要连接数据库，缓存甚至是队列等等。而我们的一个应用程序从写第一行代码开始，要经历开发环境、测试环境、预发布环境只到最终的线上环境。而每一个环境都要定义其独立的各种配置。如果我们不能很好的管理这些配置文件，你的运维工作将顿时变的无比的繁琐。为此业内的一些大公司专门开发了自己的一套配置管理中心，如360的Qcon，">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之configMap">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-configMap/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="我们知道，在几乎所有的应用开发中，都会涉及到配置文件的变更，比如说在web的程序中，需要连接数据库，缓存甚至是队列等等。而我们的一个应用程序从写第一行代码开始，要经历开发环境、测试环境、预发布环境只到最终的线上环境。而每一个环境都要定义其独立的各种配置。如果我们不能很好的管理这些配置文件，你的运维工作将顿时变的无比的繁琐。为此业内的一些大公司专门开发了自己的一套配置管理中心，如360的Qcon，">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-08-26T02:41:17.000Z">
+<meta property="article:modified_time" content="2019-09-06T02:04:51.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>Kubernetes之configMap - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes之configMap"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 10:41" pubdate>
+          2019年8月26日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          6.7k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          12 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes之configMap</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <blockquote>
+<p>我们知道，在几乎所有的应用开发中，都会涉及到配置文件的变更，比如说在web的程序中，需要连接数据库，缓存甚至是队列等等。而我们的一个应用程序从写第一行代码开始，要经历开发环境、测试环境、预发布环境只到最终的线上环境。而每一个环境都要定义其独立的各种配置。如果我们不能很好的管理这些配置文件，你的运维工作将顿时变的无比的繁琐。为此业内的一些大公司专门开发了自己的一套配置管理中心，如360的Qcon，百度的disconf等。kubernetes也提供了自己的一套方案，即ConfigMap。kubernetes通过ConfigMap来实现对容器中应用的配置管理。</p>
+</blockquote>
+<h3 id="ConfigMap（配置文件注入Pod）-概述："><a href="#ConfigMap（配置文件注入Pod）-概述：" class="headerlink" title="ConfigMap（配置文件注入Pod） 概述："></a>ConfigMap（配置文件注入Pod） 概述：</h3><blockquote>
+<h4 id="ConfigMap-供容器使用的典型用法如下："><a href="#ConfigMap-供容器使用的典型用法如下：" class="headerlink" title="ConfigMap 供容器使用的典型用法如下："></a>ConfigMap 供容器使用的典型用法如下：</h4></blockquote>
+<ul>
+<li>生成为容器的环境变量。</li>
+<li>以 Volume 的形式挂载为容器内部的文件或目录。</li>
+</ul>
+<blockquote>
+<p>ConfiMap 以一个或多个 key:value 的形式保存在 Kubernetes 系统中提供应用使用，即可以用于表示一个变量的值（例如 apploglevel&#x3D;info），也可以用于表示一个完整配置文件的内容（例如：server.xml&#x3D;&lt;?xml…&gt;…）</p>
+</blockquote>
+<h3 id="创建-ConfigMap-资源对象"><a href="#创建-ConfigMap-资源对象" class="headerlink" title="创建 ConfigMap 资源对象"></a>创建 ConfigMap 资源对象</h3><blockquote>
+<h4 id="通过-yaml-配置文件方式创建"><a href="#通过-yaml-配置文件方式创建" class="headerlink" title="通过 yaml 配置文件方式创建"></a>通过 yaml 配置文件方式创建</h4><p>下面的例子 cm-appvars.yaml 描述了将几个应用所需的变量定义为 ConfigMap 的用法：</p>
+</blockquote>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs dts">cm-appvars.yaml<br><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> ConfigMap<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> cm-appvars<br><span class="hljs-symbol">data:</span><br><span class="hljs-symbol">  apploglevel:</span> info<br><span class="hljs-symbol">  appdatadir:</span> <span class="hljs-keyword">/var/</span>data<br></code></pre></td></tr></table></figure>
+
+<h4 id="执行创建："><a href="#执行创建：" class="headerlink" title="执行创建："></a>执行创建：</h4><figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> app]<span class="hljs-meta">#  kubectl apply -f cm-appvars.yaml</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="查看创建好的-ConfigMap："><a href="#查看创建好的-ConfigMap：" class="headerlink" title="查看创建好的 ConfigMap："></a>查看创建好的 ConfigMap：</h4><figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl get configmap</span><br>NAME         DATA   AGE<br>cm-appvars   <span class="hljs-number">2</span>      <span class="hljs-number">63</span>m<br></code></pre></td></tr></table></figure>
+
+
+<h4 id="查看详细信息："><a href="#查看详细信息：" class="headerlink" title="查看详细信息："></a>查看详细信息：</h4><figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc">[root@master-1 app]# kubectl describe configmap cm-appvars<br>Name:         cm-appvars<br>Namespace:    default<br>Labels:       &lt;none&gt;<br>Annotations:  kubectl.kubernetes.io/last-applied-configuration:<br><span class="hljs-code">                &#123;&quot;apiVersion&quot;:&quot;v1&quot;,&quot;data&quot;:&#123;&quot;appdatadir&quot;:&quot;/var/data&quot;,&quot;apploglevel&quot;:&quot;info&quot;&#125;,&quot;kind&quot;:&quot;ConfigMap&quot;,&quot;metadata&quot;:&#123;&quot;annotations&quot;:&#123;&#125;,&quot;name&quot;:&quot;cm-appva...</span><br><br><span class="hljs-section">Data</span><br><span class="hljs-section">====</span><br><span class="hljs-section">appdatadir:</span><br><span class="hljs-section">----</span><br>/var/data<br><span class="hljs-section">apploglevel:</span><br><span class="hljs-section">----</span><br>info<br>Events:  &lt;none&gt;<br></code></pre></td></tr></table></figure>
+
+
+<h4 id="查看-yaml-形式数据："><a href="#查看-yaml-形式数据：" class="headerlink" title="查看 yaml 形式数据："></a>查看 yaml 形式数据：</h4><figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs dts">[root@master<span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl get  configmap cm-appvars -o yaml</span><br><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">data:</span><br><span class="hljs-symbol">  appdatadir:</span> <span class="hljs-keyword">/var/</span>data<br><span class="hljs-symbol">  apploglevel:</span> info<br><span class="hljs-symbol">kind:</span> ConfigMap<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  annotations:</span><br>    kubectl.kubernetes.io/last-applied-configuration: |<br>      <span class="hljs-punctuation">&#123;</span><span class="hljs-string">&quot;apiVersion&quot;</span>:<span class="hljs-string">&quot;v1&quot;</span>,<span class="hljs-string">&quot;data&quot;</span>:<span class="hljs-punctuation">&#123;</span><span class="hljs-string">&quot;appdatadir&quot;</span>:<span class="hljs-string">&quot;/var/data&quot;</span>,<span class="hljs-string">&quot;apploglevel&quot;</span>:<span class="hljs-string">&quot;info&quot;</span><span class="hljs-punctuation">&#125;</span>,<span class="hljs-string">&quot;kind&quot;</span>:<span class="hljs-string">&quot;ConfigMap&quot;</span>,<span class="hljs-string">&quot;metadata&quot;</span>:<span class="hljs-punctuation">&#123;</span><span class="hljs-string">&quot;annotations&quot;</span>:<span class="hljs-punctuation">&#123;</span><span class="hljs-punctuation">&#125;</span>,<span class="hljs-string">&quot;name&quot;</span>:<span class="hljs-string">&quot;cm-appvars&quot;</span>,<span class="hljs-string">&quot;namespace&quot;</span>:<span class="hljs-string">&quot;default&quot;</span><span class="hljs-punctuation">&#125;</span><span class="hljs-punctuation">&#125;</span><br><span class="hljs-symbol">  creationTimestamp:</span> <span class="hljs-string">&quot;2019-01-23T01:41:49Z&quot;</span><br><span class="hljs-symbol">  name:</span> cm-appvars<br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">  resourceVersion:</span> <span class="hljs-string">&quot;81484&quot;</span><br><span class="hljs-symbol">  selfLink:</span> <span class="hljs-keyword">/api/</span>v1<span class="hljs-keyword">/namespaces/</span>default<span class="hljs-keyword">/configmaps/</span>cm-appvars<br><span class="hljs-symbol">  uid:</span> <span class="hljs-number">0</span>cf43d8e<span class="hljs-number">-1</span>eb0<span class="hljs-number">-11e9</span>-a8c7-d8490b8af3ae<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="通过-kubectl-命令行方式创建"><a href="#通过-kubectl-命令行方式创建" class="headerlink" title="通过 kubectl 命令行方式创建"></a>通过 kubectl 命令行方式创建</h3><blockquote>
+<p>如果不想使用 yaml 文件，可直接通过 kubectl 也可以创建 ConfigMap，可以使用参数 –from-file 或 –from-literal 指定内容，并且可以在一行命令中指定多个参数。</p>
+</blockquote>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs gradle"><span class="hljs-number">1</span>、通过 --<span class="hljs-keyword">from</span>-<span class="hljs-keyword">file</span> 参数从文件中进行创建，可以指定 key 的名称，也可以在一个命令行中创建多个 key 的 ConfigMap，文件的内容被设置为 value，语法为：<br>kubectl create configmap my-config --<span class="hljs-keyword">from</span>-<span class="hljs-keyword">file</span>=key1=<span class="hljs-regexp">/path/</span>to<span class="hljs-regexp">/bar/</span>file1.txt --<span class="hljs-keyword">from</span>-<span class="hljs-keyword">file</span>=key2=<span class="hljs-regexp">/path/</span>to<span class="hljs-regexp">/bar/</span>file2.txt<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs gradle"><span class="hljs-number">2</span>、通过 --<span class="hljs-keyword">from</span>-<span class="hljs-keyword">file</span> 参数从文件中进行创建，文件名都被设置为 key，文件的内容被设置为 value，语法为：<br>kubectl create configmap my-config --<span class="hljs-keyword">from</span>-<span class="hljs-keyword">file</span>=path<span class="hljs-regexp">/to/</span>bar/file1.txt<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight sas"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs sas">3、--<span class="hljs-keyword">from</span>-literal 从文本中进行创建，直接将指定的 <span class="hljs-keyword">key</span>:value 创建为 ConfigMap 的内容语法为：<br>kubectl <span class="hljs-keyword">create</span> configmap my-config --<span class="hljs-keyword">from</span>-literal=key1=config1 --<span class="hljs-keyword">from</span>-literal=key2=config2<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="容器应用对-ConfigMap-的使用有以下两种方法。"><a href="#容器应用对-ConfigMap-的使用有以下两种方法。" class="headerlink" title="容器应用对 ConfigMap 的使用有以下两种方法。"></a>容器应用对 ConfigMap 的使用有以下两种方法。</h3><blockquote>
+<p>1、通过环境变量获取 ConfigMap 中的内容。(不支持动态更新)<br>2、通过 Volume 挂载的方式将 ConfigMap 中的内容关在为容器内部的文件或目录。(支持动态更新)</p>
+</blockquote>
+<h4 id="第一种方式示例（通过环境变量的方式使用-ConfigMap）："><a href="#第一种方式示例（通过环境变量的方式使用-ConfigMap）：" class="headerlink" title="第一种方式示例（通过环境变量的方式使用 ConfigMap）："></a>第一种方式示例（通过环境变量的方式使用 ConfigMap）：</h4><blockquote>
+<p>ConfigMap文件：</p>
+</blockquote>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> ConfigMap<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> cm-appvars<br><span class="hljs-symbol">data:</span><br><span class="hljs-symbol">  apploglevel:</span> info<br><span class="hljs-symbol">  appdatadir:</span> <span class="hljs-keyword">/var/</span>data<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>在 Pod 定义中，将 ConfigMap “cm-appvars” 中的内容以环境变量设置为容器内部的环境变量，容器的启动命令将显示这两个环境变量的值：</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span> <br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-test4</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">nginx1</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span> <br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">nginxtest</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">env:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">APP_DATA_DIR</span>         <span class="hljs-comment">#自定义pod内环境变量名称（必须是“大写”、“下划线”）</span><br>       <span class="hljs-attr">valueFrom:</span><br>         <span class="hljs-attr">configMapKeyRef:</span><br>           <span class="hljs-attr">name:</span> <span class="hljs-string">cm-appvars</span>          <span class="hljs-comment">#configmap的name</span><br>           <span class="hljs-attr">key:</span> <span class="hljs-string">appdatadir</span>           <span class="hljs-comment">#configmap的key</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">APP_LOG_LEVEL</span><br>       <span class="hljs-attr">valueFrom:</span><br>         <span class="hljs-attr">configMapKeyRef:</span><br>           <span class="hljs-attr">name:</span> <span class="hljs-string">cm-appvars</span>   <br>           <span class="hljs-attr">key:</span> <span class="hljs-string">apploglevel</span>    <br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>    <span class="hljs-attr">ports:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http</span><br>       <span class="hljs-attr">containerPort:</span> <span class="hljs-number">80</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">https</span><br>       <span class="hljs-attr">containerPort:</span> <span class="hljs-number">443</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs autoit"><span class="hljs-meta">#进入查看是否成功加载</span><br>[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl exec  -it nginx-test4 -- printenv</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs crmsh"><span class="hljs-comment">#编辑configmap</span><br>[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">volumes</span>]<span class="hljs-comment">#  kubectl edit cm cm-appvars</span><br>configmap/cm-appvars edited<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs autoit"><span class="hljs-meta">#查看是否编辑生效（是没有生效的，使用环境变量的方式注入不支持动态更新，因为pod在启动的时候就加载了环境变量）</span><br>[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl exec -it nginx-test4 -- printenv</span><br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>从 Kubernetes 1.6 开始，引入了一个新的字段 envFrom，实现在 Pod 环境内将 ConfigMap（也可以用于 Secret 资源对象）中所有定义的 key&#x3D;value 自动生成为环境变量：</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-test4</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">nginx1</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">nginxtest</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">envFrom:</span>             <span class="hljs-comment">#将configmap自动生成为环境变量</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">configMapRef:</span><br>         <span class="hljs-attr">name:</span> <span class="hljs-string">cm-appvars</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>    <span class="hljs-attr">ports:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http</span><br>       <span class="hljs-attr">containerPort:</span> <span class="hljs-number">80</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">https</span><br>       <span class="hljs-attr">containerPort:</span> <span class="hljs-number">443</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs autoit"><span class="hljs-meta">#进入查看是否成功加载</span><br>[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl exec  -it nginx-test4 -- printenv</span><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="第二种方式示例（通过-VolumeMount-使用-ConfigMap）"><a href="#第二种方式示例（通过-VolumeMount-使用-ConfigMap）" class="headerlink" title="第二种方式示例（通过 VolumeMount 使用 ConfigMap）"></a>第二种方式示例（通过 VolumeMount 使用 ConfigMap）</h4><blockquote>
+<p>使用volume将ConfigMap作为文件或目录直接挂载，其中每一个key-value键值对都会生成一个文件，key为文件名，value为文件内容，下面是一个示例：(当一个configmap中有多个key-value键值对时要注意每一个key-value键值对都会生成一个文件)</p>
+</blockquote>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-test4</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">nginx1</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">nginxtest</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">volumeMounts:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">config</span>      <span class="hljs-comment"># 指定要挂在的名称</span><br>        <span class="hljs-attr">mountPath:</span> <span class="hljs-string">/etc/nginx/conf.d/</span>    <span class="hljs-comment">#指定要挂在到哪里</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>    <span class="hljs-attr">ports:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http</span><br>       <span class="hljs-attr">containerPort:</span> <span class="hljs-number">80</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">https</span><br>       <span class="hljs-attr">containerPort:</span> <span class="hljs-number">443</span><br>  <span class="hljs-attr">volumes:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">config</span>         <span class="hljs-comment"># 定义一个挂在名称</span><br>      <span class="hljs-attr">configMap:</span><br>        <span class="hljs-attr">name:</span> <span class="hljs-string">cm-appvars</span>         <span class="hljs-comment">#configmap name</span><br>				<br><span class="hljs-comment"># 注意：cm-appvars中有两个key-value键值对，也就是会在/etc/nginx/conf.d/创建两个文件，key为文件名，value为文件内容</span><br></code></pre></td></tr></table></figure>
+
+<h4 id="验证是否是把两个key生成了两个文件，value是文件中的内容"><a href="#验证是否是把两个key生成了两个文件，value是文件中的内容" class="headerlink" title="验证是否是把两个key生成了两个文件，value是文件中的内容"></a>验证是否是把两个key生成了两个文件，value是文件中的内容</h4><figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs gradle">[root@master-<span class="hljs-number">1</span> app]# kubectl exec -it nginx-test4 -- ls <span class="hljs-regexp">/etc/</span>nginx<span class="hljs-regexp">/conf.d/</span><br>appdatadir  apploglevel<br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs crmsh"><span class="hljs-comment">#编辑configmap</span><br>[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">volumes</span>]<span class="hljs-comment">#  kubectl edit cm cm-appvars</span><br>configmap/cm-appvars edited<br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs autoit"><span class="hljs-meta">#查看是否编辑生效（修改已经生效）</span><br>[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl exec -it nginx-test4 -- printenv</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="configmap单key-value配置文件挂载："><a href="#configmap单key-value配置文件挂载：" class="headerlink" title="configmap单key-value配置文件挂载："></a>configmap单key-value配置文件挂载：</h3><blockquote>
+<p>使用volume将ConfigMap作为文件或目录直接挂载到某个服务上做服务的配置文件，例如下面将<a target="_blank" rel="noopener" href="http://www.conf配置文件使用configmap的方式挂载到nginx的配置文件目录下作为nginx的配置文件.此方式还支持动态修改/">www.conf配置文件使用configmap的方式挂载到nginx的配置文件目录下作为nginx的配置文件。此方式还支持动态修改</a></p>
+</blockquote>
+<figure class="highlight abnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs abnf">server &#123;<br>    server_name myapp.magedu.com<span class="hljs-comment">;</span><br>    listen <span class="hljs-number">80</span><span class="hljs-comment">;</span><br>    root /data/web/html<span class="hljs-comment">;</span><br>&#125;<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight coffeescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs coffeescript"><span class="hljs-comment">#使用文件名作为key，文件名作为value创建一个configmap</span><br>[root@master<span class="hljs-number">-1</span> app]<span class="hljs-comment"># kubectl create configmap my-config --from-file=./www.conf </span><br><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="使用VolumeMount方式挂载"><a href="#使用VolumeMount方式挂载" class="headerlink" title="使用VolumeMount方式挂载"></a>使用VolumeMount方式挂载</h4><figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">v1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx-test4</span><br>  <span class="hljs-attribute">namespace</span><span class="hljs-punctuation">:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx1</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">containers</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">name: nginxtest</span><br>    <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attribute">volumeMounts</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">name: nginxconfig</span><br>        <span class="hljs-attribute">mountPath</span><span class="hljs-punctuation">:</span> <span class="hljs-string">/etc/nginx/conf.d/</span><br>    <span class="hljs-attribute">imagePullPolicy</span><span class="hljs-punctuation">:</span> <span class="hljs-string">IfNotPresent</span><br>    <span class="hljs-attribute">ports</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">name: http</span><br>       <span class="hljs-attribute">containerPort</span><span class="hljs-punctuation">:</span> <span class="hljs-string">80</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">name: https</span><br>       <span class="hljs-attribute">containerPort</span><span class="hljs-punctuation">:</span> <span class="hljs-string">443</span><br>  <span class="hljs-attribute">volumes</span><span class="hljs-punctuation">:</span><br>   <span class="hljs-bullet">-</span> <span class="hljs-string">name: nginxconfig</span><br>     <span class="hljs-attribute">configMap</span><span class="hljs-punctuation">:</span><br>       <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">my-config</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>此yaml的意思是将<a target="_blank" rel="noopener" href="http://www.conf文件的内容注入到pod中,nginx将加载www.conf中的内容.创建出一个server出来./">www.conf文件的内容注入到pod中，nginx将加载www.conf中的内容。创建出一个server出来。</a></p>
+</blockquote>
+<h4 id="验证是否生效："><a href="#验证是否生效：" class="headerlink" title="验证是否生效："></a>验证是否生效：</h4><figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs gradle">[root@master-<span class="hljs-number">1</span> app]# kubectl exec -it nginx-test4 -- cat <span class="hljs-regexp">/etc/</span>nginx<span class="hljs-regexp">/conf.d/</span>www.conf<br>server &#123;<br>    server_name myapp.magedu.com;<br>    listen <span class="hljs-number">80</span>;<br>    root <span class="hljs-regexp">/data/</span>web/html;<br>&#125;<br><br>#注释：表示已经挂载成功<br></code></pre></td></tr></table></figure>
+
+<h4 id="查看nginx是否加载配置"><a href="#查看nginx是否加载配置" class="headerlink" title="查看nginx是否加载配置"></a>查看nginx是否加载配置</h4><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs sql">[root<span class="hljs-variable">@master</span><span class="hljs-number">-1</span> app]# kubectl <span class="hljs-keyword">exec</span> <span class="hljs-operator">-</span>it nginx<span class="hljs-operator">-</span>test4 <span class="hljs-comment">-- nginx -T</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="使用-ConfigMap-的限制条件"><a href="#使用-ConfigMap-的限制条件" class="headerlink" title="使用 ConfigMap 的限制条件"></a>使用 ConfigMap 的限制条件</h3><blockquote>
+<ul>
+<li>ConfigMap 必须在 Pod 之前创建。</li>
+</ul>
+</blockquote>
+<ul>
+<li>ConfigMap 受 Namespace 限制，只有处于同 Namespace 的 Pod 可以引用它。</li>
+<li>ConfigMap 中的配额管理还未能实现。</li>
+<li>kubelet 只支持可以被 API Server 管理的 Pod 使用 ConfigMap。kubelet 在本 Node 上通过 –manifest-url 或 –config 自动创建的静态 Pod 将无法引用 ConfigMap。</li>
+<li>在 Pod 对 ConfigMap 进行挂载（VolumeMount）操作时，容器内部只能挂载为 ”目录“，无法挂在为文件。在挂载到容器内部后，目录中将包含 ConfigMap 定义的每个 item，如果该目录下原来还有其他文件，则容器内的该目录将会被挂载的 ConfigMap 覆盖。如果应用程序需要保留原来的其他文件，则需要进行额外的处理。可以将 ConfigMap 挂载到容器内部的临时目录，在通过启动脚本将配置文件复制或者链接到（cp 或者 link、ln 命令）应用所用的实际配置目录下。</li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes之configMap</div>
+      <div>https://system51.github.io/2019/08/26/Kubernetes-configMap/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-Secret/" title="Kubernetes之Secret">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes之Secret</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-StorageVolume/" title="Kubernetes之存储卷">
+                        <span class="hidden-mobile">Kubernetes之存储卷</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

@@ -1,0 +1,790 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="编写 Deployment： 在所有的 Kubernetes 配置中，Deployment 也需要apiVersion，kind和metadata、 spec 这些配置项。  Pod Template： deployment.spec.template 是 .spec中唯一必须的字段。   deployment.spec.template 是 pod template. 它跟 Pod有一模一样的结">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes 定义Deployment控制器">
+<meta property="og:url" content="https://system51.github.io/2019/08/23/Kubernetes-Deployment/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="编写 Deployment： 在所有的 Kubernetes 配置中，Deployment 也需要apiVersion，kind和metadata、 spec 这些配置项。  Pod Template： deployment.spec.template 是 .spec中唯一必须的字段。   deployment.spec.template 是 pod template. 它跟 Pod有一模一样的结">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/deployments.png">
+<meta property="og:image" content="https://system51.github.io/images/rs.png">
+<meta property="og:image" content="https://system51.github.io/images/deployments-info.png">
+<meta property="og:image" content="https://system51.github.io/images/deployments-1.png">
+<meta property="og:image" content="https://system51.github.io/images/deployments-2.png">
+<meta property="og:image" content="https://system51.github.io/images/deloyments-annotations.png">
+<meta property="og:image" content="https://system51.github.io/images/rollout.png">
+<meta property="article:published_time" content="2019-08-23T03:40:35.000Z">
+<meta property="article:modified_time" content="2019-09-11T01:54:57.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/deployments.png">
+  
+  
+  
+  <title>Kubernetes 定义Deployment控制器 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes 定义Deployment控制器"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-23 11:40" pubdate>
+          2019年8月23日 中午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          6.9k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          12 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes 定义Deployment控制器</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h3 id="编写-Deployment："><a href="#编写-Deployment：" class="headerlink" title="编写 Deployment："></a>编写 Deployment：</h3><blockquote>
+<p>在所有的 Kubernetes 配置中，Deployment 也需要apiVersion，kind和metadata、 spec 这些配置项。</p>
+</blockquote>
+<h4 id="Pod-Template："><a href="#Pod-Template：" class="headerlink" title="Pod Template："></a>Pod Template：</h4><blockquote>
+<p>deployment.spec.template 是 .spec中唯一必须的字段。</p>
+</blockquote>
+<blockquote>
+<p>deployment.spec.template 是 pod template. 它跟 Pod有一模一样的结构有metadata、spec字段，除了它是嵌套的并且不需要apiVersion 和 kind字段。</p>
+</blockquote>
+<blockquote>
+<p>另外为了划分Pod的范围，Deployment中的pod template必须指定适当的label（不要跟其他controller重复了，例如：在Deployments中定义了一个 labels是app &#x3D; nginx，在Replica Set、Replication Controller 中都不来在定义app&#x3D;nginx这个labels）和适当的重启策略。.spec.template.spec.restartPolicy 可以设置为 Always , 如果不指定的话这就是默认配置。</p>
+</blockquote>
+<h4 id="Replicas："><a href="#Replicas：" class="headerlink" title="Replicas："></a>Replicas：</h4><blockquote>
+<p>.spec.replicas 是可以选字段，指定期望的pod数量，默认是1。</p>
+</blockquote>
+<h4 id="Selector："><a href="#Selector：" class="headerlink" title="Selector："></a>Selector：</h4><blockquote>
+<p>.spec.selector是可选字段，用来指定 label selector ，圈定Deployment管理的pod范围。</p>
+</blockquote>
+<blockquote>
+<p>如果被指定， .spec.selector 必须匹配 .spec.template.metadata.labels，否则它将被API拒绝。如果 .spec.selector 没有被指定， .spec.selector.matchLabels 默认是 .spec.template.metadata.labels。</p>
+</blockquote>
+<blockquote>
+<p>在Pod的template跟.spec.template不同或者数量超过了.spec.replicas规定的数量的情况下，Deployment会杀掉label跟selector不同的Pod。</p>
+</blockquote>
+<blockquote>
+<p>注意： 您不应该再创建其他label跟这个selector匹配的pod，或者通过其他Deployment，或者通过其他Controller，例如ReplicaSet和ReplicationController。否则该Deployment会被把它们当成都是自己创建的。Kubernetes不会阻止您这么做。</p>
+</blockquote>
+<blockquote>
+<p>如果您有多个controller使用了重复的selector，controller们就会互相打架并导致不正确的行为。</p>
+</blockquote>
+<h3 id="策略"><a href="#策略" class="headerlink" title="策略:"></a>策略:</h3><blockquote>
+<p>.spec.strategy 指定新的Pod替换旧的Pod的策略。 .spec.strategy.type 可以是”Recreate”或者是 “RollingUpdate”。”RollingUpdate”是默认值。</p>
+</blockquote>
+<h3 id="Recreate-Deployment"><a href="#Recreate-Deployment" class="headerlink" title="Recreate Deployment:"></a>Recreate Deployment:</h3><blockquote>
+<p>.spec.strategy.type&#x3D;&#x3D;Recreate时，在创建出新的Pod之前会先杀掉所有已存在的Pod。</p>
+</blockquote>
+<h3 id="Rolling-Update-Deployment"><a href="#Rolling-Update-Deployment" class="headerlink" title="Rolling Update Deployment:"></a>Rolling Update Deployment:</h3><blockquote>
+<p>.spec.strategy.type&#x3D;&#x3D;RollingUpdate时，Deployment使用rolling update 的方式更新Pod 。您可以指定maxUnavailable 和 maxSurge 来控制 rolling update 进程。</p>
+</blockquote>
+<h3 id="MAX-UNAVAILABLE："><a href="#MAX-UNAVAILABLE：" class="headerlink" title="MAX UNAVAILABLE："></a>MAX UNAVAILABLE：</h3><blockquote>
+<p>.spec.strategy.rollingUpdate.maxUnavailable 是可选配置项，用来指定在升级过程中不可用Pod的最大数量。该值可以是一个绝对值（例如5），也可以是期望Pod数量的百分比（例如10%）。通过计算百分比的绝对值向下取整。如果.spec.strategy.rollingUpdate.maxSurge 为0时，这个值不可以为0。默认值是1。</p>
+</blockquote>
+<blockquote>
+<p>例如，该值设置成30%，启动rolling update后旧的ReplicatSet将会立即缩容到期望的Pod数量的70%。新的Pod ready后，随着新的ReplicaSet的扩容，旧的ReplicaSet会进一步缩容，确保在升级的所有时刻可以用的Pod数量至少是期望Pod数量的70%。</p>
+</blockquote>
+<h3 id="MAX-SURGE"><a href="#MAX-SURGE" class="headerlink" title="MAX SURGE:"></a>MAX SURGE:</h3><blockquote>
+<p>.spec.strategy.rollingUpdate.maxSurge 是可选配置项，用来指定可以超过期望的Pod数量的最大个数。该值可以是一个绝对值（例如5）或者是期望的Pod数量的百分比（例如10%）。当MaxUnavailable为0时该值不可以为0。通过百分比计算的绝对值向上取整。默认值是1。</p>
+</blockquote>
+<blockquote>
+<p>例如，该值设置成30%，启动rolling update后新的ReplicatSet将会立即扩容，新老Pod的总数不能超过期望的Pod数量的130%。旧的Pod被杀掉后，新的ReplicaSet将继续扩容，旧的ReplicaSet会进一步缩容，确保在升级的所有时刻所有的Pod数量和不会超过期望Pod数量的130%。</p>
+</blockquote>
+<h3 id="Revision-History-Limit"><a href="#Revision-History-Limit" class="headerlink" title="Revision History Limit:"></a>Revision History Limit:</h3><blockquote>
+<p>Deployment revision history存储在它控制的ReplicaSets中。</p>
+</blockquote>
+<blockquote>
+<p>.spec.revisionHistoryLimit 是一个可选配置项，用来指定可以保留的旧的ReplicaSet数量。该理想值取决于心Deployment的频率和稳定性。如果该值没有设置的话，默认所有旧的Replicaset或会被保留，将资源存储在etcd中，是用kubectl get rs查看输出。每个Deployment的该配置都保存在ReplicaSet中，然而，一旦您删除的旧的RepelicaSet，您的Deployment就无法再回退到那个revison了。</p>
+</blockquote>
+<blockquote>
+<p>如果您将该值设置为0，所有具有0个replica的ReplicaSet都会被删除。在这种情况下，新的Deployment rollout无法撤销，因为revision history都被清理掉了。</p>
+</blockquote>
+<h3 id="Paused"><a href="#Paused" class="headerlink" title="Paused:"></a>Paused:</h3><blockquote>
+<p>.spec.paused是可以可选配置项，boolean值。用来指定暂停和恢复Deployment。Paused和没有paused的Deployment之间的唯一区别就是，所有对paused deployment中的PodTemplateSpec的修改都不会触发新的rollout。Deployment被创建之后默认是非paused。</p>
+</blockquote>
+<h3 id="revision清理策略："><a href="#revision清理策略：" class="headerlink" title="revision清理策略："></a>revision清理策略：</h3><blockquote>
+<p>您可以通过设置.spec.revisonHistoryLimit项来指定 deployment 最多保留多少 revision 历史记录。默认的会保留所有的 revision；如果将该项设置为0，Deployment就不允许回退了。</p>
+</blockquote>
+<h3 id="实例："><a href="#实例：" class="headerlink" title="实例："></a>实例：</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-ye</span>          <span class="hljs-comment">#deployments资源名称</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span>  <span class="hljs-comment">#定义所在的名称空间</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">myapp</span>        <span class="hljs-comment">#deployments的标签</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">replicas:</span> <span class="hljs-number">5</span>         <span class="hljs-comment">#Pod副本数</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">matchLabels:</span>      <span class="hljs-comment">#标签选择器</span><br>      <span class="hljs-attr">app:</span> <span class="hljs-string">nginx</span>      <span class="hljs-comment">#匹配的标签</span><br>  <span class="hljs-attr">template:</span>          <br>    <span class="hljs-attr">metadata:</span><br>      <span class="hljs-attr">labels:</span><br>        <span class="hljs-attr">app:</span> <span class="hljs-string">nginx</span>      <span class="hljs-comment">#Pod的标签，这里的标签要和上面的matchLabels保持一致deployments将根据这个标签来匹配那些Pod是属于同一个deployments资源。</span><br>    <span class="hljs-attr">spec:</span>                  <span class="hljs-comment">#Pod容器资源定义</span><br>      <span class="hljs-attr">containers:</span><br>       <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp-container</span><br>         <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:1.7.9</span><br>         <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>         <span class="hljs-attr">ports:</span><br>           <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http</span><br>             <span class="hljs-attr">containerPort:</span> <span class="hljs-number">80</span><br>           <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">https</span><br>             <span class="hljs-attr">containerPort:</span> <span class="hljs-number">443</span><br>         <span class="hljs-attr">livenessProbe:</span>          <span class="hljs-comment">#存活检查</span><br>           <span class="hljs-attr">httpGet:</span><br>             <span class="hljs-attr">path:</span> <span class="hljs-string">/index.html</span><br>             <span class="hljs-attr">port:</span> <span class="hljs-string">http</span><br>           <span class="hljs-attr">initialDelaySeconds:</span> <span class="hljs-number">1</span><br>           <span class="hljs-attr">periodSeconds:</span> <span class="hljs-number">3</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="查看定义的deployments资源："><a href="#查看定义的deployments资源：" class="headerlink" title="查看定义的deployments资源："></a>查看定义的deployments资源：</h3><blockquote>
+<p>注释：查看当前有哪些deployment<br><img src="/images/deployments.png" srcset="/img/loading.gif" lazyload alt="deployment"></p>
+</blockquote>
+<h3 id="deployments管理的rs："><a href="#deployments管理的rs：" class="headerlink" title="deployments管理的rs："></a>deployments管理的rs：</h3><blockquote>
+<p>注释：一个deployment可以管理多个rs，但是处于运行状态的只有一个。例如：nginx-ye-5ddd85887。说明当前已经更新了三个版本了其中RS （nginx-ye-5b5d8d5794 、nginx-ye-5d6cc588fd）已经没用了，但是回滚的时候会用到。您可能会注意到 ReplicaSet 的名字总是&lt;Deployment的名字&gt;-&lt;pod 模板的hash值&gt;，只要模板不同后面的HASH值就不同，就表示不同的RS。</p>
+</blockquote>
+<p><img src="/images/rs.png" srcset="/img/loading.gif" lazyload alt="rs"></p>
+<h3 id="deployments资源详细信息："><a href="#deployments资源详细信息：" class="headerlink" title="deployments资源详细信息："></a>deployments资源详细信息：</h3><p><img src="/images/deployments-info.png" srcset="/img/loading.gif" lazyload alt="deployments-info"></p>
+<blockquote>
+<p>Deployment为Pod和Replica Set（升级版的 Replication Controller）提供声明式更新。</p>
+</blockquote>
+<blockquote>
+<p>你只需要在 Deployment 中描述您想要的目标状态是什么，Deployment controller 就会帮您将 Pod 和ReplicaSet 的实际状态改变到您的目标状态。您可以定义一个全新的 Deployment 来创建 ReplicaSet 或者删除已有的 Deployment 并创建一个新的来替换。</p>
+</blockquote>
+<blockquote>
+<p>注意：您不该手动管理由 Deployment 创建的 Replica Set，否则您就篡越了 Deployment controller 的职责！下文罗列了 Deployment 对象中已经覆盖了所有的用例。如果未有覆盖您所有需要的用例，请直接在 Kubernetes 的代码库中提 issue。</p>
+</blockquote>
+<h3 id="典型的用例如下："><a href="#典型的用例如下：" class="headerlink" title="典型的用例如下："></a>典型的用例如下：</h3><ul>
+<li>使用Deployment来创建ReplicaSet。ReplicaSet在后台创建pod。检查启动状态，看它是成功还是失败。</li>
+<li>然后，通过更新Deployment的PodTemplateSpec字段来声明Pod的新状态。这会创建一个新的ReplicaSet，Deployment会按照控制的速率将pod从旧的ReplicaSet移动到新的ReplicaSet中。</li>
+<li>如果当前状态不稳定，回滚到之前的Deployment revision。每次回滚都会更新Deployment的revision。</li>
+<li>扩容Deployment以满足更高的负载。</li>
+<li>暂停Deployment来应用PodTemplateSpec的多个修复，然后恢复上线。</li>
+<li>根据Deployment 的状态判断上线是否hang住了。</li>
+<li>清除旧的不必要的 ReplicaSet。</li>
+</ul>
+<h3 id="Deployments滚动升级过程："><a href="#Deployments滚动升级过程：" class="headerlink" title="Deployments滚动升级过程："></a>Deployments滚动升级过程：</h3><blockquote>
+<p>Deployment直接使用kubectl edit deployment&#x2F;deploymentName 或者kubectl set方法就可以直接升级（原理是Pod的template发生变化，例如更新label、更新镜像版本等操作会触发Deployment的滚动升级）：</p>
+</blockquote>
+<p>将nginx的版本进行升级，从1.7.9升级到1.8。第一种方法，直接set镜像：</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs routeros">$ kubectl <span class="hljs-built_in">set</span> image deployment/nginx-deployment2 <span class="hljs-attribute">nginx</span>=nginx:1.8<br>deployment <span class="hljs-string">&quot;nginx-deployment2&quot;</span> image updated<br></code></pre></td></tr></table></figure>
+
+<p>第二种方法，直接edit：</p>
+<figure class="highlight gams"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs gams"><span class="hljs-symbol">$</span> kubectl edit deployment/nginx-deployment -n kube-<span class="hljs-keyword">system</span><br>deployment <span class="hljs-string">&quot;nginx-deployment2&quot;</span> edited<br></code></pre></td></tr></table></figure>
+
+<p><img src="/images/deployments-1.png" srcset="/img/loading.gif" lazyload alt="deployments-1"></p>
+<blockquote>
+<p>deployments可以同时控制多个RS控制器。在滚动升级的时候先创建一个RS，然后deploymen在删除V1版本的Pod后在创建一个另个RS里创建一个V2版本。但是只有一个是处于活动状态的。Deployment可以控制更新粒度，例如5个Pod的时候，可以设置最大允许6个Pod，最少允许4个。那么在滚动更新的时候会先更新一个新版本然后在删掉一个老版本，直到更新完成。如果你允许最大是7个Pod那么就是两个Pod一起更新。 如果设置只允许少不允许多，最少允许4个。那么就先删除一个然后在更新一个， 直到更新完成。</p>
+</blockquote>
+<h4 id="最后介绍下Deployment的一些基础命令。"><a href="#最后介绍下Deployment的一些基础命令。" class="headerlink" title="最后介绍下Deployment的一些基础命令。"></a>最后介绍下Deployment的一些基础命令。</h4><figure class="highlight crystal"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs crystal"><span class="hljs-variable">$ </span>kubectl describe deployments  <span class="hljs-comment">#查询详细信息，获取升级进度</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs shell"><span class="hljs-meta prompt_">$ </span><span class="language-bash">kubectl rollout pause deployment/nginx-deployment2  <span class="hljs-comment">#暂停升级</span></span><br></code></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs shell"><span class="hljs-meta prompt_">$ </span><span class="language-bash">kubectl rollout resume deployment/nginx-deployment2  <span class="hljs-comment">#继续升级</span></span><br></code></pre></td></tr></table></figure>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs shell"><span class="hljs-meta prompt_">$ </span><span class="language-bash">kubectl rollout undo deployment/nginx-deployment2  <span class="hljs-comment">#升级回滚</span></span><br></code></pre></td></tr></table></figure>
+<figure class="highlight crystal"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs crystal"><span class="hljs-variable">$ </span>kubectl scale deployment nginx-deployment --replicas <span class="hljs-number">10</span>  <span class="hljs-comment">#弹性伸缩Pod数量</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="Deploymentsce层级关系："><a href="#Deploymentsce层级关系：" class="headerlink" title="Deploymentsce层级关系："></a>Deploymentsce层级关系：</h3><p><img src="/images/deployments-2.png" srcset="/img/loading.gif" lazyload alt="deployments-2"></p>
+<p><img src="/images/deloyments-annotations.png" srcset="/img/loading.gif" lazyload alt="deloyments-annotations"></p>
+<blockquote>
+<p>在上述输出中，可以看到自动添加到注解中的“deployment.kubernetes.io&#x2F;revision&#x3D;2”字段，新建Deployment的revision是1，2表示这是更新过的第二版，前缀“deployment.kubernetes.io”表示这是系统保留的供deployment使用的关键字，用户不可以使用引种类型的注解。(注释：revision在回滚到某一个指定版本的时候需要用到)</p>
+</blockquote>
+<h3 id="关于更新失败："><a href="#关于更新失败：" class="headerlink" title="关于更新失败："></a>关于更新失败：</h3><blockquote>
+<p>如果在新版本中指定了错误的image名称，那么更新注定会失败。在本例中如果发生这种情况，首先Deployment会创建新的ReplicaSet，新ReplicaSet在创建每个pod实例就会因为取不到image而失败，整个更新过程会被卡住不再进行下去。即使失败也会产生一个新的修订版本号，并且新创建的ReplicaSet、因无法取到image而失败的pod仍存在于系统中。当然目前对外提供服务的仍然是旧版本的pod。如果发生这种情况就要乃至回滚功能，回到上一个正确的版本。</p>
+</blockquote>
+<h3 id="Rolling-Back-a-Deployment："><a href="#Rolling-Back-a-Deployment：" class="headerlink" title="Rolling Back a Deployment："></a>Rolling Back a Deployment：</h3><blockquote>
+<p>Deployment会记录修订历史，当然对能记录的修订历史个数有限制（可以通过.spec.revisionHistoryLimit参数设置），因此Deployment能回滚到记录在案的以前的历史版本中。注意只有rollout操作才会触发修订历史记录，也就是只有.spec.template发生变更才被认为产生了新的版本。其它的变更，比如修改标签选择器、通过kubectl scalling命令扩缩容、被HPA自动扩缩容等不会被认为是新的版本。只回滚.spec.template部分，比如当前的副本数量是5，回滚的版本副本数量是3，回滚后副本数量不变仍然是5，但副本的内容变回以前。</p>
+</blockquote>
+<blockquote>
+<p>查看修定历史记录，注意后边的CHANGE-CAUSE，需要在kubectl creae创建Deployment时指定–record&#x3D;true才会有：(–record&#x3D;false在资源注释中记录当前的kubectl命令。如果设置为false，则不要记录)</p>
+</blockquote>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs bash">$ kubectl rollout <span class="hljs-built_in">history</span> deployment/nginx-deployment<br>deployments <span class="hljs-string">&quot;nginx-deployment&quot;</span><br>REVISION    CHANGE-CAUSE<br>1           kubectl create -f https://k8s.io/examples/controllers/nginx-deployment.yaml --record<br>2           kubectl <span class="hljs-built_in">set</span> image deployment/nginx-deployment nginx=nginx:1.9.1<br>3           kubectl <span class="hljs-built_in">set</span> image deployment/nginx-deployment nginx=nginx:1.91<br></code></pre></td></tr></table></figure>
+
+<p>通过指定REVISION号码查看特定修订记录：</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@<span class="hljs-keyword">master</span> <span class="hljs-title">app</span>]<span class="hljs-comment"># kubectl rollout history deployment/nginx-ye -n kube-system --revision=4</span><br></code></pre></td></tr></table></figure>
+<p><img src="/images/rollout.png" srcset="/img/loading.gif" lazyload alt="rollout"></p>
+<p>回滚到前一个版本：</p>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs applescript">$ kubectl rollout undo deployment/nginx-deployment<br>deployment <span class="hljs-string">&quot;nginx-deployment&quot;</span> rolled <span class="hljs-keyword">back</span><br></code></pre></td></tr></table></figure>
+
+<p>通过revision号回滚到任意版本：</p>
+<figure class="highlight vim"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs vim">$ kubectl rollout <span class="hljs-keyword">undo</span> deployment/nginx-ye --<span class="hljs-keyword">to</span>-revision=<span class="hljs-number">4</span> -n kube-<span class="hljs-built_in">system</span><br>deployment <span class="hljs-string">&quot;nginx-deployment&quot;</span> rolled back<br></code></pre></td></tr></table></figure>
+
+<p>升级或创建（如果该资源还不存在，将创建它）</p>
+<figure class="highlight coq"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs coq">kubectl <span class="hljs-built_in">apply</span> -f xxx.yaml --<span class="hljs-built_in">record</span><br></code></pre></td></tr></table></figure>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes 定义Deployment控制器</div>
+      <div>https://system51.github.io/2019/08/23/Kubernetes-Deployment/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月23日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/23/Kubernetes-DaemonSet/" title="Kubernetes之DaemonSet">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes之DaemonSet</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/23/Kubernetes-Pod-init/" title="Kubernetes Pod 初始化容器">
+                        <span class="hidden-mobile">Kubernetes Pod 初始化容器</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

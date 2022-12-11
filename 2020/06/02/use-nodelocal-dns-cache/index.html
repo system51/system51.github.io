@@ -1,0 +1,708 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="NodeLocal DNS使用及配置NodeLocal DNSCache 通过在集群节点上运行一个 DaemonSet 来提高 clusterDNS 性能和可靠性。处于 ClusterFirst 的 DNS 模式下的 Pod 可以连接到 kube-dns 的 serviceIP 进行 DNS 查询。通过 kube-proxy 组件添加的 iptables 规则将其转换为 CoreDNS 端点。通过">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在 Kubernetes 集群中使用 NodeLocal DNSCache">
+<meta property="og:url" content="https://system51.github.io/2020/06/02/use-nodelocal-dns-cache/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="NodeLocal DNS使用及配置NodeLocal DNSCache 通过在集群节点上运行一个 DaemonSet 来提高 clusterDNS 性能和可靠性。处于 ClusterFirst 的 DNS 模式下的 Pod 可以连接到 kube-dns 的 serviceIP 进行 DNS 查询。通过 kube-proxy 组件添加的 iptables 规则将其转换为 CoreDNS 端点。通过">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/nodelocaldns-1.png">
+<meta property="article:published_time" content="2020-06-02T02:38:00.000Z">
+<meta property="article:modified_time" content="2020-06-02T05:49:49.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/nodelocaldns-1.png">
+  
+  
+  
+  <title>在 Kubernetes 集群中使用 NodeLocal DNSCache - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="在 Kubernetes 集群中使用 NodeLocal DNSCache"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2020-06-02 10:38" pubdate>
+          2020年6月2日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          7.2k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          12 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">在 Kubernetes 集群中使用 NodeLocal DNSCache</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="NodeLocal-DNS使用及配置"><a href="#NodeLocal-DNS使用及配置" class="headerlink" title="NodeLocal DNS使用及配置"></a>NodeLocal DNS使用及配置</h2><p><code>NodeLocal DNSCache</code> 通过在集群节点上运行一个 DaemonSet 来提高 clusterDNS 性能和可靠性。处于 <code>ClusterFirst</code> 的 DNS 模式下的 Pod 可以连接到 <code>kube-dns</code> 的 serviceIP 进行 DNS 查询。通过 <code>kube-proxy</code> 组件添加的 <code>iptables</code> 规则将其转换为 <code>CoreDNS</code> 端点。通过在每个集群节点上运行 DNS 缓存，NodeLocal DNSCache 可以缩短 DNS 查找的延迟时间、使 DNS 查找时间更加一致，以及减少发送到 kube-dns 的 DNS 查询次数。</p>
+<p>在集群中运行 NodeLocal DNSCache 有如下几个好处：</p>
+<ul>
+<li>如果本地没有 CoreDNS 实例，则具有最高 DNS QPS 的 Pod 可能必须到另一个节点进行解析，使用 NodeLocal DNSCache 后，拥有本地缓存将有助于改善延迟</li>
+<li>跳过 iptables DNAT 和连接跟踪将有助于减少 conntrack 竞争并避免 UDP DNS 条目填满 conntrack 表（常见的5s超时问题就是这个原因造成的）</li>
+<li>从本地缓存代理到 kube-dns 服务的连接可以升级到 TCP，TCP conntrack 条目将在连接关闭时被删除，而 UDP 条目必须超时(默认 <code>nf_conntrack_udp_timeout</code> 是 30 秒)</li>
+<li>将 DNS 查询从 UDP 升级到 TCP 将减少归因于丢弃的 UDP 数据包和 DNS 超时的尾部等待时间，通常长达 30 秒（3 次重试+ 10 秒超时）</li>
+</ul>
+<p><img src="/images/nodelocaldns-1.png" srcset="/img/loading.gif" lazyload alt="nodelocaldns-1"></p>
+<p>要安装 NodeLocal DNSCache 也非常简单，直接获取官方的资源清单即可：</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">wget https:<span class="hljs-regexp">//</span>raw.githubusercontent.com<span class="hljs-regexp">/kubernetes/</span>kubernetes<span class="hljs-regexp">/master/</span>cluster<span class="hljs-regexp">/addons/</span>dns<span class="hljs-regexp">/nodelocaldns/</span>nodelocaldns.yaml<br></code></pre></td></tr></table></figure>
+
+<p>该资源清单文件中包含几个变量，其中：</p>
+<ul>
+<li><code>__PILLAR__DNS__SERVER__</code> ：表示 kube-dns 这个 Service 的 ClusterIP，可以通过命令 <code>kubectl get svc kube-dns -n kube-system -o jsonpath=&#123;.spec.clusterIP&#125;</code> 获取</li>
+<li><code>__PILLAR__LOCAL__DNS__</code> ：表示 DNSCache 本地的 IP，默认为 <code>169.254.20.10</code></li>
+<li><code>__PILLAR__DNS__DOMAIN__</code> ：表示集群域，默认就是 <code>cluster.local</code></li>
+</ul>
+<p>如果kube-proxy使用Iptable模式</p>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc">sed -i &quot;s/<span class="hljs-emphasis">__PILLAR__</span>LOCAL<span class="hljs-emphasis">__DNS__</span>/$localdns/g; s/<span class="hljs-emphasis">__PILLAR__</span>DNS<span class="hljs-emphasis">__DOMAIN__</span>/$domain/g; s/<span class="hljs-emphasis">__PILLAR__</span>DNS<span class="hljs-emphasis">__SERVER__</span>/$kubedns/g&quot; nodelocaldns.yaml<br></code></pre></td></tr></table></figure>
+
+<p>如果kube-proxy使用IPVS模式</p>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs asciidoc">sed -i &quot;s/<span class="hljs-emphasis">__PILLAR__</span>LOCAL<span class="hljs-emphasis">__DNS__</span>/$localdns/g; s/<span class="hljs-emphasis">__PILLAR__</span>DNS<span class="hljs-emphasis">__DOMAIN__</span>/$domain/g; s/<span class="hljs-emphasis">__PILLAR__</span>DNS<span class="hljs-emphasis">__SERVER__</span>//g; s/<span class="hljs-emphasis">__PILLAR__</span>CLUSTER<span class="hljs-emphasis">__DNS__</span>/$kubedns/g&quot; nodelocaldns.yaml<br></code></pre></td></tr></table></figure>
+
+<p>需要注意的是这里使用 DaemonSet 部署 node-local-dns 使用了 <code>hostNetwork=true</code>，会占用宿主机的 8080 端口，所以需要保证该端口未被占用。</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">containers:</span><br>- name: node-cache<br><span class="hljs-symbol">  image:</span> k8s.gcr.io/k8s-dns-node-cache:<span class="hljs-number">1.15</span><span class="hljs-number">.13</span><br><span class="hljs-symbol">  resources:</span><br><span class="hljs-symbol">    requests:</span><br><span class="hljs-symbol">      cpu:</span> <span class="hljs-number">25</span>m<br><span class="hljs-symbol">      memory:</span> <span class="hljs-number">5</span>Mi<br><span class="hljs-symbol">  args:</span> [ <span class="hljs-string">&quot;-localip&quot;</span>, <span class="hljs-string">&quot;169.254.20.10&quot;</span>, <span class="hljs-string">&quot;-conf&quot;</span>, <span class="hljs-string">&quot;/etc/Corefile&quot;</span>, <span class="hljs-string">&quot;-upstreamsvc&quot;</span>, <span class="hljs-string">&quot;kube-dns-upstream&quot;</span> ]<br></code></pre></td></tr></table></figure>
+<p>注意：在args参数这里”169.254.20.10”会多一个“逗号”记得删除不然启动报错。</p>
+<p>到这里还没有完，如果 kube-proxy 组件使用的是 ipvs 模式的话我们还需要修改 kubelet 的 <code>--cluster-dns</code> 参数，将其指向 <code>169.254.20.10</code>，Daemonset 会在每个节点创建一个网卡来绑这个 IP，Pod 向本节点这个 IP 发 DNS 请求，缓存没有命中的时候才会再代理到上游集群 DNS 进行查询。 <code>iptables</code> 模式下 Pod 还是向原来的集群 DNS 请求，节点上有这个 IP 监听，会被本机拦截，再请求集群上游 DNS，所以不需要更改 <code>--cluster-dns</code> 参数。</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs awk">$ sed -i <span class="hljs-string">&#x27;s/10.96.0.10/169.254.20.10/g&#x27;</span> <span class="hljs-regexp">/var/</span>lib<span class="hljs-regexp">/kubelet/</span>config.yaml<br>$ systemctl daemon-reload &amp;&amp; systemctl restart kubelet<br></code></pre></td></tr></table></figure>
+
+<p>我们可以部署一个新的 Pod 来验证下</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs dts">[root@devops010015001003 ~]<span class="hljs-meta"># cat busybox.yaml </span><br><span class="hljs-symbol">apiVersion:</span> v1<br><span class="hljs-symbol">kind:</span> Pod<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> busybox<br><span class="hljs-symbol">  namespace:</span> default<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  nodeSelector:</span><br><span class="hljs-symbol">    coredns:</span> <span class="hljs-string">&quot;2&quot;</span><br><span class="hljs-symbol">  containers:</span><br>  - name: busybox<br><span class="hljs-symbol">    image:</span> zhangguanzhang/centos<br><span class="hljs-symbol">    command:</span><br>      - sleep<br>      - <span class="hljs-string">&quot;3600&quot;</span><br><span class="hljs-symbol">    imagePullPolicy:</span> IfNotPresent<br><span class="hljs-symbol">  restartPolicy:</span> Always<br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@devops010015001003</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># kubectl  exec -it busybox -- nslookup www.baidu.com</span><br><span class="hljs-attr">Server:</span>         <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><br><span class="hljs-attr">Address:</span>        <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><span class="hljs-comment">#53</span><br><br><span class="hljs-attr">Non-authoritative answer:</span><br><span class="hljs-string">www.baidu.com</span>   <span class="hljs-string">canonical</span> <span class="hljs-string">name</span> <span class="hljs-string">=</span> <span class="hljs-string">www.a.shifen.com.</span><br><span class="hljs-attr">Name:</span>   <span class="hljs-string">www.a.shifen.com</span><br><span class="hljs-attr">Address:</span> <span class="hljs-number">39.156</span><span class="hljs-number">.66</span><span class="hljs-number">.14</span><br><span class="hljs-attr">Name:</span>   <span class="hljs-string">www.a.shifen.com</span><br><span class="hljs-attr">Address:</span> <span class="hljs-number">39.156</span><span class="hljs-number">.66</span><span class="hljs-number">.18</span><br><br>[<span class="hljs-string">root@devops010015001003</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># kubectl  exec -it busybox -- nslookup nginx</span><br><span class="hljs-attr">Server:</span>         <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><br><span class="hljs-attr">Address:</span>        <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><span class="hljs-comment">#53</span><br><br><span class="hljs-attr">Name:</span>   <span class="hljs-string">nginx.default.svc.cluster.local</span><br><span class="hljs-attr">Address:</span> <span class="hljs-number">10.101</span><span class="hljs-number">.191</span><span class="hljs-number">.0</span><br><br>[<span class="hljs-string">root@devops010015001003</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># kubectl  exec -it busybox -- nslookup kubernetes</span><br><span class="hljs-attr">Server:</span>         <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><br><span class="hljs-attr">Address:</span>        <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><span class="hljs-comment">#53</span><br><br><span class="hljs-attr">Name:</span>   <span class="hljs-string">kubernetes.default.svc.cluster.local</span><br><span class="hljs-attr">Address:</span> <span class="hljs-number">10.96</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span><br></code></pre></td></tr></table></figure>
+
+<p>我们可以看到 <code>nameserver</code> 已经变成 <code>169.254.20.10</code> 了，当然对于之前的历史 Pod 要想使用 <code>node-local-dns</code> 则需要重建，当然如果要想去跟踪 DNS 的解析过程的话可以去通过抓包来观察。</p>
+<h2 id="使用CoreDNS-自定义域名失效"><a href="#使用CoreDNS-自定义域名失效" class="headerlink" title="使用CoreDNS 自定义域名失效"></a>使用CoreDNS 自定义域名失效</h2><p>在使用NodeLocal DNS后遇到个问题就是自定义域名无法解析</p>
+<p>kubernetes coredns 添加自定义DNS解析记录:coredns 自带 hosts 插件， 允许像配置 hosts 一样配置自定义 DNS 解析，修改 kube-system 中 configMap 的 coredns 添加如下设置即可。</p>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs stylus">kubectl get cm -o wide -n kube-system<br>kubectl describe  cm coredns -n kube-system <br><br>.:<span class="hljs-number">53</span> &#123;<br>    errors<br>    health<br>    kubernetes cluster<span class="hljs-selector-class">.local</span> <span class="hljs-keyword">in</span>-addr<span class="hljs-selector-class">.arpa</span> ip6<span class="hljs-selector-class">.arpa</span> &#123;<br>       pods insecure<br>       upstream<br>       fallthrough <span class="hljs-keyword">in</span>-addr<span class="hljs-selector-class">.arpa</span> ip6<span class="hljs-selector-class">.arpa</span><br>    &#125;<br>    hosts &#123;<br>        <span class="hljs-number">172.21</span>.<span class="hljs-number">91.28</span> cache<span class="hljs-selector-class">.redis</span><br>        <span class="hljs-number">10.151</span>.<span class="hljs-number">30.11</span> git<span class="hljs-selector-class">.k8s</span><span class="hljs-selector-class">.local</span><br>          <br>        fallthrough<br>    &#125;<br>    prometheus :<span class="hljs-number">9153</span><br>    proxy . /etc/resolv<span class="hljs-selector-class">.conf</span><br>    cache <span class="hljs-number">30</span><br>    loop<br>    reload<br>    loadbalance<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<p>配置完成后，始终解析不了这个自定义的域名：</p>
+<figure class="highlight golo"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs golo">[root<span class="hljs-meta">@devops</span>010015001003 ~]<span class="hljs-comment"># kubectl exec -it busybox -- nslookup git.k8s.local</span><br>Server:         <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><br>Address:        <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><span class="hljs-comment">#53</span><br><br>** server can&#x27;t <span class="hljs-keyword">find</span> git.k8s.<span class="hljs-keyword">local</span>: NXDOMAIN<br><br>command terminated <span class="hljs-keyword">with</span> exit code <span class="hljs-number">1</span><br>[root<span class="hljs-meta">@devops</span>010015001003 ~]<span class="hljs-comment"># kubectl exec -it busybox -- nslookup cache.redis</span><br>Server:         <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><br>Address:        <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><span class="hljs-comment">#53</span><br><br>** server can&#x27;t <span class="hljs-keyword">find</span> cache.redis: NXDOMAIN<br><br>command terminated <span class="hljs-keyword">with</span> exit code <span class="hljs-number">1</span><br></code></pre></td></tr></table></figure>
+
+
+<p>我们就直接使用 CoreDNS 的地址来进行解析测试一番：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@devops010015001003</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># kubectl exec -it busybox -- nslookup cache.redis 10.96.0.10</span><br><span class="hljs-attr">Server:</span>         <span class="hljs-number">10.96</span><span class="hljs-number">.0</span><span class="hljs-number">.10</span><br><span class="hljs-attr">Address:</span>        <span class="hljs-number">10.96</span><span class="hljs-number">.0</span><span class="hljs-number">.10</span><span class="hljs-comment">#53</span><br><br><span class="hljs-attr">Name:</span>   <span class="hljs-string">cache.redis</span><br><span class="hljs-attr">Address:</span> <span class="hljs-number">172.21</span><span class="hljs-number">.91</span><span class="hljs-number">.28</span><br><span class="hljs-string">**</span> <span class="hljs-string">server</span> <span class="hljs-string">can&#x27;t</span> <span class="hljs-attr">find cache.redis:</span> <span class="hljs-string">NXDOMAIN</span><br><br><span class="hljs-string">command</span> <span class="hljs-string">terminated</span> <span class="hljs-string">with</span> <span class="hljs-string">exit</span> <span class="hljs-string">code</span> <span class="hljs-number">1</span><br>[<span class="hljs-string">root@devops010015001003</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># kubectl exec -it busybox -- nslookup git.k8s.local 10.96.0.10</span><br><span class="hljs-attr">Server:</span>         <span class="hljs-number">10.96</span><span class="hljs-number">.0</span><span class="hljs-number">.10</span><br><span class="hljs-attr">Address:</span>        <span class="hljs-number">10.96</span><span class="hljs-number">.0</span><span class="hljs-number">.10</span><span class="hljs-comment">#53</span><br><br><span class="hljs-attr">Name:</span>   <span class="hljs-string">git.k8s.local</span><br><span class="hljs-attr">Address:</span> <span class="hljs-number">10.151</span><span class="hljs-number">.30</span><span class="hljs-number">.11</span><br><span class="hljs-string">**</span> <span class="hljs-string">server</span> <span class="hljs-string">can&#x27;t</span> <span class="hljs-attr">find git.k8s.local:</span> <span class="hljs-string">NXDOMAIN</span><br><br><span class="hljs-string">command</span> <span class="hljs-string">terminated</span> <span class="hljs-string">with</span> <span class="hljs-string">exit</span> <span class="hljs-string">code</span> <span class="hljs-number">1</span><br></code></pre></td></tr></table></figure>
+<p>发现居然是正确的，那也就说明 CoreDNS 的配置是没有任何问题的，问题肯定就是 <code>NodeLocal DNSCache</code> 导致的，直接用 LocalDNS 的地址（169.254.20.10）解析发现确实是失败的：</p>
+<figure class="highlight golo"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs golo">[root<span class="hljs-meta">@devops</span>010015001003 ~]<span class="hljs-comment"># kubectl exec -it busybox -- nslookup git.k8s.local 169.254.20.10</span><br>Server:         <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><br>Address:        <span class="hljs-number">169.254</span><span class="hljs-number">.20</span><span class="hljs-number">.10</span><span class="hljs-comment">#53</span><br><br>** server can&#x27;t <span class="hljs-keyword">find</span> git.k8s.<span class="hljs-keyword">local</span>: NXDOMAIN<br><br>command terminated <span class="hljs-keyword">with</span> exit code <span class="hljs-number">1</span><br></code></pre></td></tr></table></figure>
+
+
+<p>这个时候只能去查看 LocalDNS 的 Pod 日志了：</p>
+<figure class="highlight dns"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br></pre></td><td class="code"><pre><code class="hljs dns">[root@devops0<span class="hljs-number">10015001003</span> ~]# kubectl logs node-local-dns-<span class="hljs-number">58</span>zhf  -n kube-system    <br><span class="hljs-number">2020/06/02</span> <span class="hljs-number">05</span>:<span class="hljs-number">00</span>:<span class="hljs-number">32</span> [INFO] Updated Corefile with <span class="hljs-number">0</span> custom stubdomains and upstream servers /etc/resolv.conf<br><span class="hljs-number">2020/06/02</span> <span class="hljs-number">05</span>:<span class="hljs-number">00</span>:<span class="hljs-number">32</span> [INFO] Using config file:<br>cluster.local:<span class="hljs-number">53</span> &#123;<br>    errors<br>    cache &#123;<br>            success <span class="hljs-number">9984</span> <span class="hljs-number">30</span><br>            denial <span class="hljs-number">9984</span> <span class="hljs-number">5</span><br>    &#125;<br>    reload<br>    loop<br>    bind <span class="hljs-number">169.254.20.10</span> <br>    forward . <span class="hljs-number">10.96.0.10</span> &#123;<br>            force_tcp<br>    &#125;<br>    prometheus :<span class="hljs-number">9253</span><br>    health <span class="hljs-number">169.254.20.10</span>:<span class="hljs-number">8080</span><br>    &#125;<br>in-addr.arpa:<span class="hljs-number">53</span> &#123;<br>    errors<br>    cache <span class="hljs-number">30</span><br>    reload<br>    loop<br>    bind <span class="hljs-number">169.254.20.10</span> <br>    forward . <span class="hljs-number">10.96.0.10</span> &#123;<br>            force_tcp<br>    &#125;<br>    prometheus :<span class="hljs-number">9253</span><br>    &#125;<br>ip6.arpa:<span class="hljs-number">53</span> &#123;<br>    errors<br>    cache <span class="hljs-number">30</span><br>    reload<br>    loop<br>    bind <span class="hljs-number">169.254.20.10</span> <br>    forward . <span class="hljs-number">10.96.0.10</span> &#123;<br>            force_tcp<br>    &#125;<br>    prometheus :<span class="hljs-number">9253</span><br>    &#125;<br>.:<span class="hljs-number">53</span> &#123;<br>    errors<br>    cache <span class="hljs-number">30</span><br>    reload<br>    loop<br>    bind <span class="hljs-number">169.254.20.10</span> <br>    forward . /etc/resolv.conf &#123;<br>            force_tcp<br>    &#125;<br>    prometheus :<span class="hljs-number">9253</span><br>    &#125;<br><span class="hljs-number">2020/06/02</span> <span class="hljs-number">05</span>:<span class="hljs-number">00</span>:<span class="hljs-number">32</span> [INFO] Added interface - nodelocaldns<br>.:<span class="hljs-number">53</span> on <span class="hljs-number">169.254.20.10</span><br>cluster.local.:<span class="hljs-number">53</span> on <span class="hljs-number">169.254.20.10</span><br>in-addr.arpa.:<span class="hljs-number">53</span> on <span class="hljs-number">169.254.20.10</span><br>ip6.arpa.:<span class="hljs-number">53</span> on <span class="hljs-number">169.254.20.10</span><br>[INFO] plugin/reload: Running configuration MD5 = <span class="hljs-number">6d</span>e79febbb00e443750acee<span class="hljs-number">66a370b43</span><br>CoreDNS-<span class="hljs-number">1</span>.<span class="hljs-number">6</span>.<span class="hljs-number">7</span><br>linux/amd64, go1.<span class="hljs-number">11</span>.<span class="hljs-number">13</span>, <br></code></pre></td></tr></table></figure>
+
+<p>仔细分析上面的 LocalDNS 的配置信息，其中 10.96.0.10 为 CoreDNS 的 Service ClusterIP，169.254.20.10 为 LocalDNS 的 IP 地址，10.103.178.36 是 LocalDNS 新建的一个 Service ClusterIP，该 Service 和 CoreDNS 一样都是关联以前的 CoreDNS 的 Endpoints 列表。</p>
+<p>仔细观察可以发现 <code>cluster.local</code>、<code>in-addr.arpa</code> 以及 <code>ip6.arpa</code> 都会通过 <code>forward</code> 转发到 <code>10.96.0.10</code>，也就是去 CoreDNS 解析，其他的则是 <code>forward . /etc/resolv.conf</code> 通过 resolv.conf 文件去解析，该文件的内容如下所示：</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs awk">.:<span class="hljs-number">53</span> &#123;<br>    errors<br>    cache <span class="hljs-number">30</span><br>    reload<br>    loop<br>    bind <span class="hljs-number">169.254</span>.<span class="hljs-number">20.10</span> <br>    forward . <span class="hljs-regexp">/etc/</span>resolv.conf &#123;<br>            force_tcp<br>    &#125;<br>    prometheus :<span class="hljs-number">9253</span><br>    &#125;<br></code></pre></td></tr></table></figure>
+<p>我们发现这个变量 <code>__PILLAR__UPSTREAM__SERVERS__</code> 会自动替换为 <code>/etc/resolv.conf</code> 这样的话我们的自定义的域名就无法通过<code>CoreDNS</code>解析，所以我们需要修改为 <code>CoreDNS</code> 或  <code>LocalDNS</code> 的SVC地址这样就能解析了。</p>
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">[root@devops010015001003 ~]#   kubectl <span class="hljs-keyword">get</span> svc -n kube-<span class="hljs-keyword">system</span><br><span class="hljs-type">NAME</span>                <span class="hljs-keyword">TYPE</span>        <span class="hljs-keyword">CLUSTER</span>-IP      <span class="hljs-keyword">EXTERNAL</span>-IP   PORT(S)                  AGE<br>calico-typha        ClusterIP   <span class="hljs-number">10.109</span><span class="hljs-number">.91</span><span class="hljs-number">.45</span>    &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">5473</span>/TCP                 <span class="hljs-number">5</span>d19h<br>kube-dns            ClusterIP   <span class="hljs-number">10.96</span><span class="hljs-number">.0</span><span class="hljs-number">.10</span>      &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">53</span>/UDP,<span class="hljs-number">53</span>/TCP,<span class="hljs-number">9153</span>/TCP   <span class="hljs-number">11</span>d<br>kube-dns-upstream   ClusterIP   <span class="hljs-number">10.103</span><span class="hljs-number">.178</span><span class="hljs-number">.36</span>   &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">53</span>/UDP,<span class="hljs-number">53</span>/TCP            <span class="hljs-number">34</span>m<br></code></pre></td></tr></table></figure>
+
+<p>修改为：</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><code class="hljs css">.:<span class="hljs-number">53</span> &#123;<br>    errors<br>    cache <span class="hljs-number">30</span><br>    reload<br>    loop<br>    bind <span class="hljs-number">169.254</span>.<span class="hljs-number">20.10</span> <br>    forward . <span class="hljs-number">10.103</span>.<span class="hljs-number">178.36</span> &#123;<br>            force_tcp<br>    &#125;<br>    prometheus :<span class="hljs-number">9253</span><br>    &#125;<br></code></pre></td></tr></table></figure>
+<p>对于使用 NodeLocalDNS 的用户一定要注意这个问题，如果使用 hosts 或者 rewrite 插件失效，基本上就是这个问题造成的。排查问题通过日志去分析始终是最好的手段。</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>在 Kubernetes 集群中使用 NodeLocal DNSCache</div>
+      <div>https://system51.github.io/2020/06/02/use-nodelocal-dns-cache/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2020年6月2日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2020/09/17/docker-need-to-know/" title="Docker容器你需要知道的">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Docker容器你需要知道的</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2020/05/27/using-calico/" title="Calico配置及原理">
+                        <span class="hidden-mobile">Calico配置及原理</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

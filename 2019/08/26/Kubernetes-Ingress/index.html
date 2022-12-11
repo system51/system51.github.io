@@ -1,0 +1,808 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="&amp;emsp;&amp;emsp;从前面的学习，我们可以了解到Kubernetes暴露服务的方式目前只有三种：LoadBlancer Service、ExternalName、NodePort Service、Ingress；而我们需要将集群内服务提供外界访问就会产生以下几个问题： Pod 漂移问题：&amp;emsp;&amp;emsp;Kubernetes 具有强大的副本控制能力，能保证">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之Ingress">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-Ingress/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="&amp;emsp;&amp;emsp;从前面的学习，我们可以了解到Kubernetes暴露服务的方式目前只有三种：LoadBlancer Service、ExternalName、NodePort Service、Ingress；而我们需要将集群内服务提供外界访问就会产生以下几个问题： Pod 漂移问题：&amp;emsp;&amp;emsp;Kubernetes 具有强大的副本控制能力，能保证">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/ingress-1.png">
+<meta property="og:image" content="https://system51.github.io/images/ingress-2.png">
+<meta property="og:image" content="https://system51.github.io/images/ingress-3.png">
+<meta property="og:image" content="https://system51.github.io/images/ingress-4.png">
+<meta property="og:image" content="https://system51.github.io/images/ingress-5.png">
+<meta property="og:image" content="https://system51.github.io/images/ingress-6.png">
+<meta property="og:image" content="https://system51.github.io/images/ingress-7.png">
+<meta property="article:published_time" content="2019-08-26T01:18:49.000Z">
+<meta property="article:modified_time" content="2020-01-16T00:49:59.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/ingress-1.png">
+  
+  
+  
+  <title>Kubernetes之Ingress - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes之Ingress"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 09:18" pubdate>
+          2019年8月26日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          15k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          26 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes之Ingress</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>&amp;emsp;&amp;emsp;从前面的学习，我们可以了解到Kubernetes暴露服务的方式目前只有三种：LoadBlancer Service、ExternalName、NodePort Service、Ingress；而我们需要将集群内服务提供外界访问就会产生以下几个问题：</p>
+<h3 id="Pod-漂移问题："><a href="#Pod-漂移问题：" class="headerlink" title="Pod 漂移问题："></a>Pod 漂移问题：</h3><p>&amp;emsp;&amp;emsp;Kubernetes 具有强大的副本控制能力，能保证在任意副本（Pod）挂掉时自动从其他机器启动一个新的，还可以动态扩容等，通俗地说，这个 Pod 可能在任何时刻出现在任何节点上，也可能在任何时刻死在任何节点上；那么自然随着 Pod 的创建和销毁，Pod IP 肯定会动态变化；那么如何把这个动态的 Pod IP 暴露出去？这里借助于 Kubernetes 的 Service 机制，Service 可以以标签的形式选定一组带有指定标签的 Pod，并监控和自动负载他们的 Pod IP，那么我们向外暴露只暴露 Service IP 就行了；这就是 NodePort 模式：即在每个节点上开起一个端口，然后转发到内部 Pod IP 上，如下图所示：</p>
+<p><img src="/images/ingress-1.png" srcset="/img/loading.gif" lazyload alt="ingress-1"></p>
+<h3 id="端口管理问题："><a href="#端口管理问题：" class="headerlink" title="端口管理问题："></a>端口管理问题：</h3><p>&amp;emsp;&amp;emsp;采用 NodePort 方式暴露服务面临问题是，服务一旦多起来，NodePort 在每个节点上开启的端口会及其庞大，而且难以维护。这时，我们可以使用一个Nginx直接对内进行转发呢？众所周知的是，Pod与Pod之间是可以互相通信的，而Pod是可以共享宿主机的网络名称空间的，也就是说当在共享网络名称空间时，Pod上所监听的就是Node上的端口。那么这又该如何实现呢？简单的实现就是使用 DaemonSet 在每个 Node 上监听 80，然后写好规则，因为 Nginx 外面绑定了宿主机 80 端口（就像 NodePort），本身又在集群内，那么向后直接转发到相应 Service IP 就行了，如下图所示：</p>
+<p><img src="/images/ingress-2.png" srcset="/img/loading.gif" lazyload alt="ingress-2"></p>
+<h3 id="域名分配及动态更新问题："><a href="#域名分配及动态更新问题：" class="headerlink" title="域名分配及动态更新问题："></a>域名分配及动态更新问题：</h3><p>&amp;emsp;&amp;emsp;从上面的方法，采用 Nginx-Pod 似乎已经解决了问题，但是其实这里面有一个很大缺陷：当每次有新服务加入又该如何修改 Nginx 配置呢？？我们知道使用Nginx可以通过虚拟主机域名进行区分不同的服务，而每个服务通过upstream进行定义不同的负载均衡池，再加上location进行负载均衡的反向代理，在日常使用中只需要修改nginx.conf即可实现，那在K8S中又该如何实现这种方式的调度呢？？？</p>
+<p>&amp;emsp;&amp;emsp;假设后端的服务初始服务只有ecshop，后面增加了bbs和member服务，那么又该如何将这2个服务加入到Nginx-Pod进行调度呢？总不能每次手动改或者Rolling Update 前端 Nginx Pod 吧！！此时 Ingress 出现了，如果不算上面的Nginx，Ingress 包含两大组件：Ingress Controller 和 Ingress。</p>
+<p><img src="/images/ingress-3.png" srcset="/img/loading.gif" lazyload alt="ingress-3"></p>
+<p>&amp;emsp;&amp;emsp;Ingress 简单的理解就是你原来需要改 Nginx 配置，然后配置各种域名对应哪个 Service，现在把这个动作抽象出来，变成一个 Ingress 对象，你可以用 yaml 创建，每次不要去改 Nginx 了，直接改 yaml 然后创建&#x2F;更新就行了；那么问题来了：”Nginx 该怎么处理？”</p>
+<p>&amp;emsp;&amp;emsp;Ingress Controller 这东西就是解决 “Nginx 的处理方式” 的；Ingress Controoler 通过与 Kubernetes API 交互，动态的去感知集群中 Ingress 规则变化，然后读取他，按照他自己模板生成一段 Nginx 配置，再写到 Nginx Pod 里，最后 reload 一下，工作流程如下图：</p>
+<p><img src="/images/ingress-4.png" srcset="/img/loading.gif" lazyload alt="ingress-4"></p>
+<h3 id="Ingress-Controller工作架构如下-借用traefik官方的图："><a href="#Ingress-Controller工作架构如下-借用traefik官方的图：" class="headerlink" title="Ingress Controller工作架构如下,借用traefik官方的图："></a>Ingress Controller工作架构如下,借用traefik官方的图：</h3><p><img src="/images/ingress-5.png" srcset="/img/loading.gif" lazyload alt="ingress-5"><br>&amp;emsp;&amp;emsp;你可以将api.domain.com进来的流量路由到集群里api的pod上,你可以将backoffice.domain.com流量路由到backoffice的一组pod上（注意：ingress nginx是怎么识别那些Pod是那个应该加入那个upstream呢？这里就用到了service使用service的labels将一组服务关联起来，虽然创建了service但是ingress controller在解析service的是时候实际是解析到后面的Pod上。）</p>
+<p><img src="/images/ingress-6.png" srcset="/img/loading.gif" lazyload alt="ingress-6"></p>
+<p>看起来按照nginx来理解转发是client——&gt;nginx——&gt;svc——&gt;pod;<br>实际上转发是client—–&gt;nginx——&gt;pod,是直接负载到svc后面的Pod上面的</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment">#例如上面trafik图里的Ingress大致就是下面这样:</span><br><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">extensions/v1beta1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Ingress</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">my-ingress</span><br>  <span class="hljs-attr">annotations:</span><br>    <span class="hljs-attr">nginx.ingress.kubernetes.io/use-regex:</span> <span class="hljs-string">&quot;true&quot;</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">rules:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">host:</span> <span class="hljs-string">api.mydomain.com</span><br>    <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">paths:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">backend:</span><br>          <span class="hljs-attr">serviceName:</span> <span class="hljs-string">api</span><br>          <span class="hljs-attr">servicePort:</span> <span class="hljs-number">80</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">host:</span> <span class="hljs-string">domain.com</span><br>    <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">paths:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">path:</span> <span class="hljs-string">/web/*</span><br>        <span class="hljs-attr">backend:</span><br>          <span class="hljs-attr">serviceName:</span> <span class="hljs-string">web</span><br>          <span class="hljs-attr">servicePort:</span> <span class="hljs-number">8080</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">host:</span> <span class="hljs-string">backoffice.domain.com</span><br>    <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">paths:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">backend:</span><br>          <span class="hljs-attr">serviceName:</span> <span class="hljs-string">backoffice</span><br>          <span class="hljs-attr">servicePort:</span> <span class="hljs-number">8080</span><br>					<br><span class="hljs-comment">#只要创建了上面的Ingress后,ingress controller里会监听到从而生成对应的配置段后动态reload配置文件</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-comment">#另外ingress也能多路径,如下:</span><br><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">rules</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">host: xxxx.xxxx.xxx</span><br>    <span class="hljs-attribute">http</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">paths</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">backend:</span><br>          <span class="hljs-attribute">serviceName</span><span class="hljs-punctuation">:</span> <span class="hljs-string">service-index</span><br>          <span class="hljs-attribute">servicePort</span><span class="hljs-punctuation">:</span> <span class="hljs-string">80</span><br>        <span class="hljs-attribute">path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">/</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">backend:</span><br>          <span class="hljs-attribute">serviceName</span><span class="hljs-punctuation">:</span> <span class="hljs-string">service-test-api</span><br>          <span class="hljs-attribute">servicePort</span><span class="hljs-punctuation">:</span> <span class="hljs-string">80</span><br>        <span class="hljs-attribute">path</span><span class="hljs-punctuation">:</span> <span class="hljs-string">/api/</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="部署Ingress-Nginx："><a href="#部署Ingress-Nginx：" class="headerlink" title="部署Ingress Nginx："></a>部署Ingress Nginx：</h3><p>使用Ingress功能步骤：(注意先后顺序，如果先执行了mandatory.yaml文件在执行service-nodeport.yaml文件使用kubectl logs -f 看ingress-controller的pod的日志会有很多报错信息)</p>
+<ul>
+<li>下载Ingress-controller相关的YAML文件，并给Ingress-controller创建独立的名称空间命名为ingress-nginx；</li>
+<li>创建Ingress-controller的service，以实现接入集群外部流量；</li>
+<li>部署Ingress-controller；</li>
+<li>部署后端的服务，如tomcat，并通过service进行暴露；</li>
+<li>部署Ingress，进行定义规则，使Ingress-controller和后端服务的Pod组进行关联。</li>
+</ul>
+<h4 id="1、创建名称空间："><a href="#1、创建名称空间：" class="headerlink" title="1、创建名称空间："></a>1、创建名称空间：</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Namespace</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">ingress-nginx</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app.kubernetes.io/name:</span> <span class="hljs-string">ingress-nginx</span><br>    <span class="hljs-attr">app.kubernetes.io/part-of:</span> <span class="hljs-string">ingress-nginx</span><br><br><span class="hljs-meta">---</span><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="2、创建Ingress-controller的service（使用Nodeport的方式实现的接入集群外部流量）"><a href="#2、创建Ingress-controller的service（使用Nodeport的方式实现的接入集群外部流量）" class="headerlink" title="2、创建Ingress-controller的service（使用Nodeport的方式实现的接入集群外部流量）"></a>2、创建Ingress-controller的service（使用Nodeport的方式实现的接入集群外部流量）</h4><p>下载YAML文件：</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">wget https:<span class="hljs-regexp">//</span>raw.githubusercontent.com<span class="hljs-regexp">/kubernetes/i</span>ngress-nginx<span class="hljs-regexp">/master/</span>deploy<span class="hljs-regexp">/provider/</span>baremetal/service-nodeport.yaml<br></code></pre></td></tr></table></figure>
+
+<p>修改成如下配置：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">ingress-nginx</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">ingress-nginx</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app.kubernetes.io/name:</span> <span class="hljs-string">ingress-nginx</span><br>    <span class="hljs-attr">app.kubernetes.io/part-of:</span> <span class="hljs-string">ingress-nginx</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">NodePort</span><br>  <span class="hljs-attr">ports:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">80</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">80</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">nodePort:</span> <span class="hljs-number">30080</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">https</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">443</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">443</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">nodePort:</span> <span class="hljs-number">30443</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">app.kubernetes.io/name:</span> <span class="hljs-string">ingress-nginx</span><br>    <span class="hljs-attr">app.kubernetes.io/part-of:</span> <span class="hljs-string">ingress-nginx</span><br><br><br><span class="hljs-meta">---</span><br><span class="hljs-meta"></span><br><span class="hljs-meta"></span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<h4 id="4、执行部署Ingress-Nginx-YAML文件"><a href="#4、执行部署Ingress-Nginx-YAML文件" class="headerlink" title="4、执行部署Ingress Nginx YAML文件"></a>4、执行部署Ingress Nginx YAML文件</h4><figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">kubectl apply -f https:<span class="hljs-regexp">//</span>raw.githubusercontent.com<span class="hljs-regexp">/kubernetes/i</span>ngress-nginx<span class="hljs-regexp">/master/</span>deploy/mandatory.yaml<br></code></pre></td></tr></table></figure>
+
+<h4 id="5、创建后端服务"><a href="#5、创建后端服务" class="headerlink" title="5、创建后端服务"></a>5、创建后端服务</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment">#创建后端服务的service</span><br><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-deployment</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">matchLabels:</span><br>      <span class="hljs-attr">app:</span> <span class="hljs-string">nginx</span><br>  <span class="hljs-attr">replicas:</span> <span class="hljs-number">2</span> <span class="hljs-comment"># tells deployment to run 2 pods matching the template</span><br>  <span class="hljs-attr">template:</span><br>    <span class="hljs-attr">metadata:</span><br>      <span class="hljs-attr">labels:</span><br>        <span class="hljs-attr">app:</span> <span class="hljs-string">nginx</span><br>    <span class="hljs-attr">spec:</span><br>      <span class="hljs-attr">containers:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">nginx</span><br>        <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:1.7.9</span><br>        <span class="hljs-attr">ports:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">containerPort:</span> <span class="hljs-number">80</span><br><br><span class="hljs-meta">---</span><br><span class="hljs-comment">#创建后端服务的pod</span><br><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-service</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span> <br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">ClusterIP</span><br>  <span class="hljs-attr">ports:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">8080</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">80</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">nginx</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="如何创建Ingress资源："><a href="#如何创建Ingress资源：" class="headerlink" title="如何创建Ingress资源："></a>如何创建Ingress资源：</h3><figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><code class="hljs pf"><br>[root@k8s-master ~]<span class="hljs-comment"># kubectl explain ingress</span><br>KIND:     Ingress<br>VERSION:  extensions/v1beta1<br><br>DESCRIPTION:<br>     Ingress is a collection of rules that allow inbound connections <span class="hljs-keyword">to</span> reach<br>     the endpoints defined by a backend. An Ingress can be configured <span class="hljs-keyword">to</span> give<br>     services externally-reachable urls, <span class="hljs-built_in">load</span> balance traffic, terminate SSL,<br>     offer name based virtual hosting etc.<br><br>FIELDS:<br>   apiVersion   <span class="hljs-variable">&lt;string&gt;</span><br>     APIVersion defines the versioned schema of this representation of an<br>     object. Servers should convert recognized schemas <span class="hljs-keyword">to</span> the latest internal<br>     value, and may reject unrecognized values. More info:<br>     https://git.k8s.io/community/contributors/devel/api-conventions.md<span class="hljs-comment">#resources</span><br><br>   kind <span class="hljs-variable">&lt;string&gt;</span><br>     Kind is a string value representing the REST resource this object<br>     represents. Servers may infer this <span class="hljs-keyword">from</span> the endpoint the client submits<br>     requests <span class="hljs-keyword">to</span>. Cannot be updated. In CamelCase. More info:<br>     https://git.k8s.io/community/contributors/devel/api-conventions.md<span class="hljs-comment">#types-kinds</span><br><br>   metadata <span class="hljs-variable">&lt;Object&gt;</span><br>     Standard object&#x27;s metadata. More info:<br>     https://git.k8s.io/community/contributors/devel/api-conventions.md<span class="hljs-comment">#metadata</span><br><br>   spec <span class="hljs-variable">&lt;Object&gt;</span><br>     Spec is the desired <span class="hljs-keyword">state</span> of the Ingress. More info:<br>     https://git.k8s.io/community/contributors/devel/api-conventions.md<span class="hljs-comment">#spec-and-status</span><br><br>   status   <span class="hljs-variable">&lt;Object&gt;</span><br>     Status is the current <span class="hljs-keyword">state</span> of the Ingress. More info:<br>     https://git.k8s.io/community/contributors/devel/api-conventions.md<span class="hljs-comment">#spec-and-status</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><code class="hljs pf">[root@k8s-master ingress-nginx]<span class="hljs-comment"># kubectl explain ingress.spec</span><br>KIND:     Ingress<br>VERSION:  extensions/v1beta1<br><br>RESOURCE: spec <span class="hljs-variable">&lt;Object&gt;</span><br><br>DESCRIPTION:<br>     Spec is the desired <span class="hljs-keyword">state</span> of the Ingress. More info:<br>     https://git.k8s.io/community/contributors/devel/api-conventions.md<span class="hljs-comment">#spec-and-status</span><br><br>     IngressSpec describes the Ingress the <span class="hljs-keyword">user</span> wishes <span class="hljs-keyword">to</span> exist.<br><br>FIELDS:<br>   backend  <span class="hljs-variable">&lt;Object&gt;</span>     <span class="hljs-comment">#定义后端有哪几个主机</span><br>     A <span class="hljs-keyword">default</span> backend capable of servicing requests that don&#x27;t <span class="hljs-built_in">match</span> <span class="hljs-literal">any</span> <span class="hljs-keyword">rule</span>.<br>     At least one of &#x27;backend&#x27; or &#x27;rules&#x27; must be specified. This field is<br>     optional <span class="hljs-keyword">to</span> allow the loadbalancer controller or defaulting logic <span class="hljs-keyword">to</span><br>     specify a <span class="hljs-keyword">global</span> <span class="hljs-keyword">default</span>.<br><br>   rules    <span class="hljs-variable">&lt;[]Object&gt;</span>    <span class="hljs-comment">#定义规则</span><br>     A list of host rules used <span class="hljs-keyword">to</span> configure the Ingress. If unspecified, or <span class="hljs-keyword">no</span><br>     <span class="hljs-keyword">rule</span> matches, <span class="hljs-literal">all</span> traffic is sent <span class="hljs-keyword">to</span> the <span class="hljs-keyword">default</span> backend.<br><br>   tls  <span class="hljs-variable">&lt;[]Object&gt;</span>       <span class="hljs-comment">#HTTPS服务</span><br>     TLS configuration. Currently the Ingress only supports a single TLS <span class="hljs-keyword">port</span>,<br>     <span class="hljs-number">1</span>.   If multiple members of this list specify different hosts, they will be<br>     multiplexed <span class="hljs-keyword">on</span> the same <span class="hljs-keyword">port</span> according <span class="hljs-keyword">to</span> the hostname specified through<br>     the SNI TLS extension, if the ingress controller fulfilling the ingress<br>     supports SNI.<br></code></pre></td></tr></table></figure>
+
+
+
+
+<h4 id="编写ingress的配置清单："><a href="#编写ingress的配置清单：" class="headerlink" title="编写ingress的配置清单："></a>编写ingress的配置清单：</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master</span> <span class="hljs-string">ingress</span>]<span class="hljs-comment"># vim ingress-myapp.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">extensions/v1beta1</span>      <span class="hljs-comment">#api版本</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Ingress</span>       <span class="hljs-comment">#清单类型</span><br><span class="hljs-attr">metadata:</span>           <span class="hljs-comment">#元数据</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">ingress-myapp</span>    <span class="hljs-comment">#ingress的名称</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span>     <span class="hljs-comment">#所属名称空间</span><br>  <span class="hljs-attr">annotations:</span>           <span class="hljs-comment">#注解信息</span><br>    <span class="hljs-attr">kubernetes.io/ingress.class:</span> <span class="hljs-string">&quot;nginx&quot;</span><br><span class="hljs-attr">spec:</span>      <span class="hljs-comment">#规格</span><br>  <span class="hljs-attr">rules:</span>   <span class="hljs-comment">#定义后端转发的规则</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">host:</span> <span class="hljs-string">nginx.testdomain.com</span>    <span class="hljs-comment">#通过域名进行转发</span><br>    <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">paths:</span>       <br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">path:</span>       <span class="hljs-comment">#配置访问路径，如果通过url进行转发，需要修改；空默认为访问的路径为&quot;/&quot;</span><br>        <span class="hljs-attr">backend:</span>    <span class="hljs-comment">#配置后端服务</span><br>          <span class="hljs-attr">serviceName:</span> <span class="hljs-string">nginx-service</span><br>          <span class="hljs-attr">servicePort:</span> <span class="hljs-number">8080</span><br></code></pre></td></tr></table></figure>
+
+
+<p>找到ingress nginx的pod名字后通过命令查看里面nginx配置文件能找到有对应的配置段生成</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs routeros">$ kubectl -n ingress-nginx exec nginx-ingress-controller-6cdcfd8ff9-t5sxl -- cat /etc/nginx/nginx.conf<br><span class="hljs-built_in">..</span>.<br>	## start<span class="hljs-built_in"> server </span>nginx.testdomain.com<br><span class="hljs-built_in">	server </span>&#123;<br>		server_name nginx.testdomain.com ;<br>		<br>		listen 80;<br>		<br>		<span class="hljs-built_in">set</span> <span class="hljs-variable">$proxy_upstream_name</span> <span class="hljs-string">&quot;-&quot;</span>;<br>		<br>		location / &#123;<br>			<br>			<span class="hljs-built_in">set</span> <span class="hljs-variable">$namespace</span>      <span class="hljs-string">&quot;default&quot;</span>;<br>			<span class="hljs-built_in">set</span> <span class="hljs-variable">$ingress_name</span>   <span class="hljs-string">&quot;nginx-ingress&quot;</span>;<br>			<span class="hljs-built_in">set</span> <span class="hljs-variable">$service_name</span>   <span class="hljs-string">&quot;nginx&quot;</span>;<br>			<span class="hljs-built_in">set</span> <span class="hljs-variable">$service_port</span>   <span class="hljs-string">&quot;8080&quot;</span>;<br>			<span class="hljs-built_in">set</span> <span class="hljs-variable">$location_path</span>  <span class="hljs-string">&quot;/&quot;</span>;<br>            <span class="hljs-built_in">..</span><span class="hljs-built_in">..</span><span class="hljs-built_in">..</span><span class="hljs-built_in">..</span><br>	## end<span class="hljs-built_in"> server </span>nginx.testdomain.com      <br><span class="hljs-built_in">..</span>.<br></code></pre></td></tr></table></figure>
+
+<p>找一台非集群的机器,设置hosts文件把域名nginx.testdomain.com设置到对svc的那个node的ip上,打开浏览器访问nginx.testdomain.com即可发现集群内的nginx已经暴露在集群外。</p>
+<h4 id="配置域名解析（Node节点IP）"><a href="#配置域名解析（Node节点IP）" class="headerlink" title="配置域名解析（Node节点IP）"></a>配置域名解析（Node节点IP）</h4><figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs accesslog"><span class="hljs-number">192.168.91.22</span> nginx.testdomain.com<br><span class="hljs-number">192.168.91.22</span> tomcat.testdomain.com<br></code></pre></td></tr></table></figure>
+
+
+<h4 id="多个Ingress-controllers："><a href="#多个Ingress-controllers：" class="headerlink" title="多个Ingress controllers："></a>多个Ingress controllers：</h4><p>如果您的环境中运行多个Ingress controllers，则需要<code>kubernetes.io/ingress.class: &quot;nginx&quot;</code>指定将ingress对象加入到那个Ingress controllers中</p>
+<p>例如：</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> foo<br><span class="hljs-symbol">  annotations:</span><br>    kubernetes.io/ingress.class: <span class="hljs-string">&quot;gce&quot;</span><br></code></pre></td></tr></table></figure>
+
+<p>将以GCE控制器作为目标，迫使它忽略nginx控制器。</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> foo<br><span class="hljs-symbol">  annotations:</span><br>    kubernetes.io/ingress.class: <span class="hljs-string">&quot;nginx&quot;</span><br></code></pre></td></tr></table></figure>
+
+<p>将以nginx控制器作为目标，迫使它忽略GCE控制器。</p>
+<h4 id="Rewrite（重写）："><a href="#Rewrite（重写）：" class="headerlink" title="Rewrite（重写）："></a>Rewrite（重写）：</h4><p>必须条件：当您集群中有多个Ingress controller时您必须通过指定Ingress.class注释来确保您的Ingress只针对一个Ingress controller生效，并且您的集群中必须运行着这个Ingress controller。</p>
+<p>ingress可以使用以下annotations标签控制重写：</p>
+<table>
+<thead>
+<tr>
+<th>名称</th>
+<th>描述</th>
+<th>值</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>nginx.ingress.kubernetes.io&#x2F;rewrite-target</td>
+<td>必须重定向流量的目标URI</td>
+<td>string</td>
+</tr>
+<tr>
+<td>nginx.ingress.kubernetes.io&#x2F;ssl-redirect</td>
+<td>指示位置部分是否仅可访问SSL（当Ingress包含证书时默认为True）</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>nginx.ingress.kubernetes.io&#x2F;force-ssl-redirect</td>
+<td>即使Ingress未启用TLS，也强制重定向到HTTPS</td>
+<td>bool</td>
+</tr>
+<tr>
+<td>nginx.ingress.kubernetes.io&#x2F;app-root</td>
+<td>定义Controller必须重定向的应用程序根，如果它在’&#x2F;‘上下文中</td>
+<td>string</td>
+</tr>
+<tr>
+<td>nginx.ingress.kubernetes.io&#x2F;use-regex</td>
+<td>指示Ingress上定义的路径是否使用正则表达式</td>
+<td>bool</td>
+</tr>
+</tbody></table>
+<h4 id="配置无host字段ingress"><a href="#配置无host字段ingress" class="headerlink" title="配置无host字段ingress"></a>配置无host字段ingress</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">extensions/v1beta1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Ingress</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">andmu-open-web</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">sh-andmuopen</span><br>  <span class="hljs-attr">annotations:</span><br>    <span class="hljs-attr">nginx.ingress.kubernetes.io/server-alias:</span> <span class="hljs-string">&quot;open.andmu.cn&quot;</span><br>    <span class="hljs-attr">kubernetes.io/ingress.class:</span> <span class="hljs-string">&quot;sh-andmuopen&quot;</span><br>    <span class="hljs-attr">nginx.ingress.kubernetes.io/use-regex:</span> <span class="hljs-string">&quot;true&quot;</span>   <span class="hljs-comment">#支持nginx的rui的正则匹配</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">rules:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">paths:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">path:</span> <span class="hljs-string">/(.*)</span><br>        <span class="hljs-attr">backend:</span><br>          <span class="hljs-attr">serviceName:</span> <span class="hljs-string">andmuopen-web</span><br>          <span class="hljs-attr">servicePort:</span> <span class="hljs-number">80</span><br><span class="hljs-meta">---</span><br></code></pre></td></tr></table></figure>
+
+<p>在配置中我们没有<code>host</code>字段，这将在ingress-nginx配置中会以如下形式展示，此种方式我们可以用IP或域名的方式访问，因为我们还配置了<code>nginx.ingress.kubernetes.io/server-alias: &quot;open.andmu.cn&quot;</code>，所以当我们用域名访问时用<code>open.andmu.cn</code>访问。</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs routeros"><span class="hljs-comment">## start server _</span><br><span class="hljs-built_in"> server </span>&#123;<br>         server_name _ open.andmu.cn;<br><br>         listen 80 default_server reuseport <span class="hljs-attribute">backlog</span>=65535;<br><br>         listen [::]:80 default_server reuseport <span class="hljs-attribute">backlog</span>=65535;<br><br>         <span class="hljs-built_in">set</span> <span class="hljs-variable">$proxy_upstream_name</span> <span class="hljs-string">&quot;-&quot;</span>;<br>         <span class="hljs-built_in">set</span> <span class="hljs-variable">$pass_access_scheme</span> <span class="hljs-variable">$scheme</span>;<br>         <span class="hljs-built_in">set</span> <span class="hljs-variable">$pass_server_port</span> <span class="hljs-variable">$server_port</span>;<br>         <span class="hljs-built_in">set</span> <span class="hljs-variable">$best_http_host</span> <span class="hljs-variable">$http_host</span>;<br>         <span class="hljs-built_in">set</span> <span class="hljs-variable">$pass_port</span> <span class="hljs-variable">$pass_server_port</span>;<br></code></pre></td></tr></table></figure>
+
+
+
+
+
+
+<h4 id="构建TLS站点：-注：必须是标准的证书格式不能key-server-ca放在一个pem文件中"><a href="#构建TLS站点：-注：必须是标准的证书格式不能key-server-ca放在一个pem文件中" class="headerlink" title="构建TLS站点：(注：必须是标准的证书格式不能key+server+ca放在一个pem文件中)"></a>构建TLS站点：(注：必须是标准的证书格式不能key+server+ca放在一个pem文件中)</h4><p>（1）准备证书</p>
+<figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs csharp">[<span class="hljs-meta">root@k8s-master ingress</span>]<span class="hljs-meta"># openssl genrsa -out tls.key 2048 </span><br>Generating RSA <span class="hljs-keyword">private</span> key, <span class="hljs-number">2048</span> bit <span class="hljs-built_in">long</span> modulus<br>.......+++<br>.......................+++<br>e <span class="hljs-keyword">is</span> <span class="hljs-number">65537</span> (<span class="hljs-number">0x10001</span>)<br></code></pre></td></tr></table></figure>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs gradle">[root@k8s-master ingress]# openssl req -<span class="hljs-keyword">new</span> -x509 -key tls.key -out tls.crt -subj <span class="hljs-regexp">/C=CN/</span>ST=Beijing<span class="hljs-regexp">/L=Beijing/</span>O=DevOps/CN=tomcat.magedu.com<br></code></pre></td></tr></table></figure>
+
+<p>（2）生成secret</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">ingress</span>]<span class="hljs-comment"># kubectl create secret tls tomcat-ingress-secret --cert=tls.crt --key=tls.key</span><br>secret/tomcat-ingress-secret created<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">ingress</span>]<span class="hljs-comment"># kubectl get secret</span><br>NAME                    <span class="hljs-keyword">TYPE</span>                                  DATA      AGE<br>default-token-j5pf5     kubernetes.io/service-account-token   <span class="hljs-number">3</span>         <span class="hljs-number">39</span>d<br>tomcat-ingress-secret   kubernetes.io/tls                     <span class="hljs-number">2</span>         <span class="hljs-number">9s</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master</span> <span class="hljs-string">ingress</span>]<span class="hljs-comment"># kubectl describe secret tomcat-ingress-secret</span><br><span class="hljs-attr">Name:</span>         <span class="hljs-string">tomcat-ingress-secret</span><br><span class="hljs-attr">Namespace:</span>    <span class="hljs-string">default</span><br><span class="hljs-attr">Labels:</span>       <span class="hljs-string">&lt;none&gt;</span><br><span class="hljs-attr">Annotations:</span>  <span class="hljs-string">&lt;none&gt;</span><br><br><span class="hljs-attr">Type:</span>  <span class="hljs-string">kubernetes.io/tls</span><br><br><span class="hljs-string">Data</span><br><span class="hljs-string">====</span><br><span class="hljs-attr">tls.crt:</span>  <span class="hljs-number">1294 </span><span class="hljs-string">bytes</span><br><span class="hljs-attr">tls.key:</span>  <span class="hljs-number">1679 </span><span class="hljs-string">bytes</span><br></code></pre></td></tr></table></figure>
+
+<p>（3）创建ingress</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@k8s-master</span> <span class="hljs-string">ingress</span>]<span class="hljs-comment"># cp ingress-tomcat.yaml ingress-tomcat-tls.yaml</span><br>[<span class="hljs-string">root@k8s-master</span> <span class="hljs-string">ingress</span>]<span class="hljs-comment"># vim ingress-tomcat-tls.yaml </span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">extensions/v1beta1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Ingress</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">ingress-tomcat-tls</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attr">annotations:</span><br>    <span class="hljs-attr">kubernetes.io/ingress.class:</span> <span class="hljs-string">&quot;nginx&quot;</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">tls:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">hosts:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">tomcat.magedu.com</span><br>    <span class="hljs-attr">secretName:</span> <span class="hljs-string">tomcat-ingress-secret</span><br>  <span class="hljs-attr">rules:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">host:</span> <span class="hljs-string">tomcat.magedu.com</span><br>    <span class="hljs-attr">http:</span><br>      <span class="hljs-attr">paths:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">path:</span><br>        <span class="hljs-attr">backend:</span><br>          <span class="hljs-attr">serviceName:</span> <span class="hljs-string">tomcat</span><br>          <span class="hljs-attr">servicePort:</span> <span class="hljs-number">8080</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">ingress</span>]<span class="hljs-comment"># kubectl apply -f ingress-tomcat-tls.yaml </span><br>ingress.extensions/ingress-tomcat-tls created<br></code></pre></td></tr></table></figure>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@k8s-<span class="hljs-keyword">master</span> <span class="hljs-title">ingress</span>]<span class="hljs-comment"># kubectl get ingress</span><br>NAME                 HOSTS               ADDRESS   PORTS     AGE<br>ingress-myapp        myapp.magedu.com              <span class="hljs-number">80</span>        <span class="hljs-number">4h</span><br>ingress-tomcat-tls   tomcat.magedu.com             <span class="hljs-number">80</span>, <span class="hljs-number">443</span>   <span class="hljs-number">5s</span><br>tomcat               tomcat.magedu.com             <span class="hljs-number">80</span>        <span class="hljs-number">1h</span><br></code></pre></td></tr></table></figure>
+<figure class="highlight jboss-cli"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs jboss-cli">[root@k8s-master ingress]<span class="hljs-comment"># kubectl describe ingress ingress-tomcat-tls</span><br>Name:             ingress-tomcat-tls<br>Namespace:        default<br>Address:          <br>Default backend:  default-http-backend<span class="hljs-function">:80</span> <span class="hljs-params">(&lt;none&gt;)</span><br>TLS:<br>  tomcat-ingress-secret terminates tomcat.magedu.com<br>Rules:<br>  Host               Path  Backends<br>  <span class="hljs-params">----</span>               <span class="hljs-params">----</span>  <span class="hljs-params">--------</span><br>  tomcat.magedu.com  <br>                        tomcat<span class="hljs-function">:8080</span> <span class="hljs-params">(&lt;none&gt;)</span><br>Annotations:<br>  kubectl.kubernetes.io/last-applied-configuration:  &#123;<span class="hljs-string">&quot;apiVersion&quot;</span>:<span class="hljs-string">&quot;extensions/v1beta1&quot;</span>,<span class="hljs-string">&quot;kind&quot;</span>:<span class="hljs-string">&quot;Ingress&quot;</span>,<span class="hljs-string">&quot;metadata&quot;</span>:&#123;<span class="hljs-string">&quot;annotations&quot;</span>:&#123;<span class="hljs-string">&quot;kubernetes.io/ingress.class&quot;</span>:<span class="hljs-string">&quot;nginx&quot;</span>&#125;,<span class="hljs-string">&quot;name&quot;</span>:<span class="hljs-string">&quot;ingress-tomcat-tls&quot;</span>,<span class="hljs-string">&quot;namespace&quot;</span>:<span class="hljs-string">&quot;default&quot;</span>&#125;,<span class="hljs-string">&quot;spec&quot;</span>:&#123;<span class="hljs-string">&quot;rules&quot;</span>:[&#123;<span class="hljs-string">&quot;host&quot;</span>:<span class="hljs-string">&quot;tomcat.magedu.com&quot;</span>,<span class="hljs-string">&quot;http&quot;</span>:&#123;<span class="hljs-string">&quot;paths&quot;</span>:[&#123;<span class="hljs-string">&quot;backend&quot;</span>:&#123;<span class="hljs-string">&quot;serviceName&quot;</span>:<span class="hljs-string">&quot;tomcat&quot;</span>,<span class="hljs-string">&quot;servicePort&quot;</span><span class="hljs-function">:8080</span>&#125;,<span class="hljs-string">&quot;path&quot;</span><span class="hljs-function">:null</span>&#125;]&#125;&#125;],<span class="hljs-string">&quot;tls&quot;</span>:[&#123;<span class="hljs-string">&quot;hosts&quot;</span>:[<span class="hljs-string">&quot;tomcat.magedu.com&quot;</span>],<span class="hljs-string">&quot;secretName&quot;</span>:<span class="hljs-string">&quot;tomcat-ingress-secret&quot;</span>&#125;]&#125;&#125;<br><br>  kubernetes.io/ingress.class:  nginx<br>Events:<br>  Type    Reason  Age   From                      Message<br>  <span class="hljs-params">----</span>    <span class="hljs-params">------</span>  <span class="hljs-params">----</span>  <span class="hljs-params">----</span>                      <span class="hljs-params">-------</span><br>  Normal  CREATE  20s   nginx-ingress-controller  Ingress default/ingress-tomcat-tls<br></code></pre></td></tr></table></figure>
+
+<p>（4）访问测试：<a target="_blank" rel="noopener" href="https://tomcat.magedu.com:30443/">https://tomcat.magedu.com:30443</a></p>
+<p><img src="/images/ingress-7.png" srcset="/img/loading.gif" lazyload alt="ingress-7"></p>
+<h3 id="Ingress-Controller高可用："><a href="#Ingress-Controller高可用：" class="headerlink" title="Ingress Controller高可用："></a>Ingress Controller高可用：</h3><p>&amp;emsp;&amp;emsp;这里来讨论下Ingress Controller的Nginx pod高可用。上面的例子里svc我使用的nodePort，Nodeport端口不是web端口(但是可以修改Nodeport的范围改成web端口),如果当流量进来负载到某个node上的时候因为Ingress Controller的pod不在这个node上,会走这个node的kube-proxy转发到Ingress Controller的pod上,多走一趟路。(例如：我们Ingress Controller的pod在192.168.91.22上，但是你域名解析的是192.168.91.21 nginx.testdomain.com这样，这个时候192.168.91.21这个node上的kube-proxy会把请求转发到192.168.91.22上)。故建议使用daemonset+nodeSelector的方式来ingress controller的Pod负载（每个Node节点一个ingress controller的Pod）。</p>
+<p>&amp;emsp;&amp;emsp;不创建svc，效率最高。如果我们使用Nodeport的方式，流量是NodeIP——-&gt;svc—-ingress-controller(pod)这样的话会多走一层svc层，不管svc层是使用iptables还是lvs都会降低效率。如果使用hostNetwork的方式就是直接走Node节点的主机网络，唯一要注意的是hostNetwork下pod会继承宿主机的网络协议,也就是使用了主机的dns,会导致svc的请求直接走宿主机的上到公网的dns服务器而非集群里的dns server,需要设置pod的dnsPolicy: ClusterFirstWithHostNet即可解决</p>
+<h3 id="Ingress-Controller部署方式没多大区别开心就好："><a href="#Ingress-Controller部署方式没多大区别开心就好：" class="headerlink" title="Ingress Controller部署方式没多大区别开心就好："></a>Ingress Controller部署方式没多大区别开心就好：</h3><ul>
+<li>daemonSet + nodeSeletor (一个Node节点运行一个Ingress Controller的Pod，当有多个Node的时候可以使用污点或者通过指定nodeSelector来指定部分主机来运行Ingress Controller的Pod)</li>
+<li>deploy的方式部署多个ingress controller：设置replicas数量（不能大于node节点数） + nodeSeletor + pod互斥</li>
+</ul>
+<h4 id="1-1、使用-daemonSet-nodeSeletor-方式部署"><a href="#1-1、使用-daemonSet-nodeSeletor-方式部署" class="headerlink" title="1.1、使用 daemonSet + nodeSeletor 方式部署"></a>1.1、使用 daemonSet + nodeSeletor 方式部署</h4><p>&amp;emsp;&amp;emsp;首先我们要创建一个ingress-nginx的svc不然ingress nginx的log里会一直刷找不到ingress-nginx的svc不处理的话会狂刷log导致机器load过高,创建一个同名的svc即可解决,例如创建一个不带选择器clusterip为None的</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">ingress-nginx</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">ingress-nginx</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app.kubernetes.io/name:</span> <span class="hljs-string">ingress-nginx</span><br>    <span class="hljs-attr">app.kubernetes.io/part-of:</span> <span class="hljs-string">ingress-nginx</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">ClusterIP</span><br>  <span class="hljs-attr">clusterIP:</span> <span class="hljs-string">&quot;None&quot;</span><br>  <span class="hljs-attr">ports:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">http</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">80</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">80</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">https</span><br>      <span class="hljs-attr">port:</span> <span class="hljs-number">443</span><br>      <span class="hljs-attr">targetPort:</span> <span class="hljs-number">443</span><br>      <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br><span class="hljs-meta">---</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">[root@k8s-m1 ~]# kubectl <span class="hljs-keyword">get</span> svc -n ingress-nginx<br><span class="hljs-type">NAME</span>            <span class="hljs-keyword">TYPE</span>        <span class="hljs-keyword">CLUSTER</span>-IP   <span class="hljs-keyword">EXTERNAL</span>-IP   PORT(S)          AGE<br>ingress-nginx   ClusterIP   <span class="hljs-keyword">None</span>         &lt;<span class="hljs-keyword">none</span>&gt;        <span class="hljs-number">80</span>/TCP,<span class="hljs-number">443</span>/TCP   <span class="hljs-number">14</span>h<br></code></pre></td></tr></table></figure>
+
+
+
+<h4 id="1-2、修改ingress-controller-mandatory-yaml文件"><a href="#1-2、修改ingress-controller-mandatory-yaml文件" class="headerlink" title="1.2、修改ingress-controller mandatory.yaml文件"></a>1.2、修改ingress-controller mandatory.yaml文件</h4><figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> apps/v1<br><span class="hljs-symbol">kind:</span> DaemonSet<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> nginx-ingress-controller<br><span class="hljs-symbol">  namespace:</span> ingress-nginx<br><span class="hljs-symbol">  labels:</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">template:</span><br>  <span class="hljs-attr">metadata:</span><br>    <span class="hljs-attr">labels:</span><br>      <span class="hljs-attr">app.kubernetes.io/name:</span> <span class="hljs-string">ingress-nginx</span><br>      <span class="hljs-attr">app.kubernetes.io/part-of:</span> <span class="hljs-string">ingress-nginx</span><br>    <span class="hljs-attr">annotations:</span><br>      <span class="hljs-attr">prometheus.io/port:</span> <span class="hljs-string">&quot;10254&quot;</span><br>      <span class="hljs-attr">prometheus.io/scrape:</span> <span class="hljs-string">&quot;true&quot;</span><br>  <span class="hljs-attr">spec:</span><br>    <span class="hljs-attr">hostNetwork:</span> <span class="hljs-literal">true</span><br>    <span class="hljs-attr">dnsPolicy:</span> <span class="hljs-string">ClusterFirstWithHostNet</span><br>    <span class="hljs-attr">serviceAccountName:</span> <span class="hljs-string">nginx-ingress-serviceaccount</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs sql">[root<span class="hljs-variable">@k8s</span><span class="hljs-operator">-</span>m1 <span class="hljs-operator">~</span>]# kubectl  <span class="hljs-keyword">get</span> pod <span class="hljs-operator">-</span>n ingress<span class="hljs-operator">-</span>nginx <span class="hljs-operator">-</span>o wide<br>NAME                             READY   STATUS    RESTARTS   AGE   IP          NODE     NOMINATED NODE   READINESS GATES<br>nginx<span class="hljs-operator">-</span>ingress<span class="hljs-operator">-</span>controller<span class="hljs-operator">-</span>m64rj   <span class="hljs-number">1</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     <span class="hljs-keyword">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-number">19</span>m   <span class="hljs-number">10.15</span><span class="hljs-number">.1</span><span class="hljs-number">.6</span>   k8s<span class="hljs-operator">-</span>n1   <span class="hljs-operator">&lt;</span><span class="hljs-keyword">none</span><span class="hljs-operator">&gt;</span>           <span class="hljs-operator">&lt;</span><span class="hljs-keyword">none</span><span class="hljs-operator">&gt;</span><br>nginx<span class="hljs-operator">-</span>ingress<span class="hljs-operator">-</span>controller<span class="hljs-operator">-</span>w5ts8   <span class="hljs-number">1</span><span class="hljs-operator">/</span><span class="hljs-number">1</span>     <span class="hljs-keyword">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-number">19</span>m   <span class="hljs-number">10.15</span><span class="hljs-number">.1</span><span class="hljs-number">.7</span>   k8s<span class="hljs-operator">-</span>n2   <span class="hljs-operator">&lt;</span><span class="hljs-keyword">none</span><span class="hljs-operator">&gt;</span>           <span class="hljs-operator">&lt;</span><span class="hljs-keyword">none</span><span class="hljs-operator">&gt;</span><br></code></pre></td></tr></table></figure>
+
+
+
+<p>&amp;emsp;&amp;emsp;修改部署方式为<code>DaemonSet</code>以及删除<code>replicas</code>副本集参数，新增<code> hostNetwork: true</code> 和 <code>dnsPolicy: ClusterFirstWithHostNet</code>参数。我们可以看到Pod的IP就直接是Node节点的IP。</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes之Ingress</div>
+      <div>https://system51.github.io/2019/08/26/Kubernetes-Ingress/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-StorageVolume/" title="Kubernetes之存储卷">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes之存储卷</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/23/kubernetes-DNS/" title="kubernetes之DNS">
+                        <span class="hidden-mobile">kubernetes之DNS</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

@@ -1,0 +1,682 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="Kubernetes的管理层服务包括kube-scheduler和kube-controller-manager。kube-scheduer和kube-controller-manager使用一主多从的高可用方案，在同一时刻只允许一个服务处理具体的任务。Kubernetes中实现了一套简单的选主逻辑，依赖Etcd实现scheduler和controller-manager的选主功能。   如果s">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kube-apiserver 高可用方案">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-kube-apiserver-ha/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Kubernetes的管理层服务包括kube-scheduler和kube-controller-manager。kube-scheduer和kube-controller-manager使用一主多从的高可用方案，在同一时刻只允许一个服务处理具体的任务。Kubernetes中实现了一套简单的选主逻辑，依赖Etcd实现scheduler和controller-manager的选主功能。   如果s">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/kube-apiserver-ha-1.png">
+<meta property="article:published_time" content="2019-08-26T06:00:22.000Z">
+<meta property="article:modified_time" content="2019-09-06T02:03:18.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/kube-apiserver-ha-1.png">
+  
+  
+  
+  <title>kube-apiserver 高可用方案 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="kube-apiserver 高可用方案"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 14:00" pubdate>
+          2019年8月26日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          4.8k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          9 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">kube-apiserver 高可用方案</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <blockquote>
+<p>Kubernetes的管理层服务包括kube-scheduler和kube-controller-manager。kube-scheduer和kube-controller-manager使用一主多从的高可用方案，在同一时刻只允许一个服务处理具体的任务。Kubernetes中实现了一套简单的选主逻辑，依赖Etcd实现scheduler和controller-manager的选主功能。</p>
+</blockquote>
+<blockquote>
+<p>如果scheduler和controller-manager在启动的时候设置了<code>--leader-elect=true</code>参数，启动后将通过竞争选举机制产生一个 leader 节点，只有在获取leader节点身份后才可以执行具体的业务逻辑。它们分别会在Etcd中创建kube-scheduler和kube-controller-manager的endpoint，endpoint的信息中记录了当前的leader节点信息，以及记录的上次更新时间。leader节点会定期更新endpoint的信息，维护自己的leader身份。每个从节点的服务都会定期检查endpoint的信息，如果endpoint的信息在时间范围内没有更新，它们会尝试更新自己为leader节点。scheduler服务以及controller-manager服务之间不会进行通信，利用Etcd的强一致性，能够保证在分布式高并发情况下leader节点的全局唯一性。</p>
+</blockquote>
+<blockquote>
+<p>当集群中的leader节点服务异常后，其它节点的服务会尝试更新自身为leader节点，当有多个节点同时更新endpoint时，由Etcd保证只有一个服务的更新请求能够成功。通过这种机制sheduler和controller-manager可以保证在leader节点宕机后其它的节点可以顺利选主，保证服务故障后快速恢复。</p>
+</blockquote>
+<blockquote>
+<p>当集群中的网络出现故障时对服务的选主影响不是很大，因为scheduler和controller-manager是依赖Etcd进行选主的，在网络故障后，可以和Etcd通信的主机依然可以按照之前的逻辑进行选主，就算集群被切分，Etcd也可以保证同一时刻只有一个节点的服务处于leader状态。</p>
+</blockquote>
+<h3 id="查看kube-controller-manager当前的-leader"><a href="#查看kube-controller-manager当前的-leader" class="headerlink" title="查看kube-controller-manager当前的 leader"></a>查看kube-controller-manager当前的 leader</h3><figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs makefile">[root@k8s-m1 ~]<span class="hljs-comment"># kubectl get endpoints kube-controller-manager --namespace=kube-system  -o yaml</span><br><span class="hljs-section">apiVersion: v1</span><br><span class="hljs-section">kind: Endpoints</span><br><span class="hljs-section">metadata:</span><br>  annotations:<br>    control-plane.alpha.kubernetes.io/leader: &#x27;&#123;<span class="hljs-string">&quot;holderIdentity&quot;</span>:<span class="hljs-string">&quot;m7-autocv-gpu02_084534e2-6cc4-11e8-a418-5254001f5b65&quot;</span>,<span class="hljs-string">&quot;leaseDurationSeconds&quot;</span>:15,<span class="hljs-string">&quot;acquireTime&quot;</span>:<span class="hljs-string">&quot;2018-06-10T15:40:33Z&quot;</span>,<span class="hljs-string">&quot;renewTime&quot;</span>:<span class="hljs-string">&quot;2018-06-10T16:19:08Z&quot;</span>,<span class="hljs-string">&quot;leaderTransitions&quot;</span>:12&#125;&#x27;<br>  creationTimestamp: 2018-06-10T13:59:42Z<br>  name: kube-controller-manager<br>  namespace: kube-system<br>  resourceVersion: <span class="hljs-string">&quot;4540&quot;</span><br>  selfLink: /api/v1/namespaces/kube-system/endpoints/kube-controller-manager<br>  uid: 862cc048-6cb6-11e8-96fa-525400ba84c6<br>	<br><span class="hljs-comment"># 可见，当前的 leader 为 m7-autocv-gpu02 节点。</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="查看kube-scheduler当前的-leader"><a href="#查看kube-scheduler当前的-leader" class="headerlink" title="查看kube-scheduler当前的 leader"></a>查看kube-scheduler当前的 leader</h3><figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><code class="hljs makefile">[root@k8s-m1 ~]<span class="hljs-comment"># kubectl get endpoints kube-scheduler --namespace=kube-system  -o yaml</span><br><span class="hljs-section">apiVersion: v1</span><br><span class="hljs-section">kind: Endpoints</span><br><span class="hljs-section">metadata:</span><br>  annotations:<br>    control-plane.alpha.kubernetes.io/leader: &#x27;&#123;<span class="hljs-string">&quot;holderIdentity&quot;</span>:<span class="hljs-string">&quot;m7-autocv-gpu01_7295c239-f2e9-11e8-8b5d-0cc47a2afc6a&quot;</span>,<span class="hljs-string">&quot;leaseDurationSeconds&quot;</span>:15,<span class="hljs-string">&quot;acquireTime&quot;</span>:<span class="hljs-string">&quot;2018-11-28T08:41:50Z&quot;</span>,<span class="hljs-string">&quot;renewTime&quot;</span>:<span class="hljs-string">&quot;2018-11-28T08:42:08Z&quot;</span>,<span class="hljs-string">&quot;leaderTransitions&quot;</span>:0&#125;&#x27;<br>  creationTimestamp: 2018-11-28T08:41:50Z<br>  name: kube-scheduler<br>  namespace: kube-system<br>  resourceVersion: <span class="hljs-string">&quot;1013&quot;</span><br>  selfLink: /api/v1/namespaces/kube-system/endpoints/kube-scheduler<br>  uid: 73305545-f2e9-11e8-b65b-0cc47a2afc6a<br>	<br><span class="hljs-comment"># 可见，当前的 leader 为 m7-autocv-gpu01 节点。</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>随便找一个或两个 master 节点，停掉<code>kube-scheduler</code>或者<code>kube-controller-manager</code>服务，看其它节点是否获取了 leader 权限（systemd 日志）</p>
+</blockquote>
+<h3 id="kube-apiserver高可用"><a href="#kube-apiserver高可用" class="headerlink" title="kube-apiserver高可用"></a>kube-apiserver高可用</h3><blockquote>
+<p>上面我们说到了kube-controller-manager和kube-scheduler的工作机制，现在我们进入正题讲讲如何做kube-apiserver高可用，这里我采用haproxy+keepalived的方式来做高可用（注意：我们在生成证书的时候一定要把VIP地址加入进证书）</p>
+</blockquote>
+<p><img src="/images/kube-apiserver-ha-1.png" srcset="/img/loading.gif" lazyload alt="kube-apiserver"></p>
+<h3 id="1-1、三台master都安装haproxy-keepalived"><a href="#1-1、三台master都安装haproxy-keepalived" class="headerlink" title="1.1、三台master都安装haproxy+keepalived"></a>1.1、三台master都安装haproxy+keepalived</h3><h4 id="haproxy配置文件"><a href="#haproxy配置文件" class="headerlink" title="haproxy配置文件"></a>haproxy配置文件</h4><figure class="highlight smali"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><code class="hljs smali">global<br>  maxconn  2000<br>  ulimit-n  16384<br>  log  127.0.0.1 local0 err<br>  stats timeout 30s<br><br>defaults<br>  log global<br>  mode  http<br>  option  httplog<br>  timeout connect 5000<br>  timeout client  50000<br>  timeout server  50000<br>  timeout http-request 15s<br>  timeout http-keep-alive 15s<br><br>frontend<span class="hljs-built_in"> monitor-in</span><br><span class="hljs-built_in"></span>  bind *:33305<br>  mode http<br>  option httplog<br> <span class="hljs-built_in"> monitor-uri </span>/monitor<br><br>listen stats<br>  bind    *:8006<br>  mode    http<br>  stats   enable<br>  stats   hide-version<br>  stats   uri       /stats<br>  stats   refresh   30s<br>  stats   realm     Haproxy\ Statistics<br>  stats   auth      admin:admin<br><br>frontend k8s-api<br>  bind 0.0.0.0:8443<br>  bind 127.0.0.1:8443<br>  mode tcp<br>  option tcplog<br>  tcp-request inspect-delay 5s<br>  default_backend k8s-api<br><br>backend k8s-api<br>  mode tcp<br>  option tcplog<br>  option httpchk GET /healthz<br>  http-check expect string ok<br>  balance roundrobin<br>  default-server inter 10s downinter 5s rise 2 fall 2 slowstart 60s maxconn 250 maxqueue 256 weight 100<br>    server  api1  192.168.0.200:6443 <span class="hljs-built_in"> check </span>check-ssl verify none<br>    server  api2  192.168.0.201:6443 <span class="hljs-built_in"> check </span>check-ssl verify none<br>    server  api3  192.168.0.202:6443 <span class="hljs-built_in"> check </span>check-ssl verify none<br></code></pre></td></tr></table></figure>
+
+
+<h4 id="keepalived配置文件"><a href="#keepalived配置文件" class="headerlink" title="keepalived配置文件"></a>keepalived配置文件</h4><figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><code class="hljs pf">global_defs &#123;<br>    enable_script_security<br>&#125;<br><br>vrrp_script haproxy-check &#123;<br>    <span class="hljs-keyword">user</span> root<br>    script <span class="hljs-string">&quot;/bin/bash /etc/keepalived/check_haproxy.sh&quot;</span><br>    interval <span class="hljs-number">3</span><br>    weight -<span class="hljs-number">2</span><br>    fall <span class="hljs-number">10</span><br>    rise <span class="hljs-number">2</span><br>&#125;<br><br>vrrp_instance haproxy-vip &#123;<br>    <span class="hljs-keyword">state</span> BACKUP<br>    priority <span class="hljs-number">101</span><br>    interface eth0<br>    virtual_router_id <span class="hljs-number">47</span><br>    advert_int <span class="hljs-number">3</span><br>    unicast_src_ip <span class="hljs-number">192.168</span>.<span class="hljs-number">0.200</span>           <span class="hljs-comment"># 本机IP</span><br>    unicast_peer &#123;<br>        <span class="hljs-number">192.168</span>.<span class="hljs-number">0.201</span>      <span class="hljs-comment"># 对端IP</span><br>        <span class="hljs-number">192.168</span>.<span class="hljs-number">0.202</span>      <span class="hljs-comment"># 对端IP</span><br>    &#125;<br><br>    virtual_ipaddress &#123;<br>        <span class="hljs-number">192.168</span>.<span class="hljs-number">0.250</span>/<span class="hljs-number">24</span>   <span class="hljs-comment"># VIP地址</span><br>    &#125;<br><br>    track_script &#123;<br>        haproxy-check<br>    &#125;<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>keeaplived这里需要注意，默认keepalived是采用的组播方式，加上unicast_peer参数后是单播方式，三台keepalived配置文件不一样unicast_src_ipc参数写当前节点IP，unicast_peer参数写另外两个节点IP地址。其他的权重和BACKUP都保持一致</p>
+</blockquote>
+<h4 id="keepalived-健康检查脚本"><a href="#keepalived-健康检查脚本" class="headerlink" title="keepalived 健康检查脚本"></a>keepalived 健康检查脚本</h4><figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><code class="hljs nginx"><span class="hljs-attribute">cat</span> &lt;&lt;<span class="hljs-string">&#x27;EOF&#x27;</span>&gt; /etc/keepalived/ha_check.sh<br><span class="hljs-comment">#!/bin/sh</span><br>VIRTUAL_IP=<span class="hljs-number">192.168.0.250</span><br><br><span class="hljs-literal">error</span>Exit() &#123;<br>    <span class="hljs-attribute">echo</span> <span class="hljs-string">&quot;*** $*&quot;</span> <span class="hljs-number">1</span>&gt;&amp;<span class="hljs-number">2</span><br>    exit <span class="hljs-number">1</span><br>&#125;<br><br>if ip addr | grep -q <span class="hljs-variable">$VIRTUAL_IP</span> ; <span class="hljs-attribute">then</span><br>    curl -s --max-time <span class="hljs-number">2</span> --insecure https://<span class="hljs-variable">$&#123;VIRTUAL_IP&#125;</span>:8443/ -o /dev/null || <span class="hljs-literal">error</span>Exit <span class="hljs-string">&quot;Error GET https://<span class="hljs-variable">$&#123;VIRTUAL_IP&#125;</span>:8443/&quot;</span><br>fi<br>EOF<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>到此kube-apiserver高可用就搭建完成，在所有连接apiserver中的地址都填写这个VIP地址尤其是kubectl客服端中连接kubernetes集群的地址。</p>
+</blockquote>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>kube-apiserver 高可用方案</div>
+      <div>https://system51.github.io/2019/08/26/Kubernetes-kube-apiserver-ha/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubelet-Status/" title="Kubelet 状态更新机制">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubelet 状态更新机制</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/Kubernetes-TLS-bootstrapping/" title="Kubernetes TLS bootstrapping 那点事">
+                        <span class="hidden-mobile">Kubernetes TLS bootstrapping 那点事</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

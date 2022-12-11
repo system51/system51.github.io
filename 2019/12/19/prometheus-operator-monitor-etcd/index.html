@@ -1,0 +1,697 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="&amp;emsp;&amp;emsp;除了 Kubernetes 集群中的一些资源对象、节点以及组件需要监控，有的时候我们可能还需要根据实际的业务需求去添加自定义的监控项，添加一个自定义监控的步骤也是非常简单的。  第一步建立一个 ServiceMonitor 对象，用于 Prometheus 添加监控项 第二步为 ServiceMonitor 对象关联 metrics 数据接口的一个 Serv">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Prometheus Operator 监控 etcd 集群">
+<meta property="og:url" content="https://system51.github.io/2019/12/19/prometheus-operator-monitor-etcd/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="&amp;emsp;&amp;emsp;除了 Kubernetes 集群中的一些资源对象、节点以及组件需要监控，有的时候我们可能还需要根据实际的业务需求去添加自定义的监控项，添加一个自定义监控的步骤也是非常简单的。  第一步建立一个 ServiceMonitor 对象，用于 Prometheus 添加监控项 第二步为 ServiceMonitor 对象关联 metrics 数据接口的一个 Serv">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/etcd-5.jpg">
+<meta property="og:image" content="https://system51.github.io/images/etcd-6.png">
+<meta property="og:image" content="https://system51.github.io/images/etcd-7.png">
+<meta property="article:published_time" content="2019-12-19T01:41:01.000Z">
+<meta property="article:modified_time" content="2019-12-19T09:17:33.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/etcd-5.jpg">
+  
+  
+  
+  <title>Prometheus Operator 监控 etcd 集群 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Prometheus Operator 监控 etcd 集群"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-12-19 09:41" pubdate>
+          2019年12月19日 上午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          11k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          19 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Prometheus Operator 监控 etcd 集群</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>&amp;emsp;&amp;emsp;除了 Kubernetes 集群中的一些资源对象、节点以及组件需要监控，有的时候我们可能还需要根据实际的业务需求去添加自定义的监控项，添加一个自定义监控的步骤也是非常简单的。</p>
+<ul>
+<li>第一步建立一个 ServiceMonitor 对象，用于 Prometheus 添加监控项</li>
+<li>第二步为 ServiceMonitor 对象关联 metrics 数据接口的一个 Service 对象</li>
+<li>第三步确保 Service 对象可以正确获取到 metrics 数据</li>
+</ul>
+<p>&amp;emsp;&amp;emsp;接下来我们就来以 etcd 为例添加 etcd 集群的监控。无论是 Kubernetes 集群外的还是使用 Kubeadm 安装在集群内部的 etcd 集群，我们这里都将其视作集群外的独立集群，因为对于二者的使用方法没什么特殊之处。</p>
+<h2 id="Etcd-Metrics"><a href="#Etcd-Metrics" class="headerlink" title="Etcd Metrics"></a>Etcd Metrics</h2><p>&amp;emsp;&amp;emsp;对于 etcd 集群一般情况下，为了安全都会开启 https 证书认证的方式，所以要想让 Prometheus 访问到 etcd 集群的监控数据，就需要提供相应的证书校验。</p>
+<p>&amp;emsp;&amp;emsp;这里我是kubeadm安装的kubernetes集群，但etcd是采用二进制方式安装，我们可以通过如下命令获取需要的两部分信息<code>--listen-client-urls</code>中etcd的IP地址和<code>--cert-file</code>中连接etcd用到的证书路径</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs gradle">[root@k8s-m1 ~]# ps aux | <span class="hljs-keyword">grep</span> -P <span class="hljs-string">&#x27;/etc[d] &#x27;</span><br>root      <span class="hljs-number">59550</span>  <span class="hljs-number">1.6</span>  <span class="hljs-number">4.1</span> <span class="hljs-number">10709140</span> <span class="hljs-number">159108</span> ?     Ssl  Dec10 <span class="hljs-number">211</span>:<span class="hljs-number">39</span> <span class="hljs-regexp">/usr/</span>local<span class="hljs-regexp">/bin/</span>etcd --name=etcd0 --data-dir=<span class="hljs-regexp">/var/</span>lib<span class="hljs-regexp">/etcd --listen-client-urls=https:/</span><span class="hljs-regexp">/127.0.0.1:2379,https:/</span><span class="hljs-regexp">/10.15.1.17:2379 --advertise-client-urls=https:/</span><span class="hljs-regexp">/10.15.1.17:2379 --listen-peer-urls=https:/</span><span class="hljs-regexp">/10.15.1.17:2380 --initial-advertise-peer-urls=https:/</span><span class="hljs-regexp">/10.15.1.17:2380 --cert-file=/</span>etc<span class="hljs-regexp">/kubernetes/</span>pki<span class="hljs-regexp">/etcd/</span>server.crt --key-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd<span class="hljs-regexp">/server.key --client-cert-auth --trusted-ca-file=/</span>etc<span class="hljs-regexp">/kubernetes/</span>pki<span class="hljs-regexp">/etcd/</span>ca.crt --peer-cert-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd<span class="hljs-regexp">/peer.crt --peer-key-file=/</span>etc<span class="hljs-regexp">/kubernetes/</span>pki<span class="hljs-regexp">/etcd/</span>peer.key --peer-client-cert-auth --peer-trusted-ca-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd<span class="hljs-regexp">/ca.crt --initial-cluster=etcd0=https:/</span><span class="hljs-regexp">/10.15.1.17:2380,etcd1=https:/</span><span class="hljs-regexp">/10.15.1.18:2380,etcd2=https:/</span><span class="hljs-regexp">/10.15.1.19:2380 --initial-cluster-token=my-etcd-token --initial-cluster-state=new --heartbeat-interval 1000 --election-timeout 5000</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<p>然后使用下面的curl，带上各自证书路径访问https的url执行</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">curl --cacert <span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd<span class="hljs-regexp">/ca.crt --cert /</span>etc<span class="hljs-regexp">/kubernetes/</span>pki<span class="hljs-regexp">/etcd/</span>server.crt  --key <span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd<span class="hljs-regexp">/server.key  https:/</span><span class="hljs-regexp">/10.15.1.17:2379/m</span>etrics<br></code></pre></td></tr></table></figure>
+
+<p>我们会看到etcd的metrics输出信息如下</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Alarm&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Maintenance&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;AuthDisable&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;AuthEnable&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Authenticate&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Check&quot;</span>,grpc_service=<span class="hljs-string">&quot;grpc.health.v1.Health&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Compact&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.KV&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">2543</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Defragment&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Maintenance&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;DeleteRange&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.KV&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Hash&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Maintenance&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;HashKV&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Maintenance&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;LeaseGrant&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Lease&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">76364</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;LeaseKeepAlive&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Lease&quot;</span>,grpc_type=<span class="hljs-string">&quot;bidi_stream&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;LeaseLeases&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Lease&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;LeaseRevoke&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Lease&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;LeaseTimeToLive&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Lease&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;MemberAdd&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Cluster&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;MemberList&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Cluster&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;MemberRemove&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Cluster&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;MemberUpdate&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Cluster&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;MoveLeader&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Maintenance&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Put&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.KV&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Range&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.KV&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">1</span>.<span class="hljs-number">336056</span>e+<span class="hljs-number">06</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;RoleAdd&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;RoleDelete&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;RoleGet&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;RoleGrantPermission&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;RoleList&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;RoleRevokePermission&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Snapshot&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Maintenance&quot;</span>,grpc_type=<span class="hljs-string">&quot;server_stream&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Status&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Maintenance&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">12</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Txn&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.KV&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">427834</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;UserAdd&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;UserChangePassword&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;UserDelete&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;UserGet&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;UserGrantRole&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;UserList&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;UserRevokeRole&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Auth&quot;</span>,grpc_type=<span class="hljs-string">&quot;unary&quot;</span>&#125; <span class="hljs-number">0</span><br><span class="hljs-attribute">grpc_server_started_total</span>&#123;grpc_method=<span class="hljs-string">&quot;Watch&quot;</span>,grpc_service=<span class="hljs-string">&quot;etcdserverpb.Watch&quot;</span>,grpc_type=<span class="hljs-string">&quot;bidi_stream&quot;</span>&#125; <span class="hljs-number">70</span><br><span class="hljs-comment"># HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.</span><br><span class="hljs-comment"># TYPE process_cpu_seconds_total counter</span><br><span class="hljs-attribute">process_cpu_seconds_total</span> <span class="hljs-number">12272</span>.<span class="hljs-number">94</span><br><span class="hljs-comment"># HELP process_max_fds Maximum number of open file descriptors.</span><br><span class="hljs-comment"># TYPE process_max_fds gauge</span><br><span class="hljs-attribute">process_max_fds</span> <span class="hljs-number">65535</span><br><span class="hljs-comment"># HELP process_open_fds Number of open file descriptors.</span><br><span class="hljs-comment"># TYPE process_open_fds gauge</span><br><span class="hljs-attribute">process_open_fds</span> <span class="hljs-number">108</span><br><span class="hljs-comment"># HELP process_resident_memory_bytes Resident memory size in bytes.</span><br><span class="hljs-comment"># TYPE process_resident_memory_bytes gauge</span><br><span class="hljs-attribute">process_resident_memory_bytes</span> <span class="hljs-number">8</span>.<span class="hljs-number">8608768</span>e+<span class="hljs-number">07</span><br><span class="hljs-comment"># HELP process_start_time_seconds Start time of the process since unix epoch in seconds.</span><br><span class="hljs-comment"># TYPE process_start_time_seconds gauge</span><br><span class="hljs-attribute">process_start_time_seconds</span> <span class="hljs-number">1</span>.<span class="hljs-number">57595738888</span>e+<span class="hljs-number">09</span><br><span class="hljs-comment"># HELP process_virtual_memory_bytes Virtual memory size in bytes.</span><br><span class="hljs-comment"># TYPE process_virtual_memory_bytes gauge</span><br><span class="hljs-attribute">process_virtual_memory_bytes</span> <span class="hljs-number">1</span>.<span class="hljs-number">096615936</span>e+<span class="hljs-number">10</span><br></code></pre></td></tr></table></figure>
+
+<p>&amp;emsp;&amp;emsp;通过以上方式我们输出了etcd的metrics信息，我们可以看到 etcd 使用的证书都对应在节点的 &#x2F;etc&#x2F;kubernetes&#x2F;pki&#x2F;etcd 这个路径下面，所以首先我们将需要使用到的证书通过 secret 对象保存到kubernetes集群中去：(在 etcd 运行的节点)</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs gradle">kubectl -n monitoring create secret generic etcd-certs --<span class="hljs-keyword">from</span>-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd<span class="hljs-regexp">/healthcheck-client.crt --from-file=/</span>etc<span class="hljs-regexp">/kubernetes/</span>pki<span class="hljs-regexp">/etcd/</span>healthcheck-client.key --<span class="hljs-keyword">from</span>-<span class="hljs-keyword">file</span>=<span class="hljs-regexp">/etc/</span>kubernetes<span class="hljs-regexp">/pki/</span>etcd/ca.crt<br>secret <span class="hljs-string">&quot;etcd-certs&quot;</span> created<br></code></pre></td></tr></table></figure>
+
+<p>然后将上面创建的 etcd-certs 对象配置到 prometheus 资源对象中，直接更新 prometheus 资源对象即可：</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs routeros">kubectl <span class="hljs-built_in">edit</span> prometheus k8s -n monitoring<br></code></pre></td></tr></table></figure>
+
+<p>添加如下的 secrets 属性：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">nodeSelector</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">beta.kubernetes.io/os</span><span class="hljs-punctuation">:</span> <span class="hljs-string">linux</span><br><span class="hljs-attribute">replicas</span><span class="hljs-punctuation">:</span> <span class="hljs-string">2</span><br><span class="hljs-attribute">secrets</span><span class="hljs-punctuation">:</span><br><span class="hljs-bullet">-</span> <span class="hljs-string">etcd-certs</span><br></code></pre></td></tr></table></figure>
+
+<p>更新完成后，我们就可以在 Prometheus 的 Pod 中获取到上面创建的 etcd 证书文件了，具体的路径我们可以进入 Pod 中查看：</p>
+<figure class="highlight gradle"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs gradle">$ [root@k8s-m1 kube-prom]# kubectl exec -it prometheus-k8s-<span class="hljs-number">0</span> -c prometheus <span class="hljs-regexp">/bin/</span>sh -n monitoring <br><br><span class="hljs-regexp">/ $ ls /</span>etc<span class="hljs-regexp">/prometheus/</span>secrets<span class="hljs-regexp">/etcd-certs/</span><br>ca.crt      healthcheck-client.crt  healthcheck-client.key<br></code></pre></td></tr></table></figure>
+
+
+<h3 id="创建-ServiceMonitor"><a href="#创建-ServiceMonitor" class="headerlink" title="创建 ServiceMonitor"></a>创建 ServiceMonitor</h3><p>现在 Prometheus 访问 etcd 集群的证书已经准备好了，接下来创建 ServiceMonitor 对象即可（prometheus-serviceMonitorEtcd.yaml）</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">apiVersion:</span> monitoring.coreos.com/v1<br><span class="hljs-symbol">kind:</span> ServiceMonitor<br><span class="hljs-symbol">metadata:</span><br><span class="hljs-symbol">  name:</span> etcd-k8s<br><span class="hljs-symbol">  namespace:</span> monitoring<br><span class="hljs-symbol">  labels:</span><br>    k8s-app: etcd-k8s<br><span class="hljs-symbol">spec:</span><br><span class="hljs-symbol">  jobLabel:</span> k8s-app<br><span class="hljs-symbol">  endpoints:</span><br>  - port: port<br><span class="hljs-symbol">    interval:</span> <span class="hljs-number">30</span>s<br><span class="hljs-symbol">    scheme:</span> https<br><span class="hljs-symbol">    tlsConfig:</span><br><span class="hljs-symbol">      caFile:</span> <span class="hljs-keyword">/etc/</span>prometheus<span class="hljs-keyword">/secrets/</span>etcd-certs/ca.crt<br><span class="hljs-symbol">      certFile:</span> <span class="hljs-keyword">/etc/</span>prometheus<span class="hljs-keyword">/secrets/</span>etcd-certs/healthcheck-client.crt<br><span class="hljs-symbol">      keyFile:</span> <span class="hljs-keyword">/etc/</span>prometheus<span class="hljs-keyword">/secrets/</span>etcd-certs/healthcheck-client.key<br><span class="hljs-symbol">      insecureSkipVerify:</span> true<br><span class="hljs-symbol">  selector:</span><br><span class="hljs-symbol">    matchLabels:</span><br>      k8s-app: etcd<br><span class="hljs-symbol">  namespaceSelector:</span><br><span class="hljs-symbol">    matchNames:</span><br>    - kube-system<br></code></pre></td></tr></table></figure>
+<p>&amp;emsp;&amp;emsp;上面我们在 monitoring 命名空间下面创建了名为 etcd-k8s 的 ServiceMonitor 对象，匹配 kube-system 这个命名空间下面的具有 k8s-app&#x3D;etcd 这个 label 标签的 Service，jobLabel 表示用于检索 job 任务名称的标签。和前面不太一样的地方是 endpoints 属性的写法，配置上访问 etcd 的相关证书，endpoints 属性下面可以配置很多抓取的参数，tlsConfig 表示用于配置抓取监控数据端点的 tls 认证，由于证书 serverName 和 etcd 中签发的可能不匹配，所以加上了 insecureSkipVerify&#x3D;true</p>
+<p><img src="/images/etcd-5.jpg" srcset="/img/loading.gif" lazyload alt="etcd-5"></p>
+<p>关于 ServiceMonitor 属性的更多用法可以查看 <a target="_blank" rel="noopener" href="https://github.com/coreos/prometheus-operator/blob/master/Documentation/api.md">prometheus-operator api</a> 了解更多</p>
+<p>直接创建这个 ServiceMonitor 对象：</p>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs stylus">kubectl create -f prometheus-serviceMonitorEtcd<span class="hljs-selector-class">.yaml</span><br>servicemonitor<span class="hljs-selector-class">.monitoring</span><span class="hljs-selector-class">.coreos</span><span class="hljs-selector-class">.com</span> <span class="hljs-string">&quot;etcd-k8s&quot;</span> created<br></code></pre></td></tr></table></figure>
+
+<h2 id="创建-Service"><a href="#创建-Service" class="headerlink" title="创建 Service"></a>创建 Service</h2><p>ServiceMonitor 创建完成了，但是现在还没有关联的对应的 Service 对象，所以需要我们去手动创建一个 Service 对象（prometheus-etcdService.yaml）：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Service</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">etcd-k8s</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">etcd</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">ClusterIP</span><br>  <span class="hljs-attr">clusterIP:</span> <span class="hljs-string">None</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">port</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">2379</span><br>    <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Endpoints</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">etcd-k8s</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">kube-system</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">k8s-app:</span> <span class="hljs-string">etcd</span><br><span class="hljs-attr">subsets:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">addresses:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">10.15</span><span class="hljs-number">.1</span><span class="hljs-number">.17</span><br>    <span class="hljs-attr">targetRef:</span><br>      <span class="hljs-attr">kind:</span> <span class="hljs-string">Node</span><br>      <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-m1</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">10.15</span><span class="hljs-number">.1</span><span class="hljs-number">.18</span><br>    <span class="hljs-attr">targetRef:</span><br>      <span class="hljs-attr">kind:</span> <span class="hljs-string">Node</span><br>      <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-m2</span>   <br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">ip:</span> <span class="hljs-number">10.15</span><span class="hljs-number">.1</span><span class="hljs-number">.19</span><br>    <span class="hljs-attr">targetRef:</span><br>      <span class="hljs-attr">kind:</span> <span class="hljs-string">Node</span><br>      <span class="hljs-attr">name:</span> <span class="hljs-string">k8s-m3</span><br>  <span class="hljs-attr">ports:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">port</span><br>    <span class="hljs-attr">port:</span> <span class="hljs-number">2379</span><br>    <span class="hljs-attr">protocol:</span> <span class="hljs-string">TCP</span><br></code></pre></td></tr></table></figure>
+
+<p>&amp;emsp;&amp;emsp;我们这里创建的 Service 没有采用前面通过 label 标签的形式去匹配 Pod 的做法，因为前面我们说过很多时候我们创建的 etcd 集群是独立于集群之外的，这种情况下面我们就需要自定义一个 Endpoints，要注意 metadata 区域的内容要和 Service 保持一致，Service 的 clusterIP 设置为 None，对改知识点不太熟悉的，可以去查看我们前面关于 Service 部分的讲解。</p>
+<p>Endpoints 的 subsets 中填写 etcd 集群的地址即可，我们这里是单节点的，填写一个即可，直接创建该 Service 资源：</p>
+<figure class="highlight gauss"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs gauss">kubectl <span class="hljs-keyword">create</span> -f prometheus-etcdService.yaml<br></code></pre></td></tr></table></figure>
+
+<p>创建完成后，隔一会儿去 Prometheus 的 Dashboard 中查看 targets，便会有 etcd 的监控项了：<br><img src="/images/etcd-6.png" srcset="/img/loading.gif" lazyload alt="etcd-6"></p>
+<p>数据采集到后，可以在 grafana 中导入编号为<code>3070</code>的 dashboard，获取到 etcd 的监控图表。</p>
+<p><img src="/images/etcd-7.png" srcset="/img/loading.gif" lazyload alt="etcd-7"></p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Prometheus Operator 监控 etcd 集群</div>
+      <div>https://system51.github.io/2019/12/19/prometheus-operator-monitor-etcd/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年12月19日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2020/01/13/reserve-compute-resources-for-system-daemons/" title="Kubernetes 资源预留">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes 资源预留</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/12/05/Kubeadm-certificate-modified/" title="Kubeadm 证书过期时间调整">
+                        <span class="hidden-mobile">Kubeadm 证书过期时间调整</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

@@ -1,0 +1,752 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="Taints（污点）与tolerations（容忍度）一起工作确保Pod不会被调度到不合适的节点上。单个节点可以应用多个taint（污点），node不接受无法容忍taint（污点）的pod调度。Toleration（容忍度）是pod的属性，允许（非强制）pod调度到taints（污点）相匹配的node上去。（注意taints是node的属性，affinity是pod的属性。）  概念：12#通过">
+<meta property="og:type" content="article">
+<meta property="og:title" content="kuburnetes的Taints与Tolerations">
+<meta property="og:url" content="https://system51.github.io/2019/08/23/kuburnetes-Taints-Tolerations/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Taints（污点）与tolerations（容忍度）一起工作确保Pod不会被调度到不合适的节点上。单个节点可以应用多个taint（污点），node不接受无法容忍taint（污点）的pod调度。Toleration（容忍度）是pod的属性，允许（非强制）pod调度到taints（污点）相匹配的node上去。（注意taints是node的属性，affinity是pod的属性。）  概念：12#通过">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2019-08-23T06:39:36.000Z">
+<meta property="article:modified_time" content="2019-09-06T02:05:14.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+  
+  
+  
+  <title>kuburnetes的Taints与Tolerations - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="kuburnetes的Taints与Tolerations"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-23 14:39" pubdate>
+          2019年8月23日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          5.8k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          10 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">kuburnetes的Taints与Tolerations</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <blockquote>
+<p>Taints（污点）与tolerations（容忍度）一起工作确保Pod不会被调度到不合适的节点上。单个节点可以应用多个taint（污点），node不接受无法容忍taint（污点）的pod调度。Toleration（容忍度）是pod的属性，允许（非强制）pod调度到taints（污点）相匹配的node上去。（注意taints是node的属性，affinity是pod的属性。）</p>
+</blockquote>
+<h3 id="概念："><a href="#概念：" class="headerlink" title="概念："></a>概念：</h3><figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs routeros"><span class="hljs-comment">#通过kubectl taint为node添加taint，如：</span><br>kubectl taint nodes node1 <span class="hljs-attribute">key</span>=value:NoSchedule<br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>为node节点 node1增加一条taint（污点）。Taint（污点）的关键字为key，值为value，taint（污点）影响NoSchedule。意味着没有pod会被调度到node1上，除非Pod它有匹配的toleration（容忍度）。</p>
+</blockquote>
+<figure class="highlight gauss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs gauss"><span class="hljs-meta">#为node1删除刚才添加的taints，如下：</span><br>kubectl taint nodes node1 <span class="hljs-built_in">key</span>:NoSchedule-<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>可以为pod指定toleration（容忍度）。以下的两种toleration（容忍度）都与上文中创建的taint（污点）匹配，因此这个pod有可能被调试到node1上。</p>
+</blockquote>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">tolerations:</span><br>- key: <span class="hljs-string">&quot;key&quot;</span><br><span class="hljs-symbol">  operator:</span> <span class="hljs-string">&quot;Equal&quot;</span><br><span class="hljs-symbol">  value:</span> <span class="hljs-string">&quot;value&quot;</span><br><span class="hljs-symbol">  effect:</span> <span class="hljs-string">&quot;NoSchedule&quot;</span><br><span class="hljs-symbol">tolerations:</span><br>- key: <span class="hljs-string">&quot;key&quot;</span><br><span class="hljs-symbol">  operator:</span> <span class="hljs-string">&quot;Exists&quot;</span><br><span class="hljs-symbol">  effect:</span> <span class="hljs-string">&quot;NoSchedule&quot;</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>Toleration（容忍度）与taint（污点）匹配的条件是key相同、effect相同，并且：</p>
+</blockquote>
+<ul>
+<li>Operator的值是Exists（无需指定values的值）</li>
+<li>Operator是Equal，并且values的值相等<br>如果不指定，operator默认是Equal。</li>
+</ul>
+<h3 id="注意：两种特殊情况。"><a href="#注意：两种特殊情况。" class="headerlink" title="注意：两种特殊情况。"></a>注意：两种特殊情况。</h3><figure class="highlight vbnet"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs vbnet">#<span class="hljs-keyword">Key</span>为空，<span class="hljs-keyword">operator</span>为Exists表示匹配所有的<span class="hljs-keyword">key</span>。如下例表示匹配所有的taint（污点）：<br><span class="hljs-symbol">tolerations:</span><br>- <span class="hljs-keyword">operator</span>: <span class="hljs-string">&quot;Exists&quot;</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-meta">#空effect表示匹配所有effect，如：</span><br><span class="hljs-symbol">tolerations:</span><br>- key: <span class="hljs-string">&quot;key&quot;</span><br><span class="hljs-symbol">  operator:</span> <span class="hljs-string">&quot;Exists&quot;</span><br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>上例中用到了NoSchedule的effect。另外，可以使用PreferNoSchedule的effect，这是NoSchedule的“偏好”或者“软“版本。系统尽量避免非tolerate的pod调度到taint node上，但非强制要求。第三种可用的effect是NoExecute，后文描述。</p>
+</blockquote>
+<blockquote>
+<p>可以为单个node指定多条taint（污点），也可以为单个pod指定多条toleration（容忍度）。系统采用过滤的方式处理这种情况：首先从node的所有taint（污点）开始，然后将与pod中的toleration（容忍度）相匹配的taint（污点）删除，余下的taint（污点）对部署进来的pod产生影响。特别地：</p>
+</blockquote>
+<ul>
+<li>如果余下的taint（污点）中至少有一条的effect是NoSchedule，kubernetes将不会高度这个pod到的node上。</li>
+<li>如果余下的taint（污点）中没有effect为NoSchedule的taint（污点），但至少有一条effect为PreferNoSchedule，则系统尝试着不将pod部署在node上（也就是有可能还是会部署到这个node上）。</li>
+<li>如果余下的taint（污点）中至少有一条的effect是NoExecute，那么不旦新的pod不会被调度到这个node上，而且已经运行在这个node上的pod还会被驱逐出去。</li>
+</ul>
+<blockquote>
+<p>例如，假如像这样taint一个node：</p>
+</blockquote>
+<ul>
+<li><code>kubectl taint nodes node1 key1=value1:NoSchedule</code></li>
+<li><code>kubectl taint nodes node1 key1=value1:NoExecute</code></li>
+<li><code>kubectl taint nodes node1 key2=value2:NoSchedule</code></li>
+</ul>
+<h3 id="pod有两个toleration："><a href="#pod有两个toleration：" class="headerlink" title="pod有两个toleration："></a>pod有两个toleration：</h3><figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">tolerations:</span><br>- key: <span class="hljs-string">&quot;key1&quot;</span><br><span class="hljs-symbol">  operator:</span> <span class="hljs-string">&quot;Equal&quot;</span><br><span class="hljs-symbol">  value:</span> <span class="hljs-string">&quot;value1&quot;</span><br><span class="hljs-symbol">  effect:</span> <span class="hljs-string">&quot;NoSchedule&quot;</span><br>- key: <span class="hljs-string">&quot;key1&quot;</span><br><span class="hljs-symbol">  operator:</span> <span class="hljs-string">&quot;Equal&quot;</span><br><span class="hljs-symbol">  value:</span> <span class="hljs-string">&quot;value1&quot;</span><br><span class="hljs-symbol">  effect:</span> <span class="hljs-string">&quot;NoExecute&quot;</span><br></code></pre></td></tr></table></figure>
+
+
+<blockquote>
+<p>这种情况下，pod不能调度到node上。因为pod没有toleration（容忍度）与node的第三条taint（污点）匹配。但是在添加taint（污点）之前已经运行在node上的pod不受影响（这里之前运行的pod指添加了toleration（容忍度）的pod），可能将pod排除出node的noExecute因为被过滤而没有生效。</p>
+</blockquote>
+<blockquote>
+<p>一般情况下，如果一个effect为NoExecute的taint（污点）应用于node，运行在node上的所有不能容忍这条taint（污点）的pod都会被排挤出node，能容忍这种taint（污点）的pod则不会被排挤。然而，如果effect为NoExecute的toleration（容忍度）指定给pod，同时添加可选的tolerationSeconds字段，则表示pod被排挤出node之前，以taint（污点）的添加时间为起点，允许此pod在此node上的生存时间。</p>
+</blockquote>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-meta">#例如：</span><br><span class="hljs-symbol"></span><br><span class="hljs-symbol">tolerations:</span><br>- key: <span class="hljs-string">&quot;key1&quot;</span><br><span class="hljs-symbol">  operator:</span> <span class="hljs-string">&quot;Equal&quot;</span><br><span class="hljs-symbol">  value:</span> <span class="hljs-string">&quot;value1&quot;</span><br><span class="hljs-symbol">  effect:</span> <span class="hljs-string">&quot;NoExecute&quot;</span><br><span class="hljs-symbol">  tolerationSeconds:</span> <span class="hljs-number">3600</span><br><br><span class="hljs-meta">#表示可以多存活3600秒。</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="使用案例："><a href="#使用案例：" class="headerlink" title="使用案例："></a>使用案例：</h3><blockquote>
+<p>Taints与tolerations可以灵活的控制pod远离node，或者将不应该运行的pod从node上排挤出去。以下是几个使用案例：</p>
+</blockquote>
+<ul>
+<li>专用node：如果打算指定特定node集合供特定用户专用，那么可以给这些node添加一条taint（kubectl taint nodes nodename dedicated&#x3D;groupName:NoSchedule），然后在相应的pod上添加匹配的toleration（容忍度）。拥有toleration的pod被允许像使用集群中的其它node一样使用拥有taint的node。如果打算让pod只使用taint性质的node，并且只能使用taint的node的话，可以对这些taint的node再额外增加标签（例如：dedicated&#x3D;groupName），然后再通过入口控制器为这些pod额外再增加亲和性要求它们只能部署到拥有dedicated&#x3D;groupName的node上。总结就是通过标签的亲和性控制pod部署到特定的node上，通过为node增加taint并且为pod增加toleration抵制其它pod部署到这些node上，从而实现node专用。</li>
+<li>拥有特殊硬件的node：在集群中，有少数node拥有特殊的硬件配置（例如 GPUs），希望那些不使用特殊的硬件的pod尽量不要部署到这些拥有特殊硬件的node上，为后续到达的需要使用特殊硬件的pod预留出空间。通过如下方法达到这个目的。首先为node添加taint，taint表示node拥有特殊硬件（例如： kubectl taint nodes nodename special&#x3D;true:NoSchedule 或者 kubectl taint nodes nodename special&#x3D;true:PreferNoSchedule），然后为需要使用特殊硬件的pod添加相应的toleration。像专用node的例子一样，通过入口控制器很容易为pod添加对应的toleration。例如：推荐使用“扩展资源”代表特殊硬件，使用“扩展资源”的名称为拥有特殊硬件的node添加taint，当提交的pod被配置为需要使用特殊硬件时，扩展资源入口控制器自动为其加上正确的toleration。</li>
+<li>基于taint的驱逐（测试特性）：一种当node出现问题时per-pod-configurable的驱逐行为，下节介绍。</li>
+</ul>
+<h3 id="基于taint的驱逐"><a href="#基于taint的驱逐" class="headerlink" title="基于taint的驱逐:"></a>基于taint的驱逐:</h3><blockquote>
+<p>先前提到的effect为NoExecute的taint，它对已经运行在node上的pod的影响如下：</p>
+</blockquote>
+<ul>
+<li>如果pod没有toleration这个taint的话，pod立即被驱逐。</li>
+<li>如果toleration了这个taint，并且没有指定tolerationSeconds的值，则一直不会驱逐</li>
+<li>如果toleration了这个taint，但是指定tolerationSeconds限定了容忍的时间，则到期后驱逐</li>
+</ul>
+<blockquote>
+<p>此外，Kubernetes用taint代表node出了问题（1.13beta版）。换句话说，当Node某些条件为<code>True</code>时，节点控制器自动为Node节点添加污点，而在状态为Ready的Node上，之前设置过的普通的驱逐逻辑将会被禁用。内置以下污点：</p>
+</blockquote>
+<ul>
+<li><code>node.kubernetes.io/not-ready</code>：节点尚未就绪。这对应于NodeCondition Ready为“ False”。</li>
+<li><code>node.kubernetes.io/unreachable</code>：Node controlloer无法访问节点。这对应于NodeCondition Ready为“ Unknown”。</li>
+<li><code>node.kubernetes.io/out-of-disk</code>：节点变得磁盘不足。</li>
+<li><code>node.kubernetes.io/memory-pressure</code>：节点有内存压力。</li>
+<li><code>node.kubernetes.io/disk-pressure</code>：节点有磁盘压力。</li>
+<li><code>node.kubernetes.io/network-unavailable</code>：节点的网络不可用。</li>
+<li><code>node.kubernetes.io/unschedulable</code>：节点是不可调度的。</li>
+<li><code>node.cloudprovider.kubernetes.io/uninitialized</code>：当使用“外部”云提供程序启动kubelet时，会在节点上设置此污点以将其标记为不可用。在cloud-controller-manager的控制器初始化此节点后，kubelet将删除此污点。</li>
+</ul>
+<blockquote>
+<p>注意：在节点故障的情况下，为了保持现存的Pod驱逐的限速设置，系统将会以限速的模式逐步给Node设置Taint，这就能避免在一些特定情况下（比如Master暂时失联）大量的Pod被驱逐。这一功能兼容于<code>tolerationSeconds</code>允许Pod定义节点故障时持续多久才被逐出。<br>例如：一个包含很多本地状态的应用可能需要在网络发生故障时，还能持续在节点上运行，期望网络能够快速恢复，从而避免被从这个节点上驱逐。Pod的toleration可以这样定义：</p>
+</blockquote>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">tolerations:</span><br>- key: <span class="hljs-string">&quot;node.kubernetes.io/unreachable&quot;</span><br><span class="hljs-symbol">  operator:</span> <span class="hljs-string">&quot;Exists&quot;</span><br><span class="hljs-symbol">  effect:</span> <span class="hljs-string">&quot;NoExecute&quot;</span><br><span class="hljs-symbol">  tolerationSeconds:</span> <span class="hljs-number">6000</span><br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<ul>
+<li>对于Node未就绪状态，可以把Key设置为<code>node.kubernetes.io/not-ready</code>如果没有为Pod指定<code>node.kubernetes.io/not-ready</code> 的<code>Tolerations</code>，那么Kubernetes会自动为Pod加入<code>tolerationSeconds= 300</code>的<code>node.kubernetes.io/not-ready </code>类型的<code>Tolerations</code></li>
+</ul>
+</blockquote>
+<ul>
+<li>同样如果Pod没有定义<code>node.kubernetes.io/unreachable</code>的<code>Tolerations</code>那么系统会自动为其加入<code>tolerationSeconds=300</code>的<code>node.kubernetes.io/unreachable</code>类型的<code>Tolerations</code></li>
+</ul>
+<blockquote>
+<p> 这些系统自动设置的<code>Tolerations</code>在Node发现问题时，能够为Pod确保驱逐前再运行5min。</p>
+</blockquote>
+<h4 id="其阈值由kubelet如下参数控制："><a href="#其阈值由kubelet如下参数控制：" class="headerlink" title="其阈值由kubelet如下参数控制："></a>其阈值由kubelet如下参数控制：</h4><blockquote>
+<ul>
+<li><code>--eviction-hard</code>：驱逐阈值(例如memory.available&lt;1Gi)，如果满足这些阈值，就会触发pod驱逐。(默认imagefs.available &lt; 15%, memory.available &lt; 100 mi, nodefs.available &lt; 10%, nodefs.inodesFree &lt; 5%)</li>
+</ul>
+</blockquote>
+<ul>
+<li><code>--eviction-soft</code>：驱逐阈值(例如memory.available&lt;1.5Gi)，如果在相应的宽限期内达到该阈值，就会触发pod驱逐。</li>
+<li><code>--eviction-minimum-reclaim</code>：最小回收(例如imagef .available&#x3D;2Gi)，描述kubelet在执行pod回收(如果该资源处于压力之下)时回收的最小资源量。</li>
+<li><code>--eviction-pressure-transition-period</code>：kubelet必须等待一段时间才能从驱逐压力状态过渡出来。(默认5m0)</li>
+</ul>
+<h4 id="编辑kubelet-conf-yml文件修改默认阈值来调整驱逐条件："><a href="#编辑kubelet-conf-yml文件修改默认阈值来调整驱逐条件：" class="headerlink" title="编辑kubelet-conf.yml文件修改默认阈值来调整驱逐条件："></a>编辑kubelet-conf.yml文件修改默认阈值来调整驱逐条件：</h4><figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-bullet">-</span> <span class="hljs-string">pods</span><br><span class="hljs-attribute">eventBurst</span><span class="hljs-punctuation">:</span> <span class="hljs-string">10</span><br><span class="hljs-attribute">eventRecordQPS</span><span class="hljs-punctuation">:</span> <span class="hljs-string">5</span><br><span class="hljs-attribute">evictionHard</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">imagefs.available</span><span class="hljs-punctuation">:</span> <span class="hljs-string">15%</span><br>  <span class="hljs-attribute">memory.available</span><span class="hljs-punctuation">:</span> <span class="hljs-string">100Mi</span><br>  <span class="hljs-attribute">nodefs.available</span><span class="hljs-punctuation">:</span> <span class="hljs-string">10%</span><br>  <span class="hljs-attribute">nodefs.inodesFree</span><span class="hljs-punctuation">:</span> <span class="hljs-string">5%</span><br><span class="hljs-attribute">evictionPressureTransitionPeriod</span><span class="hljs-punctuation">:</span> <span class="hljs-string">5m0s</span><br></code></pre></td></tr></table></figure>
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>kuburnetes的Taints与Tolerations</div>
+      <div>https://system51.github.io/2019/08/23/kuburnetes-Taints-Tolerations/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月23日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/23/Kubernetes-Job/" title="Kubernetes之Job">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Kubernetes之Job</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/23/Kubernetes-DaemonSet/" title="Kubernetes之DaemonSet">
+                        <span class="hidden-mobile">Kubernetes之DaemonSet</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

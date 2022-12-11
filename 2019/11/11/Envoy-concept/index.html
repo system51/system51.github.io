@@ -1,0 +1,1092 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="什么是Envoy？Envoy 是以 C++ 开发的高性能非阻塞的服务代理程序，其内置服务发现、高级负载均衡、TLS终止、HTTP&#x2F;2、GRPC代理、熔断器、健康检查、L3&#x2F;4网络过滤器、L7层过滤器、动态配置，基于百分比流量拆分的灰度发布、故障注入等功能。Envoy是的新型服务代理程序，与HAProxy和Nginx一样。但Envoy主要面向SOA（面向服务的架构）的网络代理，所">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Envoy的概念与术语">
+<meta property="og:url" content="https://system51.github.io/2019/11/11/Envoy-concept/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="什么是Envoy？Envoy 是以 C++ 开发的高性能非阻塞的服务代理程序，其内置服务发现、高级负载均衡、TLS终止、HTTP&#x2F;2、GRPC代理、熔断器、健康检查、L3&#x2F;4网络过滤器、L7层过滤器、动态配置，基于百分比流量拆分的灰度发布、故障注入等功能。Envoy是的新型服务代理程序，与HAProxy和Nginx一样。但Envoy主要面向SOA（面向服务的架构）的网络代理，所">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/envoy-1.png">
+<meta property="og:image" content="https://system51.github.io/images/envoy-4.png">
+<meta property="og:image" content="https://system51.github.io/images/envoy-5.png">
+<meta property="og:image" content="https://system51.github.io/images/envoy-2.png">
+<meta property="og:image" content="https://system51.github.io/images/envoy-3.png">
+<meta property="article:published_time" content="2019-11-11T00:41:14.000Z">
+<meta property="article:modified_time" content="2019-11-25T01:27:58.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/envoy-1.png">
+  
+  
+  
+  <title>Envoy的概念与术语 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Envoy的概念与术语"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-11-11 08:41" pubdate>
+          2019年11月11日 早上
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          21k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          35 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Envoy的概念与术语</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="什么是Envoy？"><a href="#什么是Envoy？" class="headerlink" title="什么是Envoy？"></a>什么是Envoy？</h2><p>Envoy 是以 C++ 开发的高性能非阻塞的服务代理程序，其内置服务发现、高级负载均衡、TLS终止、HTTP&#x2F;2、GRPC代理、熔断器、健康检查、L3&#x2F;4网络过滤器、L7层过滤器、动态配置，基于百分比流量拆分的灰度发布、故障注入等功能。<br>Envoy是的新型服务代理程序，与HAProxy和Nginx一样。但Envoy主要面向SOA（面向服务的架构）的网络代理，所以非常适用于微服务，其主要是用来调解Service Mesh中所有服务的入站和出站流量。</p>
+<p>Envoy使用单进程&#x2F;多线程的架构模型，一个主线程（Main thread）负责实现各类管理任务，而一些工作线程（Worker threads）则负责执行监听、过滤和转发等代理服务器的核心功能。</p>
+<h3 id="主线程："><a href="#主线程：" class="headerlink" title="主线程："></a>主线程：</h3><p>负责Envoy程序的启动和关闭、xDS API调用处理（包括DNS、健康状态检测和集群管理等）、运行时配置、统计数据刷新、管理接口维护和其它线程管理（信号和热重启等）等，相关的所有事件均以异步非阻塞模式完成；</p>
+<h3 id="工作线程："><a href="#工作线程：" class="headerlink" title="工作线程："></a>工作线程：</h3><p>默认情况下，Envoy根据当前主机CPU核心数来创建等同数量的工作线程，不过，管理员也可以通过程序选项–concurrency具体指定；每个工作线程运行一个非阻塞型事件循环，负责为每个侦听器监听指定的套接字、接收新请求、为每个连接初始一个过滤器栈并处理此连接整个生命周期中的所有事件；</p>
+<h3 id="文件刷写线程："><a href="#文件刷写线程：" class="headerlink" title="文件刷写线程："></a>文件刷写线程：</h3><p>Envoy写入的每个文件都有一个专用、独立的阻塞型刷写线程，当工作线程需要写入文件时，数据实际上被移入内存缓冲区，最终通过文件刷写线程同步至文件中。</p>
+<h2 id="xDS-API常用术语"><a href="#xDS-API常用术语" class="headerlink" title="xDS API常用术语"></a>xDS API常用术语</h2><h4 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h4><table>
+<thead>
+<tr>
+<th>Concept</th>
+<th align="center">概念</th>
+<th align="right">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Host</td>
+<td align="center">主机</td>
+<td align="right">能够进行网络通信的实体（如移动设备、服务器上的应用程序）。在Envoy，主机是逻辑网络应用程序。一块物理硬件上可能运行有多个主机，只要它们是可以独立寻址的。</td>
+</tr>
+<tr>
+<td>Downstream</td>
+<td align="center">下游</td>
+<td align="right">下游主机连接到 Envoy，发送请求并接收响应。</td>
+</tr>
+<tr>
+<td>Upstream</td>
+<td align="center">上游</td>
+<td align="right">上游主机接收来自 Envoy 的连接和请求，并返回响应。</td>
+</tr>
+<tr>
+<td>Mesh</td>
+<td align="center">网格</td>
+<td align="right">一组主机，协调好以提供一致的网络拓扑。在本文档中，“Envoy mesh”是一组 Envoy 代理，它们构成了分布式系统的消息传递基础，这个分布式系统由很多不同服务和应用程序平台组成。</td>
+</tr>
+<tr>
+<td>Runtime configuration</td>
+<td align="center">运行时配置</td>
+<td align="right">外置实时配置系统，和 Envoy 一起部署。可以更改配置设置，影响操作，而无需重启 Envoy 或更改主要配置。</td>
+</tr>
+</tbody></table>
+<h4 id="请求转发概念"><a href="#请求转发概念" class="headerlink" title="请求转发概念"></a>请求转发概念</h4><table>
+<thead>
+<tr>
+<th>Concept</th>
+<th align="center">概念</th>
+<th align="right">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Listener</td>
+<td align="center">监听器</td>
+<td align="right">监听器是命名网地址（例如，端口、unix domain socket等)，可以被下游客户端连接。Envoy 暴露一个或者多个监听器给下游主机连接</td>
+</tr>
+<tr>
+<td>Router</td>
+<td align="center">路由</td>
+<td align="right">路由是一组将虚拟主机(virtual hosts)与群集(cluster)匹配的规则(rule)，允许您创建流量转移规则</td>
+</tr>
+<tr>
+<td>Cluster</td>
+<td align="center">集群</td>
+<td align="right">集群是指 Envoy 连接到的逻辑上相同的一组上游主机</td>
+</tr>
+<tr>
+<td>Endpoint</td>
+<td align="center">端点</td>
+<td align="right">Envoy将“端点(Endpoint)”定义为群集(Cluster)中可用的IP和端口</td>
+</tr>
+</tbody></table>
+<h4 id="xDS-API概念"><a href="#xDS-API概念" class="headerlink" title="xDS API概念"></a>xDS API概念</h4><p>xds API 是 Envoy 定义的，用于控制平面和数据平面之间数据交互的通讯协议。</p>
+<table>
+<thead>
+<tr>
+<th>Concept</th>
+<th align="center">全称</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LDS</td>
+<td align="center">Listener Discovery Service</td>
+</tr>
+<tr>
+<td>RDS</td>
+<td align="center">Route Discovery Service</td>
+</tr>
+<tr>
+<td>CDS</td>
+<td align="center">Cluster Discovery Service</td>
+</tr>
+<tr>
+<td>EDS</td>
+<td align="center">Endpoint Discovery Service</td>
+</tr>
+<tr>
+<td>ADS</td>
+<td align="center">Aggregated Discovery Service</td>
+</tr>
+<tr>
+<td>HDS</td>
+<td align="center">Health Discovery Service</td>
+</tr>
+<tr>
+<td>SDS</td>
+<td align="center">Secret Discovery Service</td>
+</tr>
+<tr>
+<td>MS</td>
+<td align="center">Secret Discovery Service</td>
+</tr>
+<tr>
+<td>RLS</td>
+<td align="center">Rate Limit Service</td>
+</tr>
+</tbody></table>
+<h4 id="和xDS相关的其他概念还有："><a href="#和xDS相关的其他概念还有：" class="headerlink" title="和xDS相关的其他概念还有："></a>和xDS相关的其他概念还有：</h4><table>
+<thead>
+<tr>
+<th>概念</th>
+<th align="center">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Management Server</td>
+<td align="center">实现v2 Envoy API的逻辑服务器。这不一定是单个物理机器，因为它可以被复制&#x2F;分片，并且用于不同xDS API的API服务可以在不同的物理机器上实现。</td>
+</tr>
+</tbody></table>
+<h4 id="区域概念"><a href="#区域概念" class="headerlink" title="区域概念"></a>区域概念</h4><table>
+<thead>
+<tr>
+<th>Concept</th>
+<th align="center">概念</th>
+<th align="right">描述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Locality</td>
+<td align="center">局域性</td>
+<td align="right">Envoy实例或端点运行的位置。这包括地域&#x2F;region，分区&#x2F;zone和子分区&#x2F;sub-zone标识。</td>
+</tr>
+<tr>
+<td>Region</td>
+<td align="center">地域</td>
+<td align="right">分区（zone）所在的地理区域。</td>
+</tr>
+<tr>
+<td>Zone</td>
+<td align="center">分区</td>
+<td align="right">AWS中的Availability Zone (AZ), GCP中的Zone</td>
+</tr>
+<tr>
+<td>Sub-zone</td>
+<td align="center">子分区</td>
+<td align="right">Envoy实例或端点在分区内运行的位置。这允许在分区内存在多个负载均衡目标。</td>
+</tr>
+</tbody></table>
+<h2 id="Envoy部署类型"><a href="#Envoy部署类型" class="headerlink" title="Envoy部署类型"></a>Envoy部署类型</h2><p>Envoy 有多种使用场景，其中更多情况下Envoy用于以容器编排系统为底层环境的服务网格中，并以sidecar的形式与主程序容器运行为单个Pod；</p>
+<p>常见部署类型如下图所示：<br><img src="/images/envoy-1.png" srcset="/img/loading.gif" lazyload alt="envoy-1"></p>
+<ul>
+<li>仅服务之间(东西流量)<ul>
+<li>服务间 egress listener</li>
+<li>服务间 ingress listener</li>
+<li>可选外部服务 egress listener</li>
+</ul>
+</li>
+<li>服务之间外加前端代理(南北流量)</li>
+<li>服务间、前端代理、双向代理</li>
+</ul>
+<h3 id="仅服务之间"><a href="#仅服务之间" class="headerlink" title="仅服务之间"></a>仅服务之间</h3><p><img src="/images/envoy-4.png" srcset="/img/loading.gif" lazyload alt="envoy-4"></p>
+<p>上图显示了最简单的 Envoy 部署，它使用 Envoy 作为面向服务架构（SOA）内部的所有流量的通信总线。在这种情况下，Envoy 暴露了几个用于本地来源流量以及服务流量的监听器<code>egress listener</code>和<code>igress listener</code>。</p>
+<h4 id="服务间-egress-listener"><a href="#服务间-egress-listener" class="headerlink" title="服务间 egress listener"></a>服务间 egress listener</h4><p>这是应用程序与基础结构中的其他服务对话所使用的端口。 例如，<code>http://localhost:9001</code>。HTTP 和 gRPC请求使用 HTTP&#x2F;1.1 host 头或 HTTP&#x2F;2:authority 头来表示请求指向哪个远程集群。根据配置中的详细信息，Envoy 处理服务发现、负载平衡、速率限制等。服务只需要了解本地 Envoy，不需要关心网络拓扑结构，无论他们是在开发还是在生产中运行。<br>此监听器支持 HTTP&#x2F;1.1 或 HTTP&#x2F;2，具体取决于应用程序的功能。</p>
+<h4 id="服务间-ingress-listener"><a href="#服务间-ingress-listener" class="headerlink" title="服务间 ingress listener"></a>服务间 ingress listener</h4><p>这是远程 Envoys 想要与本地 Envoys 通信时使用的端口。例如，<code>http://localhost:9211</code>。入向请求将通过配置的端口路由到本地服务。根据应用程序或负载平衡需求（例如，如果服务需要 HTTP 端口和 gRPC 端口），可能会涉及多个应用程序端口。 本地 Envoy 根据需要执行缓冲、熔断等。<br>我们的默认配置对所有 Envoy 相互间的通信使用 HTTP&#x2F;2 协议，无论应用程序在通过本地 Envoy 出向时使用的是 HTTP&#x2F;1.1 还是 HTTP&#x2F;2。 HTTP&#x2F;2 通过长连接和显式重置通知提供更好的性能。</p>
+<h3 id="服务间外加前端代理"><a href="#服务间外加前端代理" class="headerlink" title="服务间外加前端代理"></a>服务间外加前端代理</h3><p><img src="/images/envoy-5.png" srcset="/img/loading.gif" lazyload alt="envoy-5"></p>
+<p>上图显示了作为 HTTP L7 边缘（前端）反向代理 Envoy 群集的 服务到服务 配置。反向代理提供以下功能：</p>
+<ul>
+<li>终止 TLS。</li>
+<li>支持 HTTP&#x2F;1.1 和 HTTP&#x2F;2。</li>
+<li>HTTP L7 路由支持。</li>
+<li>前端 Envoy 与服务到服务的 Envoy 集群使用标准 <code>ingress port</code> 通信，并结合使用发现服务进行主机查找。因此，前端 Envoy 主机与任何其他 Envoy 主机的工作方式相同，除了他们不与其他服务搭配运行。这意味着以相同的方式操作他们并发出相同的统计数据。（Envoy容器分<code>Ingress Port</code>和<code>Egress Port</code>）</li>
+</ul>
+<h2 id="Envoy配置概述"><a href="#Envoy配置概述" class="headerlink" title="Envoy配置概述"></a>Envoy配置概述</h2><ul>
+<li>启动时从Bootstrap配置文件中加载初始配置</li>
+<li>静态配置</li>
+<li>支持动态配置<ul>
+<li>xDS API<ul>
+<li>从配置文件加载配置</li>
+<li>从管理服务器（Management Server）基于xds协议加载配置</li>
+</ul>
+</li>
+<li>runtime<ul>
+<li>某些关键特性（Feature flags）保存为key&#x2F;value数据</li>
+<li>支持多层配置和覆盖机制</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>启用全动态配置机制后，仅极少数场景需要重新启动Envoy进程<ul>
+<li>支持热重启</li>
+</ul>
+</li>
+</ul>
+<h2 id="Envoy配置中的重要概念"><a href="#Envoy配置中的重要概念" class="headerlink" title="Envoy配置中的重要概念"></a>Envoy配置中的重要概念</h2><ul>
+<li>Bootstrap配置中几个重要的基础概念<ul>
+<li>node：节点标识，以呈现给管理服务器并且例如用于标识目的；</li>
+<li>static_resources：静态配置的资源，用于配置静态的listener、cluster和secret；</li>
+<li>dynamic_resources：动态配置的资源，用于配置基于xDS API获取listener、cluster和secret配置的lds_config、cds_config和ads_config；</li>
+<li>admin：Envoy内置的管理接口；</li>
+<li>tracing：分布式跟踪；</li>
+<li>layered_runtime：层级化的运行时，支持使用RTDS从管理服务器动态加载；</li>
+<li>hds_config：使用HDS从管理服务器加载上游主机健康状态检测相关的配置；</li>
+<li>overload_manager：过载管理器；</li>
+<li>stats_sinks：统计信息接收器；</li>
+<li>一般来说，侦听器和集群是最为常用基础配置，无论是以静态或者是动态方式提供；</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight prolog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs prolog">&#123;<br>  <span class="hljs-string">&quot;node&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;static_resources&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;dynamic_resources&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;cluster_manager&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;hds_config&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;flags_path&quot;</span>: <span class="hljs-string">&quot;...&quot;</span>,<br>  <span class="hljs-string">&quot;stats_sinks&quot;</span>: [],<br>  <span class="hljs-string">&quot;stats_config&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;stats_flush_interval&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;watchdog&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;tracing&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;runtime&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;layered_runtime&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;admin&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;overload_manager&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;enable_dispatcher_stats&quot;</span>: <span class="hljs-string">&quot;...&quot;</span>,<br>  <span class="hljs-string">&quot;header_prefix&quot;</span>: <span class="hljs-string">&quot;...&quot;</span>,<br>  <span class="hljs-string">&quot;stats_server_version_override&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span><br>&#125;<br></code></pre></td></tr></table></figure>
+
+<h3 id="侦听器和集群配置概述"><a href="#侦听器和集群配置概述" class="headerlink" title="侦听器和集群配置概述"></a>侦听器和集群配置概述</h3><ul>
+<li>侦听器<ul>
+<li>接受来自下游客户端请求的入口端点，通常每个监听器都独立配置有一些网络级别（L3&#x2F;L4）的过滤器，当侦听器接接收到新连接时，配置好的连接本地过滤器将被实例化，并开始处理后续事件。通用监听器架构用于执行绝大多数不同的代理任务，例如tcp_proxy和http_connection_manager等代理类的过滤器负责路由请求。</li>
+</ul>
+</li>
+<li>集群<ul>
+<li>一组上游主机的逻辑组合</li>
+<li>每个主机映射为集群中的一个端点</li>
+<li>下游的请求被调度至上游主机</li>
+</ul>
+</li>
+</ul>
+<h3 id="Envoy-流量走势图"><a href="#Envoy-流量走势图" class="headerlink" title="Envoy 流量走势图"></a>Envoy 流量走势图</h3><p><img src="/images/envoy-2.png" srcset="/img/loading.gif" lazyload alt="envoy-2"></p>
+<h2 id="Envoy的配置方式"><a href="#Envoy的配置方式" class="headerlink" title="Envoy的配置方式"></a>Envoy的配置方式</h2><ul>
+<li>Envoy的架构支持非常灵活的配置方式：简单部署场景可以使用纯静态配置，而更复杂的部署场景则可以逐步添加需要的动态配置机制；<ul>
+<li>纯静态配置：用户自行提供侦听器、过滤器链、集群及HTTP路由（http代理场景），上游端点的发现仅可通过DNS服务进行，且配置的重新加载必须通过内置的热重启（hotrestart）完成；</li>
+<li>仅使用EDS：EDS提供的端点发现功能可有效规避DNS的限制（响应中的最大记录数等）；</li>
+<li>使用EDS和CDS：CDS能够让Envoy以优雅的方式添加、更新和删除上游集群，于是，初始配置时，Envoy无须事先了解所有上游集群；</li>
+<li>EDS、CDS和RDS：动态发现路由配置；RDS与EDS、CDS一起使用时，为用户提供了构建复杂路由拓扑的能力（流量转移、蓝&#x2F;绿部署等）；</li>
+<li>EDS、CDS、RDS和LDS：动态发现侦听器配置，包括内嵌的过滤器链；启用此四种发现服务后，除了较罕见的配置变动、证书轮替或更新Envoy程序之外，几乎无须再热重启Envoy；</li>
+<li>EDS、CDS、RDS、LDS和SDS：动态发现侦听器密钥相关的证书、私钥及TLS会话票据，以及对证书验证逻辑的配置（受信任的根证书和撤销机制等）；</li>
+</ul>
+</li>
+</ul>
+<h2 id="Listener"><a href="#Listener" class="headerlink" title="Listener"></a>Listener</h2><p><code>Listerner</code>接受来自下游客户端请求，Envoy配置支持在单个进程内有任意数量的<code>Listerner</code>（监听器）。通常我们建议每台机器运行一个Envoy，而不必介意配置的监听器数量。这样可以更容易的操作，并有单一的统计来源。（备注：目前 Envoy 只支持 TCP 监听器）</p>
+<h3 id="Listener配置"><a href="#Listener配置" class="headerlink" title="Listener配置"></a>Listener配置</h3><p>监听器配置可以在<code>Bootstrap</code>（引导程序）配置中静态声明，也可以通过监听器发现服务（Listerner Discovert Service&#x2F;LDS）动态声明。</p>
+<h4 id="静态声明："><a href="#静态声明：" class="headerlink" title="静态声明："></a>静态声明：</h4><ul>
+<li>纯静态资源配置方式主是直接在配置文件中通过static_resources配置参数明确定义listeners、clusters和secrets的配置方式，各配置参数的数据类型如下面的配置所示；<ul>
+<li>其中，listeners用于配置纯静态类型的侦听器列表，clusters用于定义可用的集群列表及每个集群的端点，而可选的secrets用于定义TLS通信中用到数字证书等配置信息</li>
+<li>具体使用时<code>admin</code>和<code>static_resources</code>两参数即可提供一个最小化的资源配置；</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight prolog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs prolog">&#123;<br><span class="hljs-string">&quot;listeners&quot;</span>: [],<br><span class="hljs-string">&quot;clusters&quot;</span>: [],<br><span class="hljs-string">&quot;secrets&quot;</span>: []<br>&#125;<br></code></pre></td></tr></table></figure>
+
+<h4 id="Listener简易静态配置"><a href="#Listener简易静态配置" class="headerlink" title="Listener简易静态配置"></a>Listener简易静态配置</h4><p>侦听器主要用于定义Envoy监听的用于接收Downstreams请求的套接字、用于处理请求时调用的过滤器链及相关的其它配置属性；</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">listeners:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span><br>  <span class="hljs-attr">address:</span><br>  <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-string">...</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-string">...</span>, <span class="hljs-attr">protocol:</span> <span class="hljs-string">...</span> &#125;<br>  <span class="hljs-attr">filter_chains:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">filters:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span><br>    <span class="hljs-attr">config:</span><br></code></pre></td></tr></table></figure>
+
+<p>L4过滤器<code>echo</code>主要用于演示网络过滤器API的功能，它会回显接收到的所有数据至下游的请求者；在配置文件中调用时其名称为<code>envoy.echo</code>；</p>
+<p>下面是一个最简单的静态侦听器配置示例：</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">static_resources</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">listeners</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">containers_1</span><br>     <span class="hljs-attribute">address</span><span class="hljs-punctuation">:</span><br>       <span class="hljs-attribute">socket_address</span><span class="hljs-punctuation">:</span><br>         <span class="hljs-attribute">address</span><span class="hljs-punctuation">:</span> <span class="hljs-string">0.0.0.0</span><br>         <span class="hljs-attribute">port_value</span><span class="hljs-punctuation">:</span> <span class="hljs-string">15001</span><br>     <span class="hljs-attribute">filter_chains</span><span class="hljs-punctuation">:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-string">filters:</span><br>       <span class="hljs-bullet">-</span> <span class="hljs-string">name: envoy.echo</span><br></code></pre></td></tr></table></figure>
+
+<h2 id="基于镜像启动第一个Envoy实例"><a href="#基于镜像启动第一个Envoy实例" class="headerlink" title="基于镜像启动第一个Envoy实例"></a>基于镜像启动第一个Envoy实例</h2><p>基于envoy的预制docker镜像启动实例时，需要额外自定义配置文件。Envoy镜像默认的配置文件在<code>/etc/envoy/envoy.yaml</code>但未必符合用户的使用需求，因此，用户一般需要自定义好配置文件，而后将其以存储卷的方式挂载进容器；</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">docker run --name envoy -p <span class="hljs-number">80</span>:<span class="hljs-number">15001</span> -v <span class="hljs-regexp">/root/</span>envoy.yaml:<span class="hljs-regexp">/etc/</span>envoy<span class="hljs-regexp">/envoy.yaml envoyproxy/</span>envoy-alpine:latest<br></code></pre></td></tr></table></figure>
+
+
+
+<h2 id="Listener-Network-L3-x2F-L4-过滤器"><a href="#Listener-Network-L3-x2F-L4-过滤器" class="headerlink" title="Listener Network (L3&#x2F;L4) 过滤器"></a>Listener Network (L3&#x2F;L4) 过滤器</h2><ul>
+<li>envoy内置了许多L3&#x2F;L4过滤器，例如<ul>
+<li>代理类：TCP Proxy、HTTP connection manager、Thrift Proxy、Mongo proxy、Dubbo Proxy、ZooKeeper proxy、MySQL proxy和Redis proxy等；</li>
+<li>其它：Client TLS authentication、Rate limit、Role Based Access Control (RBAC) Network Filter和Upstream Cluster from SNI等；</li>
+</ul>
+</li>
+<li>HTTP connection manager<ul>
+<li>HTTP connection manager自身是L3&#x2F;L4过滤器，它能够将原始字节转换为HTTP级别消息和事件（例如，headers和body等）</li>
+<li>它还处理所有HTTP连接和请求共有的功能，例如访问日志记录、请求ID生成和跟踪、请求&#x2F;响应头操作、路由表管理和统计信息等；</li>
+<li>与L3&#x2F;L4过滤器堆栈相似，Envoy还支持在HTTP连接管理器中使用HTTP级过滤器堆栈；</li>
+<li>HTTP过滤器在L7运行，它们访问和操作HTTP请求和响应；例如，gRPC-JSON Transcoder Filter为gRPC后端公开REST API，并将请求和响应转换为相应的格式；</li>
+<li>常用的HTTP过路器有Router、Rate limit、Health check、Gzip和Fault Injection等；</li>
+</ul>
+</li>
+</ul>
+<h3 id="L4过滤器tcp-proxy"><a href="#L4过滤器tcp-proxy" class="headerlink" title="L4过滤器tcp_proxy"></a>L4过滤器tcp_proxy</h3><ul>
+<li>TCP代理过滤器在下游客户端及上游集群之间执行<code>1:1</code>网络连接代理</li>
+<li>它可以单独用作隧道替换，也可以同其他过滤器（如MongoDB过滤器或速率限制过滤器）结合使用；</li>
+<li>TCP代理过滤器严格执行由全局资源管理于为每个上游集群的全局资源管理器设定的连接限制<ul>
+<li>TCP代理过滤器检查上游集群的资源管理器是否可以在不超过该集群的最大连接数的情况下创建连接；</li>
+</ul>
+</li>
+<li>TCP代理过滤器可直接将请求路由至指定的集群，也能够在多个目标集群间基于权重进行调度转发；</li>
+</ul>
+<h4 id="在filters中需要注意的地方"><a href="#在filters中需要注意的地方" class="headerlink" title="在filters中需要注意的地方"></a>在filters中需要注意的地方</h4><figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs json"><span class="hljs-punctuation">&#123;</span><br>  <span class="hljs-attr">&quot;name&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;...&quot;</span><span class="hljs-punctuation">,</span><br>  <span class="hljs-attr">&quot;config&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;&#123;...&#125;&quot;</span><span class="hljs-punctuation">,</span><br>  <span class="hljs-attr">&quot;typed_config&quot;</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;&#123;...&#125;&quot;</span><br><span class="hljs-punctuation">&#125;</span><br></code></pre></td></tr></table></figure>
+<p>每个L3&#x2F;L4的网络过滤器都有一个<code>config</code>或<code>typed_config</code>参数每个过滤器都有特定的配置，具体配置取决于要实例化的过滤器，只能设置<code>config</code>或<code>typed_config</code>其中一种。其中<code>typed_config</code>中<code>&quot;@type&quot;: type.googleapis.com/envoy.config.filter.network</code>是固定配置</p>
+<h4 id="tcp-proxy过滤器配置语法："><a href="#tcp-proxy过滤器配置语法：" class="headerlink" title="tcp_proxy过滤器配置语法："></a>tcp_proxy过滤器配置语法：</h4><figure class="highlight 1c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs 1c">&#123;<br>  <span class="hljs-string">&quot;stat_prefix&quot;</span>: <span class="hljs-string">&quot;...&quot;</span>,            <span class="hljs-meta"># 用于统计数据中输出时使用的前缀字符；</span><br>  <span class="hljs-string">&quot;cluster&quot;</span>: <span class="hljs-string">&quot;...&quot;</span>,                <span class="hljs-meta"># 路由到的目标集群标识；</span><br>  <span class="hljs-string">&quot;weighted_clusters&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;metadata_match&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,<br>  <span class="hljs-string">&quot;idle_timeout&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>,         <span class="hljs-meta"># 上下游连接间的超时时长，即没有发送和接收报文的超时时长；</span><br>  <span class="hljs-string">&quot;access_log&quot;</span>: [],                <span class="hljs-meta"># 访问日志；</span><br>  <span class="hljs-string">&quot;max_connect_attempts&quot;</span>: <span class="hljs-string">&quot;&#123;...&#125;&quot;</span>  <span class="hljs-meta"># 最大连接尝试次数；</span><br>&#125;<br></code></pre></td></tr></table></figure>
+
+
+<h4 id="一个配置示例："><a href="#一个配置示例：" class="headerlink" title="一个配置示例："></a>一个配置示例：</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">static_resources:</span><br>  <span class="hljs-attr">listeners:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">listener_0</span><br>    <span class="hljs-attr">address:</span><br>     <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br>    <span class="hljs-attr">filter_chains:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">filters:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.tcp_proxy</span><br>        <span class="hljs-attr">typed_config:</span> <br>          <span class="hljs-string">&quot;@type&quot;</span><span class="hljs-string">:</span> <span class="hljs-string">type.googleapis.com/envoy.config.filter.network.tcp_proxy.v2.TcpProxy</span><br>          <span class="hljs-attr">stat_prefix:</span> <span class="hljs-string">tcp</span><br>          <span class="hljs-attr">cluster:</span> <span class="hljs-string">test_cluster</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h4 id="一个完整的TCP代理配置示例："><a href="#一个完整的TCP代理配置示例：" class="headerlink" title="一个完整的TCP代理配置示例："></a>一个完整的TCP代理配置示例：</h4><ul>
+<li>下面的示例基于TCP代理将下游用户（本机）请求代理至外部的（egress）两个web服务器（如何区分Engress看<code>clusters</code>中代理的地址是否是<code>127.0.0.1</code>，如果是<code>127.0.0.1</code>则表示是<code>Ingress</code>，如果是域名或是内网地址说明是<code>Egress</code>）</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">static_resources:</span><br>  <span class="hljs-attr">listeners:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">listener_0</span><br>    <span class="hljs-attr">address:</span><br>     <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br>    <span class="hljs-attr">filter_chains:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">filters:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.tcp_proxy</span><br>        <span class="hljs-attr">typed_config:</span><br>          <span class="hljs-string">&quot;@type&quot;</span><span class="hljs-string">:</span> <span class="hljs-string">type.googleapis.com/envoy.config.filter.network.tcp_proxy.v2.TcpProxy</span><br>          <span class="hljs-attr">stat_prefix:</span> <span class="hljs-string">tcp</span><br>          <span class="hljs-attr">cluster:</span> <span class="hljs-string">test_cluster</span><br>  <span class="hljs-attr">clusters:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">test_cluster</span><br>    <span class="hljs-attr">connect_timeout:</span> <span class="hljs-number">0.</span><span class="hljs-string">25s</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">STATIC</span><br>    <span class="hljs-attr">lb_policy:</span> <span class="hljs-string">ROUND_ROBIN</span><br>    <span class="hljs-attr">load_assignment:</span><br>      <span class="hljs-attr">cluster_name:</span> <span class="hljs-string">test_cluster</span><br>      <span class="hljs-attr">endpoints:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">lb_endpoints:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span><br>            <span class="hljs-attr">address:</span><br>              <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">172.17</span><span class="hljs-number">.0</span><span class="hljs-number">.3</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span><br>            <span class="hljs-attr">address:</span><br>              <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">172.17</span><span class="hljs-number">.0</span><span class="hljs-number">.4</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br></code></pre></td></tr></table></figure>
+
+
+
+
+<h4 id="使用Docker-compose方式模拟Enovy以Sidecar方式运行"><a href="#使用Docker-compose方式模拟Enovy以Sidecar方式运行" class="headerlink" title="使用Docker-compose方式模拟Enovy以Sidecar方式运行"></a>使用Docker-compose方式模拟Enovy以Sidecar方式运行</h4><ul>
+<li>创建一个<code>docker-compose.yaml</code>写入如下内容：</li>
+</ul>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">version</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;3&#x27;</span><br><span class="hljs-attribute">services</span><span class="hljs-punctuation">: </span><br>  <span class="hljs-attribute">envoy</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">envoyproxy/envoy-alpine:latest</span><br>    <span class="hljs-attribute">volumes</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">./envoy.yaml:/etc/envoy/envoy.yaml</span><br>    <span class="hljs-attribute">network_mode</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;service:mainserver&quot;</span><br>    <span class="hljs-attribute">depends_on</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">mainserver</span><br><br>  <span class="hljs-attribute">mainserver</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ikubernetes/mini-http-server:v0.3</span><br>    <span class="hljs-attribute">networks</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">envoymesh</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">aliases</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">webserver</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">httpserver</span><br><br><span class="hljs-attribute">networks</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">envoymesh</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#123;&#125;</span><br></code></pre></td></tr></table></figure>
+
+
+<ul>
+<li>创建一个<code>envoy.yaml</code>文件并写入如下内容，以下是<code>tcp_proxy Ingress</code>代理；</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">static_resources:</span><br>  <span class="hljs-attr">listeners:</span><br>    <span class="hljs-attr">name:</span> <span class="hljs-string">listener_0</span><br>    <span class="hljs-attr">address:</span><br>      <span class="hljs-attr">socket_address:</span> &#123;<span class="hljs-attr">address:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span>&#125;<br>    <span class="hljs-attr">filter_chains:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">filters:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.tcp_proxy</span><br>        <span class="hljs-attr">typed_config:</span><br>          <span class="hljs-string">&quot;@type&quot;</span><span class="hljs-string">:</span> <span class="hljs-string">type.googleapis.com/envoy.config.filter.network.tcp_proxy.v2.TcpProxy</span><br>          <span class="hljs-attr">stat_prefix:</span> <span class="hljs-string">ingress_tcp</span><br>          <span class="hljs-attr">cluster:</span> <span class="hljs-string">test_cluster</span><br>  <span class="hljs-attr">clusters:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">test_cluster</span><br>    <span class="hljs-attr">connect_timeout:</span> <span class="hljs-number">0.</span><span class="hljs-string">25s</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">STATIC</span><br>    <span class="hljs-attr">lb_policy:</span> <span class="hljs-string">ROUND_ROBIN</span><br>    <span class="hljs-attr">load_assignment:</span><br>      <span class="hljs-attr">cluster_name:</span> <span class="hljs-string">test_cluster</span><br>      <span class="hljs-attr">endpoints:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">lb_endpoints:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span> <br>            <span class="hljs-attr">address:</span><br>              <span class="hljs-attr">socket_address:</span> &#123;<span class="hljs-attr">address:</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">8081</span>&#125;   <br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>执行如下命令启动</li>
+</ul>
+<figure class="highlight gams"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs gams">[root@k8s-m<span class="hljs-number">-1001501017</span> ~]# docker-compose -f docker-compose.yaml up<br><span class="hljs-function"><span class="hljs-title">Creating</span></span> root_mainserver_1 ... done<br><span class="hljs-function"><span class="hljs-title">Creating</span></span> root_envoy_1      ... done<br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>执行如下命令返回当前容器名称（访问br网口地址）</li>
+</ul>
+<figure class="highlight dns"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs dns">[root@k8s-m-<span class="hljs-number">1001501017</span> overlord]# curl <span class="hljs-number">172.17.0.2</span>/hostname<br>Hostname: a4ec<span class="hljs-number">27589203</span>.<br></code></pre></td></tr></table></figure>
+
+<h3 id="L4过滤器http-connection-manager"><a href="#L4过滤器http-connection-manager" class="headerlink" title="L4过滤器http_connection_manager"></a>L4过滤器http_connection_manager</h3><ul>
+<li>http_connection_manager通过引入L7过滤器链实现了对http协议的操纵，其中router过滤器用于配置路由转发；</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">listeners:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span><br>    <span class="hljs-attr">address:</span><br>      <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-string">...</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-string">...</span>, <span class="hljs-attr">protocol:</span> <span class="hljs-string">...</span> &#125;<br>    <span class="hljs-attr">filter_chains:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">filters:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.http_connection_manager</span><br>        <span class="hljs-attr">config:</span><br>          <span class="hljs-attr">condec_type:</span> <span class="hljs-string">...</span>         <span class="hljs-comment"># 连接管理器使用的编解码器类型，可用值有AUTO、HTTP1和HTTP2；</span><br>          <span class="hljs-attr">stat_prefix:</span> <span class="hljs-string">...</span>         <span class="hljs-comment"># 统计信息中使用的易读性的信息前缀；</span><br>          <span class="hljs-attr">route_config:</span>            <span class="hljs-comment"># 静态路由配置；动态配置应该使用rds字段进行指定；</span><br>            <span class="hljs-attr">name:</span> <span class="hljs-string">...</span>              <span class="hljs-comment"># 路由配置的名称；</span><br>            <span class="hljs-attr">virtual_hosts:</span>         <span class="hljs-comment"># 虚拟主机列表，用于构成路由表；</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">...</span>            <span class="hljs-comment"># 虚拟主机的逻辑名称，用于统计信息，与路由无关；</span><br>              <span class="hljs-attr">domains:</span> []          <span class="hljs-comment"># 当前虚拟主机匹配的域名列表，支持使用“*”通配符；匹配搜索次序为精确匹配、前缀通配、后缀通配及完全通配；</span><br>              <span class="hljs-attr">routes:</span> []           <span class="hljs-comment"># 路由列表，按顺序搜索，第一个匹配到路由信息；</span><br>          <span class="hljs-attr">http_filters:</span>            <span class="hljs-comment"># 定义http过滤器链</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.router</span>     <span class="hljs-comment"># 调用的过滤器为envoy.router</span><br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>提示：<ul>
+<li>L4过滤器<code>http_connection_manager</code>在<code>http_filters</code>中引入了L7的<code>router</code>过滤器；</li>
+<li>处理请求时，Envoy首先根据下游客户端请求的“host”来搜索虚拟主机列表中各virtual_host中的domains列表中的定义，第一个匹配到的Domain的定义所属的virtual_host即可处理请求的虚拟主机；</li>
+<li>而后搜索当前虚拟主机中的routes列表中的路由列表中各路由条目的match的定义，第一个匹配到的match后的路由机制（route、redirect或direct_response）即生效；</li>
+</ul>
+</li>
+</ul>
+<h4 id="HTTP-L7路由基础配置"><a href="#HTTP-L7路由基础配置" class="headerlink" title="HTTP L7路由基础配置"></a>HTTP L7路由基础配置</h4><ul>
+<li>route_config.virtual_hosts.routes配置的路由信息用于将下游的客户端请求路由至合适的上游集群中某Server上；<ul>
+<li>其路由方式是将url匹配match字段的定义<ul>
+<li>match字段可通过prefix（前缀）、path（路径）或regex（正则表达式）三者之一来表示匹配模式；</li>
+</ul>
+</li>
+<li>与match相关的请求将由route、redirect或direct_response三个字段其中之一完成路由；</li>
+<li>由route定义的路由目标必须是cluster（上游集群名称）、cluster_header（根据请求标头中的cluster_header的值确定目标集群）或weighted_clusters（路由目标有多个集群，每个集群拥有一定的权重）其中之一；</li>
+<li>redirect则返回一个重定向。</li>
+<li>direct_response直接返回任意HTTP响应，无需代理。</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">routes:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">...</span>        <span class="hljs-comment"># 此路由条目的名称；</span><br>  <span class="hljs-attr">match:</span><br>    <span class="hljs-attr">prefix:</span> <span class="hljs-string">...</span>    <span class="hljs-comment"># 请求的URL的前缀；</span><br>  <span class="hljs-attr">route:</span>           <span class="hljs-comment"># 路由条目；</span><br>    <span class="hljs-attr">cluster:</span>       <span class="hljs-comment"># 目标下游集群；</span><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="L7-Egress代理配置示例"><a href="#L7-Egress代理配置示例" class="headerlink" title="L7 Egress代理配置示例"></a>L7 Egress代理配置示例</h4><ul>
+<li>下面是一个egress类型的Envoy配置示例，它定义了两个<code>virtual_host</code>，不过，发往第二个<code>virtual_host</code>的请求将被重定向至第一个；</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">static_resources:</span><br>  <span class="hljs-attr">listeners:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">listener_0</span><br>    <span class="hljs-attr">address:</span><br>      <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br>    <span class="hljs-attr">filter_chains:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">filters:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.http_connection_manager</span><br>        <span class="hljs-attr">config:</span><br>          <span class="hljs-attr">stat_prefix:</span> <span class="hljs-string">egress_http</span><br>          <span class="hljs-attr">codec_type:</span> <span class="hljs-string">AUTO</span><br>          <span class="hljs-attr">route_config:</span><br>            <span class="hljs-attr">name:</span> <span class="hljs-string">test_route</span><br>            <span class="hljs-attr">virtual_hosts:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_service_1</span><br>              <span class="hljs-attr">domains:</span> [<span class="hljs-string">&quot;*.ik8s.io&quot;</span>, <span class="hljs-string">&quot;ik8s.io&quot;</span>]<br>              <span class="hljs-attr">routes:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">match:</span> &#123; <span class="hljs-attr">prefix:</span> <span class="hljs-string">&quot;/&quot;</span> &#125;<br>                <span class="hljs-attr">route:</span> &#123; <span class="hljs-attr">cluster:</span> <span class="hljs-string">web_cluster_1</span> &#125;<br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_service_2</span><br>              <span class="hljs-attr">domains:</span> [<span class="hljs-string">&quot;*.k8scast.cn&quot;</span>,<span class="hljs-string">&quot;k8scast.cn&quot;</span>]<br>              <span class="hljs-attr">routes:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">match:</span> &#123; <span class="hljs-attr">prefix:</span> <span class="hljs-string">&quot;/&quot;</span> &#125;<br>                <span class="hljs-attr">redirect:</span><br>                  <span class="hljs-attr">host_redirect:</span> <span class="hljs-string">&quot;www.ik8s.io&quot;</span><br>            <span class="hljs-attr">http_filters:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.router</span><br>    <span class="hljs-attr">clusters:</span><br><span class="hljs-string">...</span><br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>大白话理解<code>route_config</code><ul>
+<li>在上面的示例中<code>route_config.virtual_hosts</code>配置了两个虚拟主机<code>web_service_1</code>和<code>web_service_2</code>，相当于nginx中两个<code>server</code>。用户的请求首先匹配<code>domains</code>字段，这里其实可以用nginx中<code>server</code>的<code>server_name</code>来理解，如果能匹配到<code>web_service_1</code>中的<code>domains</code>那么就继续匹配下面的<code>routes</code>字段，在<code>routes</code>字段中有个<code>match</code>字段，这里相当于nginx中的<code>location</code>（routes中可以有多个匹配规则）当用户请求的URL与此<code>match</code>匹配时将会执行下面的<code>route</code>字段中路由将请求转发至上游服务器，这里也就是相当于nginx的<code>upstream</code></li>
+</ul>
+</li>
+</ul>
+<h4 id="L7-Egress代理完整配置示例"><a href="#L7-Egress代理完整配置示例" class="headerlink" title="L7 Egress代理完整配置示例"></a>L7 Egress代理完整配置示例</h4><ul>
+<li>为了便于在容器本地进行测试，可以在制作镜像时为其添加本地的测试客户端curl，其使用的Dockerfile如下，在以下示例中将使用docker-compose的方式模拟Envoy以Sidecar方式运行在Pod中，所以这时候一个Pod应该有两个容器，一个业务容器和一个Envoy容器，这里演示Egress的时候没有业务容器所以就直接在Envoy容器中使用curl发起请求以模拟Egress的场景。当我们在Envoy容器用使用curl请求<code>ik8s.io</code>或<code>k8scast.cn</code>的时候将被代理到指定的<code>cluster</code>中。</li>
+</ul>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs routeros"><span class="hljs-keyword">FROM</span> envoyproxy/envoy-alpine:latest<br><br><span class="hljs-built_in">ADD</span> envoy.yaml /etc/envoy/<br><br><span class="hljs-built_in">RUN</span> apk update &amp;&amp; apk --no-cache <span class="hljs-built_in">add</span> curl<br></code></pre></td></tr></table></figure>
+
+
+<ul>
+<li>Envoy配置如下：</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">static_resources:</span><br>  <span class="hljs-attr">listeners:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">listener_0</span><br>    <span class="hljs-attr">address:</span><br>      <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br>    <span class="hljs-attr">filter_chains:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">filters:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.http_connection_manager</span><br>        <span class="hljs-attr">config:</span><br>          <span class="hljs-attr">stat_prefix:</span> <span class="hljs-string">egress_http</span><br>          <span class="hljs-attr">codec_type:</span> <span class="hljs-string">AUTO</span><br>          <span class="hljs-attr">route_config:</span><br>            <span class="hljs-attr">name:</span> <span class="hljs-string">test_route</span><br>            <span class="hljs-attr">virtual_hosts:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_service_1</span><br>              <span class="hljs-attr">domains:</span> [<span class="hljs-string">&quot;*.ik8s.io&quot;</span>, <span class="hljs-string">&quot;ik8s.io&quot;</span>]<br>              <span class="hljs-attr">routes:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">match:</span> &#123; <span class="hljs-attr">prefix:</span> <span class="hljs-string">&quot;/&quot;</span> &#125;<br>                <span class="hljs-attr">route:</span> &#123; <span class="hljs-attr">cluster:</span> <span class="hljs-string">web_cluster_1</span> &#125;<br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_service_2</span><br>              <span class="hljs-attr">domains:</span> [<span class="hljs-string">&quot;*.k8scast.cn&quot;</span>,<span class="hljs-string">&quot;k8scast.cn&quot;</span>]<br>              <span class="hljs-attr">routes:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">match:</span> &#123; <span class="hljs-attr">prefix:</span> <span class="hljs-string">&quot;/&quot;</span> &#125;<br>                <span class="hljs-attr">route:</span> &#123; <span class="hljs-attr">cluster:</span> <span class="hljs-string">web_cluster_2</span> &#125; <br>          <span class="hljs-attr">http_filters:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.router</span><br><br>  <span class="hljs-attr">clusters:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_cluster_1</span><br>    <span class="hljs-attr">connect_timeout:</span> <span class="hljs-number">0.</span><span class="hljs-string">25s</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">STRICT_DNS</span><br>    <span class="hljs-attr">lb_policy:</span> <span class="hljs-string">ROUND_ROBIN</span><br>    <span class="hljs-attr">load_assignment:</span><br>      <span class="hljs-attr">cluster_name:</span> <span class="hljs-string">web_cluster_1</span> <br>      <span class="hljs-attr">endpoints:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">lb_endpoints:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span><br>            <span class="hljs-attr">address:</span><br>              <span class="hljs-attr">socket_address:</span><br>                <span class="hljs-attr">address:</span> <span class="hljs-string">myservice</span><br>                <span class="hljs-attr">port_value:</span> <span class="hljs-number">8081</span><br><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">web_cluster_2</span><br>    <span class="hljs-attr">connect_timeout:</span> <span class="hljs-number">0.</span><span class="hljs-string">25s</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">STRICT_DNS</span><br>    <span class="hljs-attr">lb_policy:</span> <span class="hljs-string">ROUND_ROBIN</span><br>    <span class="hljs-attr">load_assignment:</span><br>      <span class="hljs-attr">cluster_name:</span> <span class="hljs-string">web_cluster_2</span><br>      <span class="hljs-attr">endpoints:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">lb_endpoints:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span><br>            <span class="hljs-attr">address:</span><br>              <span class="hljs-attr">socket_address:</span><br>                <span class="hljs-attr">address:</span> <span class="hljs-string">webserver1</span><br>                <span class="hljs-attr">port_value:</span> <span class="hljs-number">8081</span><br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>Docker-Compose文件内容如下：</li>
+</ul>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">version</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;3.3&#x27;</span><br><span class="hljs-attribute">services</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">envoy</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">build</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">context</span><span class="hljs-punctuation">:</span> <span class="hljs-string">.</span><br>      <span class="hljs-attribute">dockerfile</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Dockerfile-envoy</span><br>    <span class="hljs-attribute">volumes</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">./envoy.yaml:/etc/envoy/envoy.yaml</span><br>    <span class="hljs-attribute">networks</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">envoymesh</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">aliases</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">envoy</span><br>    <span class="hljs-attribute">depends_on</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">webserver1</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">webserver2</span><br>    <span class="hljs-attribute">expose</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;80&quot;</span><br><br>  <span class="hljs-attribute">webserver1</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ikubernetes/mini-http-server:v0.3</span><br>    <span class="hljs-attribute">networks</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">envoymesh</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">aliases</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">webserver1</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">myservice</span><br>    <span class="hljs-attribute">expose</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;8081&quot; </span><br><br>  <span class="hljs-attribute">webserver2</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ikubernetes/mini-http-server:v0.3</span><br>    <span class="hljs-attribute">networks</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">envoymesh</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">aliases</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">webserver2</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">myservice</span><br>    <span class="hljs-attribute">expose</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;8081&quot;</span><br>    <br><span class="hljs-attribute">networks</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">envoymesh</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#123;&#125;</span><br></code></pre></td></tr></table></figure>
+
+
+<ul>
+<li>而后于容器的交互式接口中即可发起测试</li>
+</ul>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs awk">[root@k8s-m-<span class="hljs-number">1001501017</span> overlord]<span class="hljs-comment"># docker ps</span><br>CONTAINER ID        IMAGE                               COMMAND                  CREATED             STATUS              PORTS               NAMES<br><span class="hljs-number">6</span>f996e7d349e        test_envoy                          <span class="hljs-string">&quot;/docker-entrypoint.…&quot;</span>   <span class="hljs-number">11</span> seconds ago      Up <span class="hljs-number">11</span> seconds       <span class="hljs-number">80</span><span class="hljs-regexp">/tcp, 10000/</span>tcp   test_envoy_1<br><span class="hljs-number">4</span>c17cf4ce9d8        ikubernetes<span class="hljs-regexp">/mini-http-server:v0.3   &quot;/</span>bin<span class="hljs-regexp">/httpserver&quot;        13 seconds ago      Up 11 seconds       8081/</span>tcp            test_webserver2_1<br><span class="hljs-number">28</span>ca847a6bd2        ikubernetes<span class="hljs-regexp">/mini-http-server:v0.3   &quot;/</span>bin<span class="hljs-regexp">/httpserver&quot;        13 seconds ago      Up 11 seconds       8081/</span>tcp            test_webserver1_1<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@k8s</span>-m<span class="hljs-number">-1001501017</span> overlord]<span class="hljs-meta"># docker exec -it 6f996e7d349e /bin/sh</span><br>/ <span class="hljs-meta"># curl -H <span class="hljs-string">&#x27;host: ik8s.io&#x27;</span> 127.0.0.1</span><br>This is a website server by a Go HTTP server.<br>/ <span class="hljs-meta"># curl -H <span class="hljs-string">&#x27;host: ik8s.io&#x27;</span> 127.0.0.1/hostname</span><br>Hostname: <span class="hljs-number">4</span>c17cf4ce9d8.<br>/ <span class="hljs-meta"># curl -H <span class="hljs-string">&#x27;host: ik8s.io&#x27;</span> 127.0.0.1/hostname</span><br>Hostname: <span class="hljs-number">28</span>ca847a6bd2.<br>/ <span class="hljs-meta"># curl -H <span class="hljs-string">&#x27;host: ik8s.io&#x27;</span> 127.0.0.1/hostname</span><br>Hostname: <span class="hljs-number">4</span>c17cf4ce9d8.<br>/ <span class="hljs-meta"># curl -H <span class="hljs-string">&#x27;host: ik8s.io&#x27;</span> 127.0.0.1/hostname</span><br>Hostname: <span class="hljs-number">28</span>ca847a6bd2.<br>/ <span class="hljs-meta"># curl -H <span class="hljs-string">&#x27;host: ik8s.io&#x27;</span> 127.0.0.1/hostname</span><br>Hostname: <span class="hljs-number">4</span>c17cf4ce9d8.<br>/ <span class="hljs-meta"># curl -H <span class="hljs-string">&#x27;host: ik8s.io&#x27;</span> 127.0.0.1/hostname</span><br>Hostname: <span class="hljs-number">28</span>ca847a6bd2.<br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@k8s</span>-m<span class="hljs-number">-1001501017</span> overlord]<span class="hljs-meta"># docker exec -it 6f996e7d349e /bin/sh</span><br>/ <span class="hljs-meta"># curl -H <span class="hljs-string">&#x27;host: k8scast.cn&#x27;</span> 127.0.0.1/hostname</span><br>Hostname: <span class="hljs-number">28</span>ca847a6bd2.<br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>从上面的envoy示例中我们可以看出，当我们请求<code>ik8s.io</code>的时候会被负载到两个不同的容器上，因为上面的<code>web_cluster_1</code>集群中<code>endpoints</code>下的<code>address</code>字段是名为<code>myservice</code>的名称。然而这个名称在<code>docker-compose</code>的定义中<code>webserver1</code>和<code>webserver2</code>都有一个别名叫<code>myservice</code>，所以在<code>STRICT_DNS</code>解析的时候会解析到两个不同的容器上。在看我们请求<code>k8scast.cn</code>的时候永远只会请求到<code>webserver1</code>容器上，因为<code>STRICT_DNS</code>通过名称解析只有一个容器的别名叫<code>webserver1</code>。</li>
+</ul>
+<h4 id="L7-Ingress代理配置示例"><a href="#L7-Ingress代理配置示例" class="headerlink" title="L7 Ingress代理配置示例"></a>L7 Ingress代理配置示例</h4><ul>
+<li>在以下示例中将使用<code>docker-compose</code>模拟envoy以<code>Sidecar</code>的方式注入到Pod内和业务服务运行在同一Pod中。业务服务则监听于<code>127.0.0.1:8081</code>，由同一Pod内的envoy程序代理后暴露给外部访问；</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">static_resources:</span><br>  <span class="hljs-attr">listeners:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">listener_0</span><br>    <span class="hljs-attr">address:</span><br>      <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br>    <span class="hljs-attr">filter_chains:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">filters:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.http_connection_manager</span><br>        <span class="hljs-attr">config:</span><br>          <span class="hljs-attr">stat_prefix:</span> <span class="hljs-string">ingress_http</span><br>          <span class="hljs-attr">codec_type:</span> <span class="hljs-string">AUTO</span><br>          <span class="hljs-attr">route_config:</span><br>            <span class="hljs-attr">name:</span> <span class="hljs-string">local_route</span><br>            <span class="hljs-attr">virtual_hosts:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">local_service</span><br>              <span class="hljs-attr">domains:</span> [<span class="hljs-string">&quot;*&quot;</span>]<br>              <span class="hljs-attr">routes:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">match:</span> &#123; <span class="hljs-attr">prefix:</span> <span class="hljs-string">&quot;/&quot;</span> &#125;<br>                <span class="hljs-attr">route:</span> &#123; <span class="hljs-attr">cluster:</span> <span class="hljs-string">local_service</span> &#125;<br>          <span class="hljs-attr">http_filters:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">envoy.router</span><br><br>  <span class="hljs-attr">clusters:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">local_service</span><br>    <span class="hljs-attr">connect_timeout:</span> <span class="hljs-number">0.</span><span class="hljs-string">25s</span><br>    <span class="hljs-attr">type:</span> <span class="hljs-string">STATIC</span><br>    <span class="hljs-attr">lb_policy:</span> <span class="hljs-string">ROUND_ROBIN</span><br>    <span class="hljs-attr">load_assignment:</span><br>      <span class="hljs-attr">cluster_name:</span> <span class="hljs-string">local_service</span><br>      <span class="hljs-attr">endpoints:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">lb_endpoints:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span><br>            <span class="hljs-attr">address:</span><br>              <span class="hljs-attr">socket_address:</span><br>                <span class="hljs-attr">address:</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span><br>                <span class="hljs-attr">port_value:</span> <span class="hljs-number">8081</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">version</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#x27;3&#x27;</span><br><span class="hljs-attribute">services</span><span class="hljs-punctuation">: </span><br>  <span class="hljs-attribute">envoy</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">envoyproxy/envoy-alpine:latest</span><br>    <span class="hljs-attribute">volumes</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">./envoy.yaml:/etc/envoy/envoy.yaml</span><br>    <span class="hljs-attribute">network_mode</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;service:mainserver&quot;</span><br>    <span class="hljs-attribute">depends_on</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-string">mainserver</span><br><br>  <span class="hljs-attribute">mainserver</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">ikubernetes/mini-http-server:v0.3</span><br>    <span class="hljs-attribute">networks</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">envoymesh</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">aliases</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">webserver</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-string">httpserver</span><br><br><span class="hljs-attribute">networks</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">envoymesh</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&#123;&#125;</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs bash">[root@localhost ~]<span class="hljs-comment"># docker ps</span><br>CONTAINER ID        IMAGE                               COMMAND                  CREATED             STATUS              PORTS               NAMES<br>cfa6f41885c8        envoyproxy/envoy-alpine:latest      <span class="hljs-string">&quot;/docker-entrypoint.…&quot;</span>   10 seconds ago      Up 9 seconds                            ingress_envoy_1<br>c05cf9a1a59d        ikubernetes/mini-http-server:v0.3   <span class="hljs-string">&quot;/bin/httpserver&quot;</span>        10 seconds ago      Up 9 seconds        8081/tcp            ingress_mainserver_1<br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight pf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs pf">[root@localhost ~]<span class="hljs-comment"># docker exec -it cfa6f41885c8 /bin/sh</span><br>/ <span class="hljs-comment"># ip -4 a</span><br><span class="hljs-number">1</span>: lo: <span class="hljs-variable">&lt;LOOPBACK,UP,LOWER_UP&gt;</span> mtu <span class="hljs-number">65536</span> qdisc noqueue <span class="hljs-keyword">state</span> UNKNOWN qlen <span class="hljs-number">1000</span><br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">127.0</span>.<span class="hljs-number">0.1</span>/<span class="hljs-number">8</span> scope host lo<br>       valid_lft forever preferred_lft forever<br><span class="hljs-number">32</span>: eth0@if33: <span class="hljs-variable">&lt;BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN&gt;</span> mtu <span class="hljs-number">1500</span> qdisc noqueue <span class="hljs-keyword">state</span> UP <br>    <span class="hljs-keyword">inet</span> <span class="hljs-number">172.20</span>.<span class="hljs-number">0.2</span>/<span class="hljs-number">16</span> brd <span class="hljs-number">172.20</span>.<span class="hljs-number">255.255</span> scope <span class="hljs-keyword">global</span> eth0<br>       valid_lft forever preferred_lft forever<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs pgsql">/ # netstat -ntlp<br>Active Internet connections (<span class="hljs-keyword">only</span> servers)<br>Proto Recv-Q Send-Q <span class="hljs-keyword">Local</span> Address           <span class="hljs-keyword">Foreign</span> Address         State       PID/Program <span class="hljs-type">name</span>    <br>tcp        <span class="hljs-number">0</span>      <span class="hljs-number">0</span> <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span>:<span class="hljs-number">80</span>              <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span>:*               <span class="hljs-keyword">LISTEN</span>      <span class="hljs-number">1</span>/envoy<br>tcp        <span class="hljs-number">0</span>      <span class="hljs-number">0</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.11</span>:<span class="hljs-number">35255</span>        <span class="hljs-number">0.0</span><span class="hljs-number">.0</span><span class="hljs-number">.0</span>:*               <span class="hljs-keyword">LISTEN</span>      -<br>tcp        <span class="hljs-number">0</span>      <span class="hljs-number">0</span> :::<span class="hljs-number">8081</span>                 :::*                    <span class="hljs-keyword">LISTEN</span>      -<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight axapta"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs axapta">[root@localhost ~]<span class="hljs-meta"># curl 172.20.0.2</span><br>This <span class="hljs-keyword">is</span> a website <span class="hljs-keyword">server</span> <span class="hljs-keyword">by</span> a Go HTTP <span class="hljs-keyword">server</span>.<br><br>[root@localhost ~]<span class="hljs-meta"># curl 172.20.0.2/hostname</span><br>Hostname: c05cf9a1a59d.<br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>这里我们可以看到其实是mainserver提供的服务</li>
+</ul>
+<h2 id="Cluster"><a href="#Cluster" class="headerlink" title="Cluster"></a>Cluster</h2><h3 id="Upstream-clusters"><a href="#Upstream-clusters" class="headerlink" title="Upstream clusters"></a>Upstream clusters</h3><ul>
+<li>通常，集群代表了一组提供相同服务的上游服务器（端点）的组合，Envoy将通过Cluster来实现流量的负载均衡。Envoy可配置任意数量的上游集群，并使用Cluster Manager进行管理；<ul>
+<li>集群需要在“预热”环节完成之后方能转为可用状态，这意味着集群管理器通过DNS解析或EDS服务完成端点初始化，以及健康状态检测成功之后才可用；</li>
+<li>由集群管理器负责管理的各集群可以由用户静态配置，也可借助于CDS API动态获取；</li>
+<li>集群中的每个成员由endpoint进行标识，它可由用户静态配置，也可通过EDS或DNS服务动态发现；<ul>
+<li>Static：静态配置</li>
+<li>Strict DNS：严格DNS，Envoy将持续和异步地解析指定的DNS目标，并将DNS结果中的返回的每个IP地址视为上游集群中可用成员；</li>
+<li>Logical DNS：逻辑DNS，集群仅使用在需要启动新连接时返回的第一个IP地址，而非严格获取DNS查询的结果并假设它们构成整个上游集群；适用于必须通过DNS访问的大规模Web服务集群；</li>
+<li>Original destination：当传入连接通过iptables的REDIRECT或TPROXY target或使用代理协议重定向到Envoy时，可以使用原始目标集群；</li>
+<li>Endpoint discovery service (EDS)：EDS是一种基于GRPC或REST-JSON API的xDS管理服务器获取集群成员的服务发现方式；</li>
+<li>Custom cluster：Envoy还支持在集群配置上的cluster_type字段中指定使用自定义集群发现机制；</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><img src="/images/envoy-3.png" srcset="/img/loading.gif" lazyload alt="envoy-3"></p>
+<h3 id="Clusters-配置中常用参数"><a href="#Clusters-配置中常用参数" class="headerlink" title="Clusters 配置中常用参数"></a>Clusters 配置中常用参数</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">clusters:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">...</span>                   <span class="hljs-comment"># 集群的唯一名称，且未提供alt_stat_name时将会被用于统计信息中；</span><br>  <span class="hljs-attr">alt_state_name:</span> <span class="hljs-string">...</span>         <span class="hljs-comment"># 统计信息中使用的集群代名称；</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">...</span>                   <span class="hljs-comment"># 用于解析集群（生成集群端点）时使用的服务发现类型，可用值有STATIC、STRICT_DNS、LOGICAL_DNS、ORIGINAL_DST和EDS等；</span><br>  <span class="hljs-attr">connect_timeout:</span> <span class="hljs-string">...</span>        <span class="hljs-comment"># 集群中主机连接超时时长</span><br>  <span class="hljs-attr">lb_policy:</span>                  <span class="hljs-comment"># 负载均衡算法，支持ROUND_ROBIN、LEAST_REQUEST、RING_HASH、RANDOM、MAGLEV和CLUSTER_PROVIDED；</span><br>  <span class="hljs-attr">load_assignment:</span>            <span class="hljs-comment"># 为STATIC、STRICT_DNS或LOGICAL_DNS类型的集群指定成员获取方式；EDS类型的集成要使用eds_cluster_config字段配置；</span><br>    <span class="hljs-attr">cluster_name:</span> <span class="hljs-string">...</span>         <span class="hljs-comment"># 集群名称；</span><br>    <span class="hljs-attr">endpoints:</span>                <span class="hljs-comment"># 端点列表；</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">locality:</span> &#123;&#125;            <span class="hljs-comment"># 标识上游主机所处的位置，通常以region、zone等进行标识；</span><br>      <span class="hljs-attr">lb_endpoints:</span>           <span class="hljs-comment"># 属于指定位置的端点列表；</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span>             <span class="hljs-comment"># 端点定义；</span><br>          <span class="hljs-attr">address:</span>            <span class="hljs-comment"># 端点地址；</span><br>            <span class="hljs-attr">socket_adddress:</span>  <span class="hljs-comment"># 端点地址标识；</span><br>              <span class="hljs-attr">address:</span> <span class="hljs-string">...</span>    <span class="hljs-comment"># 端点IP地址；</span><br>              <span class="hljs-attr">port_value:</span> <span class="hljs-string">...</span> <span class="hljs-comment"># 端点端口；</span><br>              <span class="hljs-attr">protocol:</span> <span class="hljs-string">...</span>   <span class="hljs-comment"># 协议类型；</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="Cluster配置示例"><a href="#Cluster配置示例" class="headerlink" title="Cluster配置示例"></a>Cluster配置示例</h3><ul>
+<li>静态Cluster的各Endpoint（端点）可以在配置中直接给出，也可借助DNS服务或EDS Api进行动态发现；</li>
+<li>下面的示例直接给出了两个端点地址</li>
+</ul>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">clusters:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">test_cluster</span><br>  <span class="hljs-attr">connect_timeout:</span> <span class="hljs-number">0.</span><span class="hljs-string">25s</span><br>  <span class="hljs-attr">type:</span> <span class="hljs-string">STATIC</span><br>  <span class="hljs-attr">lb_policy:</span> <span class="hljs-string">ROUND_ROBIN</span><br>  <span class="hljs-attr">load_assignment:</span><br>    <span class="hljs-attr">cluster_name:</span> <span class="hljs-string">test_cluster</span><br>    <span class="hljs-attr">endpoints:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">lb_endpoints:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span><br>          <span class="hljs-attr">address:</span><br>            <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">172.17</span><span class="hljs-number">.0</span><span class="hljs-number">.3</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">endpoint:</span><br>          <span class="hljs-attr">address:</span><br>            <span class="hljs-attr">socket_address:</span> &#123; <span class="hljs-attr">address:</span> <span class="hljs-number">172.17</span><span class="hljs-number">.0</span><span class="hljs-number">.4</span>, <span class="hljs-attr">port_value:</span> <span class="hljs-number">80</span> &#125;<br></code></pre></td></tr></table></figure>
+
+
+
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Envoy的概念与术语</div>
+      <div>https://system51.github.io/2019/11/11/Envoy-concept/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年11月11日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/11/26/Envoy-Administration-interface/" title="Envoy-Administration-interface">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Envoy-Administration-interface</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/09/11/etcd-Disaster-recovery/" title="Etcd 备份恢复">
+                        <span class="hidden-mobile">Etcd 备份恢复</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

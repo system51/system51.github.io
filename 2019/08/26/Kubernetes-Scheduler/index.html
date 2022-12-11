@@ -1,0 +1,838 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="Scheduler&amp;emsp;&amp;emsp;当用户请求向API server创建新的Pod时，API server检查授权、权限等没有任何问题的话，他会把这个请求交由Scheduler，由Scheduler它会检查所有符合该Pod要求的Nodelist，为Pod安排一个落脚点（Node）,选定Node完成后会把选择结果返回给API server，并将选定信息写入etcd中。接下来AP">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Kubernetes之调度器和调度过程">
+<meta property="og:url" content="https://system51.github.io/2019/08/26/Kubernetes-Scheduler/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Scheduler&amp;emsp;&amp;emsp;当用户请求向API server创建新的Pod时，API server检查授权、权限等没有任何问题的话，他会把这个请求交由Scheduler，由Scheduler它会检查所有符合该Pod要求的Nodelist，为Pod安排一个落脚点（Node）,选定Node完成后会把选择结果返回给API server，并将选定信息写入etcd中。接下来AP">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/scheduler-1.png">
+<meta property="article:published_time" content="2019-08-26T03:31:37.000Z">
+<meta property="article:modified_time" content="2019-12-13T08:53:23.000Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/scheduler-1.png">
+  
+  
+  
+  <title>Kubernetes之调度器和调度过程 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="Kubernetes之调度器和调度过程"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2019-08-26 11:31" pubdate>
+          2019年8月26日 中午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          18k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          30 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">Kubernetes之调度器和调度过程</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="Scheduler"><a href="#Scheduler" class="headerlink" title="Scheduler"></a>Scheduler</h2><p>&amp;emsp;&amp;emsp;当用户请求向API server创建新的Pod时，API server检查授权、权限等没有任何问题的话，他会把这个请求交由Scheduler，由Scheduler它会检查所有符合该Pod要求的Nodelist，为Pod安排一个落脚点（Node）,选定Node完成后会把选择结果返回给API server，并将选定信息写入etcd中。接下来API server将指挥被选定Node的kubelet去创建Pod（或者说kubelet始终去watch API server当中与当前节点相关联的事件变动），因此接下来这个node就要去尝试着获取到API server当中定义的这个pod的配置清单，根据配置清单当中的定义去创建pod。具体来说Scheduler的作用是将待调度的Pod按照特定的调度算法和调度策略绑定到集群中的某个合适的Node上，整个调度过程中涉及三个对象，分别是：待调度的Pod列表，可以的Node列表，以及调度算法和策略。</p>
+<h2 id="Kubernetes-Scheduler-提供的调度流程分三步："><a href="#Kubernetes-Scheduler-提供的调度流程分三步：" class="headerlink" title="Kubernetes Scheduler 提供的调度流程分三步："></a>Kubernetes Scheduler 提供的调度流程分三步：</h2><ul>
+<li>预选策略(predicate) 遍历nodelist，选择出符合要求的候选节点，Kubernetes内置了多种预选规则供用户选择。</li>
+<li>优选策略(priority) 在选择出符合要求的候选节点中，采用优选规则计算出每个节点的积分，最后选择得分最高的。</li>
+<li>选定(select)  如果最高得分有好几个节点，select就会从中随机选择一个节点。</li>
+</ul>
+<p>如图：<br><img src="/images/scheduler-1.png" srcset="/img/loading.gif" lazyload alt="scheduler-1"></p>
+<h2 id="高级调度方式"><a href="#高级调度方式" class="headerlink" title="高级调度方式"></a>高级调度方式</h2><p>当我们想把Pod调度到预期的节点上，我们可以使用如下高级调度方式进行Pod调度：</p>
+<ul>
+<li>节点选择器： nodeSelector（Pod仅运行在能匹配到节点标签的主机上）、nodeName（Pod仅运行特定node）</li>
+<li>节点亲和性调度： nodeAffinity</li>
+<li>Pod亲和性调度：PodAffinity</li>
+<li>Pod反亲和性调度：podAntiAffinity</li>
+</ul>
+<h2 id="调度器分类："><a href="#调度器分类：" class="headerlink" title="调度器分类："></a>调度器分类：</h2><ul>
+<li>nodeAffinity：主要解决POD要部署在哪些主机，以及POD不能部署在哪些主机上的问题，处理的是POD和主机之间的关系。</li>
+<li>podAffinity：主要解决POD可以和哪些POD部署在同一个拓扑域中的问题（拓扑域用主机标签实现，可以是单个主机，也可以是多个主机组成的cluster、zone等。），podAntiAffinity主要解决POD不能和哪些POD部署在同一个拓扑域中的问题。podAntiAffinity和podAffinity它们都是处理Kubernetes集群内部POD和POD之间的关系。比如一个 pod 在一个节点上了，那么我这个也得在这个节点，或者你这个 pod 在节点上了，那么我就不想和你待在同一个节点上。</li>
+</ul>
+<h2 id="三种亲和性和反亲和性策略的比较如下表所示："><a href="#三种亲和性和反亲和性策略的比较如下表所示：" class="headerlink" title="三种亲和性和反亲和性策略的比较如下表所示："></a>三种亲和性和反亲和性策略的比较如下表所示：</h2><table>
+<thead>
+<tr>
+<th>策略名称</th>
+<th>匹配目标</th>
+<th>支持的操作符</th>
+<th>支持拓扑域</th>
+<th>设计目标</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>nodeAffinity</td>
+<td>主机标签</td>
+<td>In，NotIn，Exists，DoesNotExist，Gt，Lt</td>
+<td>不支持</td>
+<td>决定Pod可以部署在哪些主机上</td>
+</tr>
+<tr>
+<td>podAffinity</td>
+<td>Pod标签</td>
+<td>In，NotIn，Exists，DoesNotExist</td>
+<td>支持</td>
+<td>决定Pod可以和哪些Pod部署在同一拓扑域</td>
+</tr>
+<tr>
+<td>PodAntiAffinity</td>
+<td>Pod标签</td>
+<td>In，NotIn，Exists，DoesNotExist</td>
+<td>支持</td>
+<td>决定Pod不可以和哪些Pod部署在同一拓扑域</td>
+</tr>
+</tbody></table>
+<ul>
+<li>In：label 的值在某个列表中</li>
+<li>NotIn：label 的值不在某个列表中</li>
+<li>Gt：label 的值大于某个值</li>
+<li>Lt：label 的值小于某个值</li>
+<li>Exists：某个 label 存在（Values必须为空）</li>
+<li>DoesNotExist：某个 label 不存在（Values必须为空）</li>
+</ul>
+<h2 id="使用场景"><a href="#使用场景" class="headerlink" title="使用场景"></a>使用场景</h2><h3 id="nodeAffinity使用场景："><a href="#nodeAffinity使用场景：" class="headerlink" title="nodeAffinity使用场景："></a>nodeAffinity使用场景：</h3><ul>
+<li>将S1服务的所有Pod部署到指定的符合标签规则的主机上。</li>
+<li>将S1服务的所有Pod部署到除部分主机外的其他主机上。</li>
+</ul>
+<h3 id="podAffinity使用场景："><a href="#podAffinity使用场景：" class="headerlink" title="podAffinity使用场景："></a>podAffinity使用场景：</h3><ul>
+<li>将某一特定服务的pod部署在同一拓扑域中，不用指定具体的拓扑域。</li>
+<li>如果S1服务使用S2服务，为了减少它们之间的网络延迟（或其它原因），把S1服务的POD和S2服务的pod部署在同一拓扑域中。</li>
+</ul>
+<h3 id="podAntiAffinity使用场景："><a href="#podAntiAffinity使用场景：" class="headerlink" title="podAntiAffinity使用场景："></a>podAntiAffinity使用场景：</h3><ul>
+<li>将一个服务的POD分散在不同的主机或者拓扑域中，提高服务本身的稳定性。</li>
+<li>给POD对于一个节点的独占访问权限来保证资源隔离，保证不会有其它pod来分享节点资源。</li>
+<li>把可能会相互影响的服务的POD分散在不同的主机上。</li>
+</ul>
+<h3 id="NodeSelector"><a href="#NodeSelector" class="headerlink" title="NodeSelector"></a>NodeSelector</h3><p>现在我们给node1打上一个标签node&#x3D;ssd</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment"># kubectl label nodes node-1 node=ssd</span><br><span class="hljs-keyword">node</span><span class="hljs-title">/node-1</span> labeled<br><br>[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment">#  kubectl get nodes --show-labels</span><br>NAME       STATUS   ROLES    AGE   <span class="hljs-keyword">VERSION</span>   LABELS<br><span class="hljs-literal">master</span>-<span class="hljs-number">1</span>   Ready    <span class="hljs-keyword">master</span>   <span class="hljs-title">43d</span>   v1.<span class="hljs-number">13.1</span>   beta.kubernetes.io/<span class="hljs-attr">arch=</span>amd64,beta.kubernetes.io/<span class="hljs-attr">os=</span>linux,kubernetes.io/<span class="hljs-attr">hostname=</span><span class="hljs-literal">master</span>-<span class="hljs-number">1</span>,<span class="hljs-keyword">node</span><span class="hljs-title">-role</span>.kubernetes.io/<span class="hljs-attr">master=</span><br><span class="hljs-keyword">node</span><span class="hljs-title">-0</span>     Ready    <span class="hljs-tag">&lt;none&gt;</span>   <span class="hljs-number">43</span>d   v1.<span class="hljs-number">13.1</span>   beta.kubernetes.io/<span class="hljs-attr">arch=</span>amd64,beta.kubernetes.io/<span class="hljs-attr">os=</span>linux,kubernetes.io/<span class="hljs-attr">hostname=</span><span class="hljs-keyword">node</span><span class="hljs-title">-0</span><br><span class="hljs-keyword">node</span><span class="hljs-title">-1</span>     Ready    <span class="hljs-tag">&lt;none&gt;</span>   <span class="hljs-number">43</span>d   v1.<span class="hljs-number">13.1</span>   beta.kubernetes.io/<span class="hljs-attr">arch=</span>amd64,beta.kubernetes.io/<span class="hljs-attr">os=</span>linux,kubernetes.io/<span class="hljs-attr">hostname=</span><span class="hljs-keyword">node</span><span class="hljs-title">-1</span>,<span class="hljs-keyword">node</span><span class="hljs-title">=ssd</span><br></code></pre></td></tr></table></figure>
+
+<p>我们定义一个pod,让其选择带有node&#x3D;ssd这个标签的节点</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># vim node-selector-demo.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">myapp</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>  <span class="hljs-attr">nodeSelector:</span><br>    <span class="hljs-attr">node:</span> <span class="hljs-string">ssd</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl apply -f node-selector-demo.yaml</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment"># kubectl get pod  -o wide</span><br>NAME                               READY   STATUS    RESTARTS   AGE   IP             <span class="hljs-keyword">NODE</span>     <span class="hljs-title">NOMINATED</span> <span class="hljs-keyword">NODE</span>   <span class="hljs-title">READINESS</span> GATES<br>...<br>myapp                              <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">14s</span>   <span class="hljs-number">10.244</span>.<span class="hljs-number">2.7</span>     <span class="hljs-keyword">node</span><span class="hljs-title">-1</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>...<br></code></pre></td></tr></table></figure>
+
+<p>&amp;emsp;&amp;emsp;从上面的效果可以看出，设置了nodeSelector以后只会将Pod调度到符合标签的node1上，但是需要注意的是如果没有一个node满足nodeSelector的标签那么Pod会一直处于Pending状态直到有Node满足条件。</p>
+<h3 id="nodeAffinity"><a href="#nodeAffinity" class="headerlink" title="nodeAffinity"></a>nodeAffinity</h3><figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><code class="hljs applescript">[root@master<span class="hljs-number">-1</span> app]<span class="hljs-comment"># kubectl explain pod.spec.affinity.nodeAffinity </span><br>KIND:     Pod<br>VERSION:  v1<br><br>RESOURCE: nodeAffinity &lt;Object&gt;<br><br>DESCRIPTION:<br>     Describes node affinity scheduling rules <span class="hljs-keyword">for</span> <span class="hljs-keyword">the</span> pod.<br><br>     Node affinity <span class="hljs-keyword">is</span> a group <span class="hljs-keyword">of</span> node affinity scheduling rules.<br><br>FIELDS:<br>   preferredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;<br>     The scheduler will prefer <span class="hljs-keyword">to</span> schedule pods <span class="hljs-keyword">to</span> nodes <span class="hljs-keyword">that</span> satisfy <span class="hljs-keyword">the</span><br>     affinity expressions specified <span class="hljs-keyword">by</span> this field, <span class="hljs-keyword">but</span> <span class="hljs-keyword">it</span> may choose a node <span class="hljs-keyword">that</span><br>     violates one <span class="hljs-keyword">or</span> more <span class="hljs-keyword">of</span> <span class="hljs-keyword">the</span> expressions. The node <span class="hljs-keyword">that</span> <span class="hljs-keyword">is</span> most preferred <span class="hljs-keyword">is</span><br>     <span class="hljs-keyword">the</span> one <span class="hljs-keyword">with</span> <span class="hljs-keyword">the</span> greatest sum <span class="hljs-keyword">of</span> weights, i.e. <span class="hljs-keyword">for</span> each node <span class="hljs-keyword">that</span> meets all<br>     <span class="hljs-keyword">of</span> <span class="hljs-keyword">the</span> scheduling requirements (resource request, requiredDuringScheduling<br>     affinity expressions, etc.), compute a sum <span class="hljs-keyword">by</span> iterating <span class="hljs-keyword">through</span> <span class="hljs-keyword">the</span><br>     elements <span class="hljs-keyword">of</span> this field <span class="hljs-keyword">and</span> adding <span class="hljs-string">&quot;weight&quot;</span> <span class="hljs-keyword">to</span> <span class="hljs-keyword">the</span> sum <span class="hljs-keyword">if</span> <span class="hljs-keyword">the</span> node matches<br>     <span class="hljs-keyword">the</span> corresponding matchExpressions; <span class="hljs-keyword">the</span> node(s) <span class="hljs-keyword">with</span> <span class="hljs-keyword">the</span> highest sum are<br>     <span class="hljs-keyword">the</span> most preferred.<br><br>   requiredDuringSchedulingIgnoredDuringExecution	&lt;Object&gt;<br>     If <span class="hljs-keyword">the</span> affinity requirements specified <span class="hljs-keyword">by</span> this field are <span class="hljs-keyword">not</span> met <span class="hljs-keyword">at</span><br>     scheduling <span class="hljs-built_in">time</span>, <span class="hljs-keyword">the</span> pod will <span class="hljs-keyword">not</span> be scheduled <span class="hljs-keyword">onto</span> <span class="hljs-keyword">the</span> node. If <span class="hljs-keyword">the</span><br>     affinity requirements specified <span class="hljs-keyword">by</span> this field cease <span class="hljs-keyword">to</span> be met <span class="hljs-keyword">at</span> <span class="hljs-keyword">some</span> point<br>     during pod execution (e.g. due <span class="hljs-keyword">to</span> an update), <span class="hljs-keyword">the</span> system may <span class="hljs-keyword">or</span> may <span class="hljs-keyword">not</span> <span class="hljs-keyword">try</span><br>     <span class="hljs-keyword">to</span> eventually evict <span class="hljs-keyword">the</span> pod <span class="hljs-keyword">from</span> <span class="hljs-keyword">its</span> node.<br>		<br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>requiredDuringSchedulingIgnoredDuringExecution 硬亲和性  必须满足亲和性。 <ul>
+<li>matchExpressions  匹配表达式,这个标签可以指定一段，例如pod中定义的key为zone，operator为In(包含那些)，values为 foo和bar。表示就是在node节点中包含foo和bar的标签中调度</li>
+<li>matchFields  匹配字段 和上面定义方式一样，不过他定义的不是标签值而是定义字段。</li>
+</ul>
+</li>
+<li>preferredDuringSchedulingIgnoredDuringExecution   软亲和性 能满足最好，不满足也没关系。<ul>
+<li>preference 配置节点选择器，与相应的权重相关联。</li>
+<li>weight 权重1-100范围内，因为它是软性条件，所以并非一定要全匹配。在preference中匹配到的条目越多越符合条件。最后通过计算权重决定那个节点更符合条件。</li>
+</ul>
+</li>
+</ul>
+<h4 id="硬亲和性："><a href="#硬亲和性：" class="headerlink" title="硬亲和性："></a>硬亲和性：</h4><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># vim test.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">myapp</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>  <span class="hljs-attr">affinity:</span><br>    <span class="hljs-attr">nodeAffinity:</span><br>       <span class="hljs-attr">requiredDuringSchedulingIgnoredDuringExecution:</span><br>          <span class="hljs-attr">nodeSelectorTerms:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-attr">matchExpressions:</span><br>               <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">node</span><br>                 <span class="hljs-attr">operator:</span> <span class="hljs-string">In</span><br>                 <span class="hljs-attr">values:</span> [<span class="hljs-string">&quot;foo&quot;</span>,<span class="hljs-string">&quot;bar&quot;</span>]<br>								 <br><br>[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># kubectl apply -f test.yaml </span><br><span class="hljs-string">pod/myapp</span> <span class="hljs-string">created</span><br><br>[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># kubectl get pod</span><br><span class="hljs-string">NAME</span>                               <span class="hljs-string">READY</span>   <span class="hljs-string">STATUS</span>    <span class="hljs-string">RESTARTS</span>   <span class="hljs-string">AGE</span><br><span class="hljs-string">...</span><br><span class="hljs-string">myapp</span>                              <span class="hljs-number">1</span><span class="hljs-string">/1</span>     <span class="hljs-string">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-string">2m17s</span><br><span class="hljs-string">...</span><br></code></pre></td></tr></table></figure>
+
+
+<h4 id="软亲和性："><a href="#软亲和性：" class="headerlink" title="软亲和性："></a>软亲和性：</h4><p>与<code>requiredDuringSchedulingIgnoredDuringExecution</code>比较，这里需要注意的是<code>preferredDuringSchedulingIgnoredDuringExecution</code>是个列表对象，而preference就是一个对象。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># vim test1.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>  <span class="hljs-attr">namespace:</span> <span class="hljs-string">default</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">myapp</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>  <span class="hljs-attr">affinity:</span><br>    <span class="hljs-attr">nodeAffinity:</span><br>      <span class="hljs-attr">preferredDuringSchedulingIgnoredDuringExecution:</span><br>        <span class="hljs-bullet">-</span> <span class="hljs-attr">weight:</span> <span class="hljs-number">50</span><br>          <span class="hljs-attr">preference:</span><br>            <span class="hljs-attr">matchExpressions:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">zone</span><br>                <span class="hljs-attr">operator:</span> <span class="hljs-string">In</span><br>                <span class="hljs-attr">values:</span> [<span class="hljs-string">&quot;foo&quot;</span>,<span class="hljs-string">&quot;bar&quot;</span>]<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@master</span><span class="hljs-number">-1</span> app]<span class="hljs-meta"># kubectl apply -f test1.yaml </span><br>pod/myapp created<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight node-repl"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs node-repl">[root@master-1 app]# kubectl get pod<br>NAME                               READY   STATUS    RESTARTS   AGE<br><span class="hljs-meta prompt_">...</span><br>myapp                              1/1     Running   0          2m17s<br><span class="hljs-meta prompt_">...</span><br><br></code></pre></td></tr></table></figure>
+
+
+
+
+
+<h3 id="podAffinity"><a href="#podAffinity" class="headerlink" title="podAffinity"></a>podAffinity</h3><p>&amp;emsp;&amp;emsp;Pod亲和性场景，我们的k8s集群的节点分布在不同的区域或者不同的机房，当服务A和服务B要求部署在同一个区域或者同一机房的时候，我们就需要亲和性调度了。</p>
+<p>kubectl explain pod.spec.affinity.podAffinity和NodeAffinity是一样的，都是有硬亲和性和软亲和性</p>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><code class="hljs applescript">[root@master<span class="hljs-number">-1</span> app]<span class="hljs-comment"># kubectl explain pod.spec.affinity.podAffinity</span><br>KIND:     Pod<br>VERSION:  v1<br><br>RESOURCE: podAffinity &lt;Object&gt;<br><br>DESCRIPTION:<br>     Describes pod affinity scheduling rules (e.g. co-locate this pod <span class="hljs-keyword">in</span> <span class="hljs-keyword">the</span><br>     same node, zone, etc. <span class="hljs-keyword">as</span> <span class="hljs-keyword">some</span> other pod(s)).<br><br>     Pod affinity <span class="hljs-keyword">is</span> a group <span class="hljs-keyword">of</span> inter pod affinity scheduling rules.<br><br>FIELDS:<br>   preferredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;<br>     The scheduler will prefer <span class="hljs-keyword">to</span> schedule pods <span class="hljs-keyword">to</span> nodes <span class="hljs-keyword">that</span> satisfy <span class="hljs-keyword">the</span><br>     affinity expressions specified <span class="hljs-keyword">by</span> this field, <span class="hljs-keyword">but</span> <span class="hljs-keyword">it</span> may choose a node <span class="hljs-keyword">that</span><br>     violates one <span class="hljs-keyword">or</span> more <span class="hljs-keyword">of</span> <span class="hljs-keyword">the</span> expressions. The node <span class="hljs-keyword">that</span> <span class="hljs-keyword">is</span> most preferred <span class="hljs-keyword">is</span><br>     <span class="hljs-keyword">the</span> one <span class="hljs-keyword">with</span> <span class="hljs-keyword">the</span> greatest sum <span class="hljs-keyword">of</span> weights, i.e. <span class="hljs-keyword">for</span> each node <span class="hljs-keyword">that</span> meets all<br>     <span class="hljs-keyword">of</span> <span class="hljs-keyword">the</span> scheduling requirements (resource request, requiredDuringScheduling<br>     affinity expressions, etc.), compute a sum <span class="hljs-keyword">by</span> iterating <span class="hljs-keyword">through</span> <span class="hljs-keyword">the</span><br>     elements <span class="hljs-keyword">of</span> this field <span class="hljs-keyword">and</span> adding <span class="hljs-string">&quot;weight&quot;</span> <span class="hljs-keyword">to</span> <span class="hljs-keyword">the</span> sum <span class="hljs-keyword">if</span> <span class="hljs-keyword">the</span> node has pods<br>     which matches <span class="hljs-keyword">the</span> corresponding podAffinityTerm; <span class="hljs-keyword">the</span> node(s) <span class="hljs-keyword">with</span> <span class="hljs-keyword">the</span><br>     highest sum are <span class="hljs-keyword">the</span> most preferred.<br><br>   requiredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;<br>     If <span class="hljs-keyword">the</span> affinity requirements specified <span class="hljs-keyword">by</span> this field are <span class="hljs-keyword">not</span> met <span class="hljs-keyword">at</span><br>     scheduling <span class="hljs-built_in">time</span>, <span class="hljs-keyword">the</span> pod will <span class="hljs-keyword">not</span> be scheduled <span class="hljs-keyword">onto</span> <span class="hljs-keyword">the</span> node. If <span class="hljs-keyword">the</span><br>     affinity requirements specified <span class="hljs-keyword">by</span> this field cease <span class="hljs-keyword">to</span> be met <span class="hljs-keyword">at</span> <span class="hljs-keyword">some</span> point<br>     during pod execution (e.g. due <span class="hljs-keyword">to</span> a pod label update), <span class="hljs-keyword">the</span> system may <span class="hljs-keyword">or</span><br>     may <span class="hljs-keyword">not</span> <span class="hljs-keyword">try</span> <span class="hljs-keyword">to</span> eventually evict <span class="hljs-keyword">the</span> pod <span class="hljs-keyword">from</span> <span class="hljs-keyword">its</span> node. When there are<br>     multiple elements, <span class="hljs-keyword">the</span> lists <span class="hljs-keyword">of</span> nodes corresponding <span class="hljs-keyword">to</span> each podAffinityTerm<br>     are intersected, i.e. all terms must be satisfied.<br></code></pre></td></tr></table></figure>
+
+<h3 id="通用参数"><a href="#通用参数" class="headerlink" title="通用参数"></a>通用参数</h3><ul>
+<li>labelSelector  选择跟那组Pod亲和</li>
+<li>namespaces 选择哪个命名空间</li>
+<li>topologyKey 用来缩小节点选择范围，其值可以是任何合法的节点标签（key），在大规模集群中，为此字段不指定或者指定错误值，可能引发巨大的性能、安全问题。因此，对其使用有如下限制：<ul>
+<li>对于Pod亲和与Pod硬性反亲和，topologyKey字段值不能为空。</li>
+<li>对于硬性反亲和，topoloygKey只能是kubernetes.io&#x2F;hostname，除非禁止LimitPodHardAntiAffinityTopology允入控制器或者修改其实现。</li>
+<li>对于Pod软反亲和，允许topoloygKey为空，表示对节点拓扑没有限制。</li>
+<li>以上情况外，topologyKey可以是任何合法标签（key）。</li>
+</ul>
+</li>
+</ul>
+<h3 id="硬亲和性：-1"><a href="#硬亲和性：-1" class="headerlink" title="硬亲和性："></a>硬亲和性：</h3><p>&amp;emsp;&amp;emsp;由于我们这里只有一个集群，并没有区域或者机房的概念，所以我们这里直接使用主机名来作为拓扑域(topologyKey)，把 pod 创建在同一个主机上面。</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment"># kubectl get nodes --show-labels</span><br>NAME       STATUS   ROLES    AGE   <span class="hljs-keyword">VERSION</span>   LABELS<br><span class="hljs-literal">master</span>-<span class="hljs-number">1</span>   Ready    <span class="hljs-keyword">master</span>   <span class="hljs-title">43d</span>   v1.<span class="hljs-number">13.1</span>   beta.kubernetes.io/<span class="hljs-attr">arch=</span>amd64,beta.kubernetes.io/<span class="hljs-attr">os=</span>linux,kubernetes.io/<span class="hljs-attr">hostname=</span><span class="hljs-literal">master</span>-<span class="hljs-number">1</span>,<span class="hljs-keyword">node</span><span class="hljs-title">-role</span>.kubernetes.io/<span class="hljs-attr">master=</span><br><span class="hljs-keyword">node</span><span class="hljs-title">-0</span>     Ready    <span class="hljs-tag">&lt;none&gt;</span>   <span class="hljs-number">43</span>d   v1.<span class="hljs-number">13.1</span>   beta.kubernetes.io/<span class="hljs-attr">arch=</span>amd64,beta.kubernetes.io/<span class="hljs-attr">os=</span>linux,kubernetes.io/<span class="hljs-attr">hostname=</span><span class="hljs-keyword">node</span><span class="hljs-title">-0</span><br><span class="hljs-keyword">node</span><span class="hljs-title">-1</span>     Ready    <span class="hljs-tag">&lt;none&gt;</span>   <span class="hljs-number">43</span>d   v1.<span class="hljs-number">13.1</span>   beta.kubernetes.io/<span class="hljs-attr">arch=</span>amd64,beta.kubernetes.io/<span class="hljs-attr">os=</span>linux,kubernetes.io/<span class="hljs-attr">hostname=</span><span class="hljs-keyword">node</span><span class="hljs-title">-1</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># vim pod-affinity-demo.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">node-affinity-pod1</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">name:</span> <span class="hljs-string">podaffinity-myapp</span><br>    <span class="hljs-attr">tier:</span> <span class="hljs-string">service</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br><span class="hljs-meta">---</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">node-affinity-pod2</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">tier:</span> <span class="hljs-string">front</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>  <span class="hljs-attr">affinity:</span><br>    <span class="hljs-attr">podAffinity:</span><br>      <span class="hljs-attr">requiredDuringSchedulingIgnoredDuringExecution:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">labelSelector:</span><br>          <span class="hljs-attr">matchExpressions:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">name</span><br>            <span class="hljs-attr">operator:</span> <span class="hljs-string">In</span><br>            <span class="hljs-attr">values:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-string">podaffinity-myapp</span><br>        <span class="hljs-attr">topologyKey:</span> <span class="hljs-string">kubernetes.io/hostname</span><br>				<br>[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># kubectl get pods -o wide</span><br><span class="hljs-string">NAME</span>                               <span class="hljs-string">READY</span>   <span class="hljs-string">STATUS</span>    <span class="hljs-string">RESTARTS</span>   <span class="hljs-string">AGE</span>     <span class="hljs-string">IP</span>             <span class="hljs-string">NODE</span>     <span class="hljs-string">NOMINATED</span> <span class="hljs-string">NODE</span>   <span class="hljs-string">READINESS</span> <span class="hljs-string">GATES</span><br><span class="hljs-string">...</span><br><span class="hljs-string">node-affinity-pod1</span>                 <span class="hljs-number">1</span><span class="hljs-string">/1</span>     <span class="hljs-string">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-string">7m7s</span>    <span class="hljs-number">10.244</span><span class="hljs-number">.2</span><span class="hljs-number">.9</span>     <span class="hljs-string">node-1</span>   <span class="hljs-string">&lt;none&gt;</span>           <span class="hljs-string">&lt;none&gt;</span><br><span class="hljs-string">node-affinity-pod2</span>                 <span class="hljs-number">1</span><span class="hljs-string">/1</span>     <span class="hljs-string">Running</span>   <span class="hljs-number">0</span>          <span class="hljs-string">7m7s</span>    <span class="hljs-number">10.244</span><span class="hljs-number">.2</span><span class="hljs-number">.10</span>    <span class="hljs-string">node-1</span>   <span class="hljs-string">&lt;none&gt;</span>           <span class="hljs-string">&lt;none&gt;</span><br><span class="hljs-string">...</span><br></code></pre></td></tr></table></figure>
+<p>&amp;emsp;&amp;emsp;上面这个例子中的Pod node-affinity-pod2 需要调度到某个指定的主机上，至少有一个节点上运行了这样的 pod：这个 pod 有一个name&#x3D;podaffinity-myapp的 label</p>
+<p>如果我们把上面的 node-affinity-pod1 删除，然后重新创建 affinity 这个资源，看看能不能正常调度呢：</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@master-1</span> <span class="hljs-string">pki</span>]<span class="hljs-comment"># kubectl delete  pod node-affinity-pod1</span><br><span class="hljs-string">pod</span> <span class="hljs-string">&quot;node-affinity-pod1&quot;</span> <span class="hljs-string">deleted</span><br><br>[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># vim pod2-affinity-demo.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">node-affinity-pod2</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">tier:</span> <span class="hljs-string">front</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>  <span class="hljs-attr">affinity:</span><br>    <span class="hljs-attr">podAffinity:</span><br>      <span class="hljs-attr">requiredDuringSchedulingIgnoredDuringExecution:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-attr">labelSelector:</span><br>          <span class="hljs-attr">matchExpressions:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">name</span><br>            <span class="hljs-attr">operator:</span> <span class="hljs-string">In</span><br>            <span class="hljs-attr">values:</span><br>            <span class="hljs-bullet">-</span> <span class="hljs-string">podaffinity-myapp</span><br>        <span class="hljs-attr">topologyKey:</span> <span class="hljs-string">kubernetes.io/hostname</span><br><br>[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># kubectl apply -f pod2-affinity-demo.yaml</span><br><span class="hljs-string">pod/node-affinity-pod2</span> <span class="hljs-string">created</span><br><br>[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># kubectl get pod</span><br><span class="hljs-string">NAME</span>                               <span class="hljs-string">READY</span>   <span class="hljs-string">STATUS</span>    <span class="hljs-string">RESTARTS</span>   <span class="hljs-string">AGE</span><br><span class="hljs-string">...</span><br><span class="hljs-string">node-affinity-pod2</span>                 <span class="hljs-number">0</span><span class="hljs-string">/1</span>     <span class="hljs-string">Pending</span>   <span class="hljs-number">0</span>          <span class="hljs-string">5m57s</span><br><span class="hljs-string">...</span><br></code></pre></td></tr></table></figure>
+
+<p>&amp;emsp;&amp;emsp;我们可以看到处于Pending状态了，这是因为现在没有一个节点上面拥有name&#x3D;podaffinity-myapp这个 label 的 pod，而上面我们的调度使用的是硬策略，所以就没办法进行调度了，大家可以去尝试下重新将 node-affinity-pod1 这个 pod 调度到 node-0 这个节点上，看看上面的 affinity 会不会也被调度到 node-0 这个节点上去？</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment"># vim pod1-affinity-demo.yaml</span><br>apiVersion: v1<br>kind: Pod<br>metadata:<br>  name: <span class="hljs-keyword">node</span><span class="hljs-title">-affinity-pod1</span><br>  labels:<br>    name: podaffinity-myapp<br>    tier: service<br><span class="hljs-keyword">spec</span>:<br>  containers:<br>  - name: myapp<br>    image: nginx:latest<br>    imagePullPolicy: IfNotPresent<br>  nodeSelector:<br>    kubernetes.io/hostname: <span class="hljs-keyword">node</span><span class="hljs-title">-0</span><br><br>[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment"># kubectl apply -f pod1-affinity-demo.yaml</span><br>pod/<span class="hljs-keyword">node</span><span class="hljs-title">-affinity-pod1</span> created<br><br>[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment"># kubectl get pod -o wide</span><br>NAME                               READY   STATUS    RESTARTS   AGE   IP             <span class="hljs-keyword">NODE</span>     <span class="hljs-title">NOMINATED</span> <span class="hljs-keyword">NODE</span>   <span class="hljs-title">READINESS</span> GATES<br>...<br><span class="hljs-keyword">node</span><span class="hljs-title">-affinity-pod1</span>                 <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">13s</span>   <span class="hljs-number">10.244</span>.<span class="hljs-number">4.9</span>     <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br><span class="hljs-keyword">node</span><span class="hljs-title">-affinity-pod2</span>                 <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">11m</span>   <span class="hljs-number">10.244</span>.<span class="hljs-number">4.10</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>...<br></code></pre></td></tr></table></figure>
+
+
+<p>&amp;emsp;&amp;emsp;我们这个地方使用的是kubernetes.io&#x2F;hostname这个拓扑域，意思就是我们当前调度的 pod 要和目标的 pod 处于同一个主机上面，因为要处于同一个拓扑域下面kubernetes.io&#x2F;hostname&#x3D;node-0，为了说明这个问题，我们把拓扑域改成beta.kubernetes.io&#x2F;os，同样的我们当前调度的 pod 要和目标的 pod 处于同一个拓扑域中，目标的 pod 是不是拥有beta.kubernetes.io&#x2F;os&#x3D;linux的标签，而我们这里3个节点都有这样的标签，这也就意味着我们3个节点都在同一个拓扑域中，所以我们这里的 pod 可能会被调度到任何一个节点（因为master节点设置了污点所以不会调度至master节点）,判断他们是否在同一拓扑域中是根据topologyKey中指定的node标签的values是否相同，如果相同则表示在同一拓扑域中：</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment"># kubectl get node --show-labels</span><br>NAME       STATUS   ROLES    AGE   <span class="hljs-keyword">VERSION</span>   LABELS<br><span class="hljs-literal">master</span>-<span class="hljs-number">1</span>   Ready    <span class="hljs-keyword">master</span>   <span class="hljs-title">44d</span>   v1.<span class="hljs-number">13.1</span>   beta.kubernetes.io/<span class="hljs-attr">arch=</span>amd64,beta.kubernetes.io/<span class="hljs-attr">os=</span>linux,kubernetes.io/<span class="hljs-attr">hostname=</span><span class="hljs-literal">master</span>-<span class="hljs-number">1</span>,<span class="hljs-keyword">node</span><span class="hljs-title">-role</span>.kubernetes.io/<span class="hljs-attr">master=</span><br><span class="hljs-keyword">node</span><span class="hljs-title">-0</span>     Ready    <span class="hljs-tag">&lt;none&gt;</span>   <span class="hljs-number">44</span>d   v1.<span class="hljs-number">13.1</span>   beta.kubernetes.io/<span class="hljs-attr">arch=</span>amd64,beta.kubernetes.io/<span class="hljs-attr">os=</span>linux,kubernetes.io/<span class="hljs-attr">hostname=</span><span class="hljs-keyword">node</span><span class="hljs-title">-0</span><br><span class="hljs-keyword">node</span><span class="hljs-title">-1</span>     Ready    <span class="hljs-tag">&lt;none&gt;</span>   <span class="hljs-number">44</span>d   v1.<span class="hljs-number">13.1</span>   beta.kubernetes.io/<span class="hljs-attr">arch=</span>amd64,beta.kubernetes.io/<span class="hljs-attr">os=</span>linux,kubernetes.io/<span class="hljs-attr">hostname=</span><span class="hljs-keyword">node</span><span class="hljs-title">-1</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment"># kubectl get pod -o wide</span><br>NAME                               READY   STATUS    RESTARTS   AGE   IP             <span class="hljs-keyword">NODE</span>     <span class="hljs-title">NOMINATED</span> <span class="hljs-keyword">NODE</span>   <span class="hljs-title">READINESS</span> GATES<br>nginx-ye-<span class="hljs-number">5664</span>f956f8-<span class="hljs-number">4</span>z26d          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">8s</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">4.12</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>nginx-ye-<span class="hljs-number">5664</span>f956f8-htb86          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">8s</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">4.13</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>nginx-ye-<span class="hljs-number">5664</span>f956f8-pd445          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">8s</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">2.20</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-1</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>nginx-ye-<span class="hljs-number">5664</span>f956f8-sqsws          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">8s</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">4.11</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>nginx-ye-<span class="hljs-number">5664</span>f956f8-wns5w          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">8s</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">2.21</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-1</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br><span class="hljs-keyword">node</span><span class="hljs-title">-affinity-pod1</span>                 <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">61m</span>   <span class="hljs-number">10.244</span>.<span class="hljs-number">2.13</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-1</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="podAntiAffinity"><a href="#podAntiAffinity" class="headerlink" title="podAntiAffinity"></a>podAntiAffinity</h3><p>&amp;emsp;&amp;emsp;和Pod亲和性的用法一致，只是Pod反亲和性则是反着来的。比如一个节点上运行了某个应用服务pod，那么我们的 数据库服务pod则尽量不要在同一台节点上，这就是反亲和性。</p>
+<p>kubectl explain pod.spec.affinity.podAntiAffinity也是一样的，都是有硬亲和性和软亲和性；</p>
+<figure class="highlight gauss"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><code class="hljs gauss">[root<span class="hljs-comment">@master-1 app]# kubectl explain pod.spec.affinity.podAntiAffinity</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">KIND:     Pod</span><br><span class="hljs-comment">VERSION:  v1</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">RESOURCE: podAntiAffinity &lt;Object&gt;</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">DESCRIPTION:</span><br><span class="hljs-comment">     Describes pod anti-affinity scheduling rules (e.g. avoid putting this pod</span><br><span class="hljs-comment">     in the same node, zone, etc. as some other pod(s)).</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">     Pod anti affinity is a group of inter pod anti affinity scheduling rules.</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">FIELDS:</span><br><span class="hljs-comment">   preferredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;</span><br><span class="hljs-comment">     The scheduler will prefer to schedule pods to nodes that satisfy the</span><br><span class="hljs-comment">     anti-affinity expressions specified by this field, but it may choose a node</span><br><span class="hljs-comment">     that violates one or more of the expressions. The node that is most</span><br><span class="hljs-comment">     preferred is the one with the greatest sum of weights, i.e. for each node</span><br><span class="hljs-comment">     that meets all of the scheduling requirements (resource request,</span><br><span class="hljs-comment">     requiredDuringScheduling anti-affinity expressions, etc.), compute a sum by</span><br><span class="hljs-comment">     iterating through the elements of this field and adding &quot;weight&quot; to the sum</span><br><span class="hljs-comment">     if the node has pods which matches the corresponding podAffinityTerm; the</span><br><span class="hljs-comment">     node(s) with the highest sum are the most preferred.</span><br><span class="hljs-comment"></span><br><span class="hljs-comment">   requiredDuringSchedulingIgnoredDuringExecution	&lt;[]Object&gt;</span><br><span class="hljs-comment">     If the anti-affinity requirements specified by this field are not met at</span><br><span class="hljs-comment">     scheduling time, the pod will not be scheduled onto the node. If the</span><br><span class="hljs-comment">     anti-affinity requirements specified by this field cease to be met at some</span><br><span class="hljs-comment">     point during pod execution (e.g. due to a pod label update), the system may</span><br><span class="hljs-comment">     or may not try to eventually evict the pod from its node. When there are</span><br><span class="hljs-comment">     multiple elements, the lists of nodes corresponding to each podAffinityTerm</span><br><span class="hljs-comment">     are intersected, i.e. all terms must be satisfied.</span><br></code></pre></td></tr></table></figure>
+
+
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs yaml">[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># vim test2.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Pod</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">node-affinity-pod1</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">name:</span> <span class="hljs-string">podaffinity-myapp</span><br>    <span class="hljs-attr">tier:</span> <span class="hljs-string">service</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">containers:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>    <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>    <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>  <span class="hljs-attr">nodeSelector:</span><br>    <span class="hljs-attr">kubernetes.io/hostname:</span> <span class="hljs-string">node-1</span><br></code></pre></td></tr></table></figure>
+
+
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment">#反硬亲和调度</span><br>[<span class="hljs-string">root@master-1</span> <span class="hljs-string">app</span>]<span class="hljs-comment"># pod-antiaffinity-demo.yaml</span><br><span class="hljs-attr">apiVersion:</span> <span class="hljs-string">apps/v1</span><br><span class="hljs-attr">kind:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attr">metadata:</span><br>  <span class="hljs-attr">name:</span> <span class="hljs-string">nginx-ye</span><br>  <span class="hljs-attr">labels:</span><br>    <span class="hljs-attr">app:</span> <span class="hljs-string">myapp</span><br><span class="hljs-attr">spec:</span><br>  <span class="hljs-attr">replicas:</span> <span class="hljs-number">5</span><br>  <span class="hljs-attr">selector:</span><br>    <span class="hljs-attr">matchLabels:</span><br>      <span class="hljs-attr">app:</span> <span class="hljs-string">nginx</span><br>  <span class="hljs-attr">template:</span><br>    <span class="hljs-attr">metadata:</span><br>      <span class="hljs-attr">labels:</span><br>        <span class="hljs-attr">app:</span> <span class="hljs-string">nginx</span><br>        <span class="hljs-attr">version:</span> <span class="hljs-string">latest</span><br>    <span class="hljs-attr">spec:</span><br>     <span class="hljs-attr">containers:</span><br>     <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">myapp</span><br>       <span class="hljs-attr">image:</span> <span class="hljs-string">nginx:latest</span><br>       <span class="hljs-attr">imagePullPolicy:</span> <span class="hljs-string">IfNotPresent</span><br>     <span class="hljs-attr">affinity:</span><br>       <span class="hljs-attr">podAntiAffinity:</span><br>         <span class="hljs-attr">requiredDuringSchedulingIgnoredDuringExecution:</span><br>           <span class="hljs-bullet">-</span> <span class="hljs-attr">labelSelector:</span><br>               <span class="hljs-attr">matchExpressions:</span><br>                 <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">name</span><br>                   <span class="hljs-attr">operator:</span> <span class="hljs-string">In</span><br>                   <span class="hljs-attr">values:</span> [<span class="hljs-string">&quot;podaffinity-myapp&quot;</span>]<br>             <span class="hljs-attr">topologyKey:</span> <span class="hljs-string">kubernetes.io/hostname</span><br></code></pre></td></tr></table></figure>
+
+<p>&amp;emsp;&amp;emsp;这里的意思就是如果一个节点上面有一个name&#x3D;podaffinity-myapp这样的 pod 的话，那么我们的 pod 就别调度到这个节点上面来，上面我们把name&#x3D;podaffinity-myapp这个 pod 固定到了 node-1这个节点上面来，所以正常来说我们这里的 pod 不会出现在 node-1 节点上：</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">[root@<span class="hljs-literal">master</span>-<span class="hljs-number">1</span> app]<span class="hljs-comment"># kubectl get pod -o wide</span><br>NAME                               READY   STATUS    RESTARTS   AGE    IP             <span class="hljs-keyword">NODE</span>     <span class="hljs-title">NOMINATED</span> <span class="hljs-keyword">NODE</span>   <span class="hljs-title">READINESS</span> GATES<br>nginx-ye-<span class="hljs-number">79</span>c4778f6c-<span class="hljs-number">4h</span>5ft          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">15m</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">4.20</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>nginx-ye-<span class="hljs-number">79</span>c4778f6c-<span class="hljs-number">8</span>tw9k          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">15m</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">4.16</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>nginx-ye-<span class="hljs-number">79</span>c4778f6c-gpgxb          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">15m</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">4.17</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>nginx-ye-<span class="hljs-number">79</span>c4778f6c-hbrfr          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">15m</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">4.19</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br>nginx-ye-<span class="hljs-number">79</span>c4778f6c-rbw5r          <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">15m</span>    <span class="hljs-number">10.244</span>.<span class="hljs-number">4.18</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-0</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br><span class="hljs-keyword">node</span><span class="hljs-title">-affinity-pod1</span>                 <span class="hljs-number">1</span>/<span class="hljs-number">1</span>     Running   <span class="hljs-number">0</span>          <span class="hljs-number">147m</span>   <span class="hljs-number">10.244</span>.<span class="hljs-number">2.13</span>    <span class="hljs-keyword">node</span><span class="hljs-title">-1</span>   <span class="hljs-tag">&lt;none&gt;</span>           <span class="hljs-tag">&lt;none&gt;</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="更实际的用例"><a href="#更实际的用例" class="headerlink" title="更实际的用例"></a>更实际的用例</h3><p>&amp;emsp;&amp;emsp;在三个节点集群中，web应用程序具有内存缓存，比如redis。我们希望web服务器尽可能与redis共存。</p>
+<p>&amp;emsp;&amp;emsp;下面的yaml文件是部署一个简单的redis，其中包含三个副本和<code>label</code>标签<code>app=store</code>。还配置了<code>PodAntiAffinity</code>，以确保调度器不会在单个节点上同时调度多个副本。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">apps/v1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">redis-cache</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">selector</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">matchLabels</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">store</span><br>  <span class="hljs-attribute">replicas</span><span class="hljs-punctuation">:</span> <span class="hljs-string">3</span><br>  <span class="hljs-attribute">template</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">store</span><br>    <span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">affinity</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">podAntiAffinity</span><span class="hljs-punctuation">:</span><br>          <span class="hljs-attribute">requiredDuringSchedulingIgnoredDuringExecution</span><span class="hljs-punctuation">:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-string">labelSelector:</span><br>              <span class="hljs-attribute">matchExpressions</span><span class="hljs-punctuation">:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-string">key: app</span><br>                <span class="hljs-attribute">operator</span><span class="hljs-punctuation">:</span> <span class="hljs-string">In</span><br>                <span class="hljs-attribute">values</span><span class="hljs-punctuation">:</span><br>                <span class="hljs-bullet">-</span> <span class="hljs-string">store</span><br>            <span class="hljs-attribute">topologyKey</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;kubernetes.io/hostname&quot;</span><br>      <span class="hljs-attribute">containers</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">name: redis-server</span><br>        <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">redis:3.2-alpine</span><br></code></pre></td></tr></table></figure>
+
+
+<p>&amp;emsp;&amp;emsp;下面是web服务器部署的yaml文件配置了<code>podAntiAffinity</code>和<code>podAffinity</code>。这将通知调度器，它的所有副本都将与具有选择器标签<code>app=store</code>的pod共存。这还将确保每个web服务器副本不会同时位于单个节点上。</p>
+<figure class="highlight nestedtext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><code class="hljs nestedtext"><span class="hljs-attribute">apiVersion</span><span class="hljs-punctuation">:</span> <span class="hljs-string">apps/v1</span><br><span class="hljs-attribute">kind</span><span class="hljs-punctuation">:</span> <span class="hljs-string">Deployment</span><br><span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">name</span><span class="hljs-punctuation">:</span> <span class="hljs-string">web-server</span><br><span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>  <span class="hljs-attribute">selector</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">matchLabels</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">web-store</span><br>  <span class="hljs-attribute">replicas</span><span class="hljs-punctuation">:</span> <span class="hljs-string">3</span><br>  <span class="hljs-attribute">template</span><span class="hljs-punctuation">:</span><br>    <span class="hljs-attribute">metadata</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">labels</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">app</span><span class="hljs-punctuation">:</span> <span class="hljs-string">web-store</span><br>    <span class="hljs-attribute">spec</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-attribute">affinity</span><span class="hljs-punctuation">:</span><br>        <span class="hljs-attribute">podAntiAffinity</span><span class="hljs-punctuation">:</span><br>          <span class="hljs-attribute">requiredDuringSchedulingIgnoredDuringExecution</span><span class="hljs-punctuation">:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-string">labelSelector:</span><br>              <span class="hljs-attribute">matchExpressions</span><span class="hljs-punctuation">:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-string">key: app</span><br>                <span class="hljs-attribute">operator</span><span class="hljs-punctuation">:</span> <span class="hljs-string">In</span><br>                <span class="hljs-attribute">values</span><span class="hljs-punctuation">:</span><br>                <span class="hljs-bullet">-</span> <span class="hljs-string">web-store</span><br>            <span class="hljs-attribute">topologyKey</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;kubernetes.io/hostname&quot;</span><br>        <span class="hljs-attribute">podAffinity</span><span class="hljs-punctuation">:</span><br>          <span class="hljs-attribute">requiredDuringSchedulingIgnoredDuringExecution</span><span class="hljs-punctuation">:</span><br>          <span class="hljs-bullet">-</span> <span class="hljs-string">labelSelector:</span><br>              <span class="hljs-attribute">matchExpressions</span><span class="hljs-punctuation">:</span><br>              <span class="hljs-bullet">-</span> <span class="hljs-string">key: app</span><br>                <span class="hljs-attribute">operator</span><span class="hljs-punctuation">:</span> <span class="hljs-string">In</span><br>                <span class="hljs-attribute">values</span><span class="hljs-punctuation">:</span><br>                <span class="hljs-bullet">-</span> <span class="hljs-string">store</span><br>            <span class="hljs-attribute">topologyKey</span><span class="hljs-punctuation">:</span> <span class="hljs-string">&quot;kubernetes.io/hostname&quot;</span><br>      <span class="hljs-attribute">containers</span><span class="hljs-punctuation">:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-string">name: web-app</span><br>        <span class="hljs-attribute">image</span><span class="hljs-punctuation">:</span> <span class="hljs-string">nginx:1.12-alpine</span><br></code></pre></td></tr></table></figure>
+
+<p>如果我们创建上面的两个部署，我们的三个节点集群应该如下所示。</p>
+<table>
+<thead>
+<tr>
+<th>node-1</th>
+<th align="center">node-2</th>
+<th align="right">node-3</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>webserver-1</td>
+<td align="center">webserver-2</td>
+<td align="right">webserver-3</td>
+</tr>
+<tr>
+<td>cache-1</td>
+<td align="center">cache-2</td>
+<td align="right">webserver-3</td>
+</tr>
+</tbody></table>
+<p>正如你所看到的， web-server的所有3个副本都按照预期自动与缓存共存。</p>
+<figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">$ kubectl get pods -o wide<br>NAME                           READY     STATUS    RESTARTS   AGE       IP           <span class="hljs-keyword">NODE</span><br><span class="hljs-title">redis-cache-1450370735-6dzlj</span>   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">8m</span>        <span class="hljs-number">10.192</span>.<span class="hljs-number">4.2</span>   kube-<span class="hljs-keyword">node</span><span class="hljs-title">-3</span><br>redis-cache-<span class="hljs-number">1450370735</span>-j2j96   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">8m</span>        <span class="hljs-number">10.192</span>.<span class="hljs-number">2.2</span>   kube-<span class="hljs-keyword">node</span><span class="hljs-title">-1</span><br>redis-cache-<span class="hljs-number">1450370735</span>-z73mh   <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">8m</span>        <span class="hljs-number">10.192</span>.<span class="hljs-number">3.1</span>   kube-<span class="hljs-keyword">node</span><span class="hljs-title">-2</span><br>web-server-<span class="hljs-number">1287567482</span>-<span class="hljs-number">5</span>d4dz    <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">7m</span>        <span class="hljs-number">10.192</span>.<span class="hljs-number">2.3</span>   kube-<span class="hljs-keyword">node</span><span class="hljs-title">-1</span><br>web-server-<span class="hljs-number">1287567482</span>-<span class="hljs-number">6</span>f7v5    <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">7m</span>        <span class="hljs-number">10.192</span>.<span class="hljs-number">4.3</span>   kube-<span class="hljs-keyword">node</span><span class="hljs-title">-3</span><br>web-server-<span class="hljs-number">1287567482</span>-s330j    <span class="hljs-number">1</span>/<span class="hljs-number">1</span>       Running   <span class="hljs-number">0</span>          <span class="hljs-number">7m</span>        <span class="hljs-number">10.192</span>.<span class="hljs-number">3.2</span>   kube-<span class="hljs-keyword">node</span><span class="hljs-title">-2</span><br></code></pre></td></tr></table></figure>
+
+<p>上面的例子使用<code>PodAntiAffinity</code>规则和<code>topologyKey: &quot;kubernetes.io/hostname&quot;</code>。来部署redis集群，使其同一主机上不存在两个实例；</p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>Kubernetes之调度器和调度过程</div>
+      <div>https://system51.github.io/2019/08/26/Kubernetes-Scheduler/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2019年8月26日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2019/08/26/kubernetes-Resource-constraints/" title="kubernetes之管理容器的计算资源">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">kubernetes之管理容器的计算资源</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2019/08/26/kubernetes-flannel-Vxlan/" title="kubernetes flannel之Vxlan原理">
+                        <span class="hidden-mobile">kubernetes flannel之Vxlan原理</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

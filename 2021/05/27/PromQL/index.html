@@ -1,0 +1,971 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="PromQL基础Prometheus会将所有采集到的样本数据以时间序列（time-series）的方式保存在内存数据库中，并且定时保存到硬盘上，每个数据称为一个样本。时间序列（time-series）是按照时间戳和值的序列顺序存放的，我们称之为向量(vector). 每条时间序列（time-series）通过指标名称(metrics name)和一组标签集(labelset)命名。如下所示，可以将">
+<meta property="og:type" content="article">
+<meta property="og:title" content="探索PromQL">
+<meta property="og:url" content="https://system51.github.io/2021/05/27/PromQL/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="PromQL基础Prometheus会将所有采集到的样本数据以时间序列（time-series）的方式保存在内存数据库中，并且定时保存到硬盘上，每个数据称为一个样本。时间序列（time-series）是按照时间戳和值的序列顺序存放的，我们称之为向量(vector). 每条时间序列（time-series）通过指标名称(metrics name)和一组标签集(labelset)命名。如下所示，可以将">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-1.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-2.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-3.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-4.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-5.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-6.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-7.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-8.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-9.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-PromQL-10.png">
+<meta property="article:published_time" content="2021-05-27T06:27:00.000Z">
+<meta property="article:modified_time" content="2022-08-27T03:14:15.422Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/Prometheus-PromQL-1.png">
+  
+  
+  
+  <title>探索PromQL - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="探索PromQL"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2021-05-27 14:27" pubdate>
+          2021年5月27日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          19k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          31 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">探索PromQL</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <h2 id="PromQL基础"><a href="#PromQL基础" class="headerlink" title="PromQL基础"></a>PromQL基础</h2><p>Prometheus会将所有采集到的样本数据以时间序列（time-series）的方式保存在内存数据库中，并且定时保存到硬盘上，每个数据称为一个样本。时间序列（time-series）是按照时间戳和值的序列顺序存放的，我们称之为向量(vector). 每条时间序列（time-series）通过指标名称(metrics name)和一组标签集(labelset)命名。如下所示，可以将时间序列（time-series）理解为将多个时间序列（time-series）放在同一个坐标系内(以时间为横轴，以序列为纵轴)，将形成一个由数据点组成的矩阵;</p>
+<p>可以把以下图想象成Promethus存储</p>
+<ul>
+<li>每一行代表一个时间序列（time-series）我们也称为一个向量(Vector)</li>
+<li>每一列代表时间的流逝时间点</li>
+</ul>
+<p><img src="/images/Prometheus-PromQL-1.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-1"></p>
+<p>在时间序列（time-series）中的每一个点称为一个样本（sample），样本由以下三部分组成：</p>
+<ul>
+<li>指标名(metric name)：指标名（metric name）和描述当前样本特征的标签（labels）;</li>
+<li>时间戳(timestamp)：一个精确到毫秒的时间戳;</li>
+<li>样本值(value)： 一个float64的浮点型数据表示当前样本的值。</li>
+</ul>
+<p><img src="/images/Prometheus-PromQL-2.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-2"></p>
+<h3 id="Prometheus数据模型"><a href="#Prometheus数据模型" class="headerlink" title="Prometheus数据模型"></a>Prometheus数据模型</h3><p>Prometheus中，每个时间序列都由指标名称(Metric Name)和标签(Label)来唯一标识（注意：指标名称相同，但标签不同的组合分别代表着不同的时间序列。不同的指标名称自然更是代表着不同的时间序列。），格式为:</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs xml"><span class="hljs-tag">&lt;<span class="hljs-name">metric</span> <span class="hljs-attr">name</span>&gt;</span>&#123;<span class="hljs-tag">&lt;<span class="hljs-name">label</span> <span class="hljs-attr">name</span>&gt;</span>=<span class="hljs-tag">&lt;<span class="hljs-name">label</span> <span class="hljs-attr">value</span>&gt;</span>, ...&#125;<br></code></pre></td></tr></table></figure>
+<p>指标名称(metric name)可以反映被监控样本的含义（比如，<code>http_request_total</code> - 表示当前系统接收到的HTTP请求总量）支持使用字母、数字、下划线和冒号，且必须能匹配RE2规范的正则表达式;<br>标签(label)键值型数据，附加在指标名称之后，反映了当前样本的特征维度。通过这些维度Prometheus可以对样本数据进行过滤，聚合等。例如，http_requests_total{method&#x3D;GET}和http_requests_total{method&#x3D;POST}代表着两个不同的时间序列;标签名称可使用字母、数字和下划线，且必须能匹配RE2规范的正则表达式; 以<code>__</code>为前缀的名称为Prometheus系统预留使用;</p>
+<p>在Prometheus的底层实现中指标名称实际上是以<code>__name__=&lt;metric name&gt;</code>的形式保存在数据库中的，因此以下两种方式均表示的同一条时间序列（time-series）：</p>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs accesslog">api_http_requests_total&#123;method=<span class="hljs-string">&quot;<span class="hljs-keyword">POST</span>&quot;</span>, handler=<span class="hljs-string">&quot;/messages&quot;</span>&#125;<br></code></pre></td></tr></table></figure>
+
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs accesslog">&#123;__name__=<span class="hljs-string">&quot;api_http_requests_total&quot;</span>，method=<span class="hljs-string">&quot;<span class="hljs-keyword">POST</span>&quot;</span>, handler=<span class="hljs-string">&quot;/messages&quot;</span>&#125;<br></code></pre></td></tr></table></figure>
+
+
+
+
+<h2 id="初识PromQL"><a href="#初识PromQL" class="headerlink" title="初识PromQL"></a>初识PromQL</h2><p>Prometheus通过指标名称（metrics name）以及对应的一组标签（labels）唯一定义一条时间序列。</p>
+<ul>
+<li>指标名称反映了监控样本的基本标识</li>
+<li>而label则在这个基本特征上为采集到的数据提供了多种特征维度。</li>
+</ul>
+<p>基于PromQL表达式，用户可以针对指定的特征（指标名）及其细分的纬度（标签）进行过滤、聚合、 统计等运算从而产生期望的计算结果。</p>
+<h3 id="PromQL的数据类型"><a href="#PromQL的数据类型" class="headerlink" title="PromQL的数据类型"></a>PromQL的数据类型</h3><p>PromQL的表达式中支持4种数据类型</p>
+<ul>
+<li>即时向量(Instant Vector):特定或全部的时间序列集合上，具有相同时间戳的一组样本值称为即时向量;</li>
+<li>范围向量(Range Vector):特定或全部的时间序列集合上，在指定的同一时间范围内的 所有样本值;</li>
+<li>标量(Scalar):一个浮点型的数据值;</li>
+<li>字符串(String):支持使用单引号、双引号或反引号进行引用，但反引号中不会对转义 字符进行转义;</li>
+</ul>
+<h3 id="时间序列选择器"><a href="#时间序列选择器" class="headerlink" title="时间序列选择器"></a>时间序列选择器</h3><p>用户可使用向量表达式来查询某个指标名称下的所有时间序列或部分时间序列（根据标签判断不同的标签标示不同的时间序列）的即时（当前）样本值或过去某个时间范围内的样本值，前者称为即时向量选择器，后者称为范围向量选择器</p>
+<ul>
+<li>即时向量选择器(Instant Vector Selectors):返回值中只会包含该时间序列中的最新的一个样本值，这样的返回结果我们称之为即时向量（瞬时向量）</li>
+<li>范围向量选择器(Range Vector Selectors) :返回值中只会包含该时间序列中的最新的一组样本值;范围选择器 <code>[]</code> 进行定义。</li>
+</ul>
+<p><img src="/images/Prometheus-PromQL-3.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-3"></p>
+<h4 id="即时向量"><a href="#即时向量" class="headerlink" title="即时向量"></a>即时向量</h4><p>当我们直接使用监控指标名称查询时，可以查询该指标下的所有时间序列。如：</p>
+<figure class="highlight ebnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs ebnf"><span class="hljs-attribute">http_requests_total</span><br></code></pre></td></tr></table></figure>
+<p>等同于：</p>
+<figure class="highlight dust"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs dust"><span class="language-xml">http_requests_total</span><span class="hljs-template-variable">&#123;&#125;</span><br></code></pre></td></tr></table></figure>
+
+<p>该表达式会返回指标名称为http_requests_total的所有时间序列：(以下是两个不同的时间序列，因为他们的标签不同)</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">http_requests_total</span>&#123;code=<span class="hljs-string">&quot;200&quot;</span>,handler=<span class="hljs-string">&quot;alerts&quot;</span>,instance=<span class="hljs-string">&quot;localhost:9090&quot;</span>,job=<span class="hljs-string">&quot;prometheus&quot;</span>,method=<span class="hljs-string">&quot;get&quot;</span>&#125;=(<span class="hljs-number">20889</span>@<span class="hljs-number">1518096812</span>.<span class="hljs-number">326</span>)<br><span class="hljs-attribute">http_requests_total</span>&#123;code=<span class="hljs-string">&quot;200&quot;</span>,handler=<span class="hljs-string">&quot;graph&quot;</span>,instance=<span class="hljs-string">&quot;localhost:9090&quot;</span>,job=<span class="hljs-string">&quot;prometheus&quot;</span>,method=<span class="hljs-string">&quot;get&quot;</span>&#125;=(<span class="hljs-number">21287</span>@<span class="hljs-number">1518096812</span>.<span class="hljs-number">326</span>)<br></code></pre></td></tr></table></figure>
+
+<p>直接通过类似于PromQL表达式<code>http_requests_total</code>查询时间序列时，返回值中只会包含该时间序列中的最新的一个样本值，这样的返回结果我们称之为瞬时向量。而相应的这样的表达式称之为瞬时向量表达式。</p>
+<h4 id="范围向量"><a href="#范围向量" class="headerlink" title="范围向量"></a>范围向量</h4><p>如果我们想过去一段时间范围内的样本数据时，我们则需要使用范围向量表达式。范围向量表达式和瞬时向量表达式之间的差异在于在范围向量表达式中我们需要定义时间选择的范围，时间范围通过时间范围选择器 <code>[]</code> 进行定义。例如，通过以下表达式可以选择最近5分钟内的所有样本数据:</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">http_requests_total</span>&#123;&#125;[<span class="hljs-number">5</span>m]<br></code></pre></td></tr></table></figure>
+
+<p>该表达式将会返回查询到的时间序列中最近5分钟的所有样本数据：</p>
+<figure class="highlight mel"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs mel">http_requests_total&#123;code=<span class="hljs-string">&quot;200&quot;</span>,handler=<span class="hljs-string">&quot;alerts&quot;</span>,<span class="hljs-keyword">instance</span>=<span class="hljs-string">&quot;localhost:9090&quot;</span>,job=<span class="hljs-string">&quot;prometheus&quot;</span>,method=<span class="hljs-string">&quot;get&quot;</span>&#125;=[<br>    <span class="hljs-number">1</span>@1518096812<span class="hljs-number">.326</span><br>    <span class="hljs-number">1</span>@1518096817<span class="hljs-number">.326</span><br>    <span class="hljs-number">1</span>@1518096822<span class="hljs-number">.326</span><br>    <span class="hljs-number">1</span>@1518096827<span class="hljs-number">.326</span><br>    <span class="hljs-number">1</span>@1518096832<span class="hljs-number">.326</span><br>    <span class="hljs-number">1</span>@1518096837<span class="hljs-number">.325</span><br>]<br>http_requests_total&#123;code=<span class="hljs-string">&quot;200&quot;</span>,handler=<span class="hljs-string">&quot;graph&quot;</span>,<span class="hljs-keyword">instance</span>=<span class="hljs-string">&quot;localhost:9090&quot;</span>,job=<span class="hljs-string">&quot;prometheus&quot;</span>,method=<span class="hljs-string">&quot;get&quot;</span>&#125;=[<br>    <span class="hljs-number">4</span> @1518096812<span class="hljs-number">.326</span><br>    <span class="hljs-number">4</span>@1518096817<span class="hljs-number">.326</span><br>    <span class="hljs-number">4</span>@1518096822<span class="hljs-number">.326</span><br>    <span class="hljs-number">4</span>@1518096827<span class="hljs-number">.326</span><br>    <span class="hljs-number">4</span>@1518096832<span class="hljs-number">.326</span><br>    <span class="hljs-number">4</span>@1518096837<span class="hljs-number">.325</span><br>]<br></code></pre></td></tr></table></figure>
+
+<p>通过范围向量表达式查询到的结果我们称为范围向量。</p>
+<p>除了使用m表示分钟以外，PromQL的时间范围选择器支持其它时间单位：</p>
+<figure class="highlight nginx"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs nginx"><span class="hljs-attribute">s</span> - 秒<br>m - 分钟<br>h - 小时<br>d - 天<br>w - 周<br>y - 年<br></code></pre></td></tr></table></figure>
+
+
+
+<h4 id="标量（Scalar）：一个浮点型的数字值"><a href="#标量（Scalar）：一个浮点型的数字值" class="headerlink" title="标量（Scalar）：一个浮点型的数字值"></a>标量（Scalar）：一个浮点型的数字值</h4><p>标量只有一个数字，没有时序。<br>例如：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs">10<br></code></pre></td></tr></table></figure>
+
+<p>需要注意的是，当使用表达式<code>count(http_requests_total)</code>，返回的数据类型，依然是瞬时向量。用户可以通过内置函数<code>scalar()</code>将单个瞬时向量转换为标量。</p>
+<h4 id="字符串（String）：一个简单的字符串值"><a href="#字符串（String）：一个简单的字符串值" class="headerlink" title="字符串（String）：一个简单的字符串值"></a>字符串（String）：一个简单的字符串值</h4><p>直接使用字符串，作为PromQL表达式，则会直接返回字符串。</p>
+<figure class="highlight taggerscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs taggerscript">&quot;this is a string&quot;<br>&#x27;these are unescaped: <span class="hljs-symbol">\n</span> <span class="hljs-symbol">\\</span> <span class="hljs-symbol">\t</span>&#x27;<br>`these are not unescaped: <span class="hljs-symbol">\n</span> &#x27; &quot; <span class="hljs-symbol">\t</span>`<br></code></pre></td></tr></table></figure>
+
+<h4 id="注意"><a href="#注意" class="headerlink" title="注意"></a>注意</h4><p>需要将返回值绘制成图形时，仅支持即时向量类型和标量类型的数据;由于范围向量选择器的返回的是范围向量型数据，它不能用于表达式浏览器中图形绘制功能，否则，表达式浏览器会返回<code>Error executing query: invalid expression type &quot;range vector&quot; for range query, must be Scalar or instant Vector</code>一类的错误，但事实上，范围向量选择几乎总是结合速率类的函数 <code>rate</code> 或 <code>irate</code> 一同使用。</p>
+<p><img src="/images/Prometheus-PromQL-4.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-4"></p>
+<p>Prometheus 中有四种指标类型其中一种 Counters（计数型），其值只增不减，除非监控系统发生了重置。你可以使用 counter 指标类型来表示服务的请求数、已完成的任务数、错误发生的次数等。需要使用counter绘图或做任何事之前，通常要借助rate(), irate()或 increase() 函数来查看它的rate（速率）。以下先介绍两个函数：</p>
+<h4 id="rate"><a href="#rate" class="headerlink" title="rate()"></a>rate()</h4><p>此函数计算整个采样周期内每秒的增长率。</p>
+<p>例如：rate(http_requests_total[5m]) 得出的是HTTP在5分钟窗口内，平均每秒的请求率。作为最常见的函数，它以可预测的每秒输出单位产生平滑的rate。</p>
+<h4 id="手动计算rate"><a href="#手动计算rate" class="headerlink" title="手动计算rate"></a>手动计算rate</h4><figure class="highlight dns"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs dns">$ node_time_seconds[<span class="hljs-number">1m</span>]<br>node_time_seconds&#123;instance=&quot;exporter:<span class="hljs-number">9100</span>&quot;,job=&quot;node-resources&quot;&#125;<br><span class="hljs-number">1596077182</span>.<span class="hljs-number">3093214</span> @<span class="hljs-number">1596077182</span>.<span class="hljs-number">307</span> // 第一个点<br><span class="hljs-number">1596077192</span>.<span class="hljs-number">3132203</span> @<span class="hljs-number">1596077192</span>.<span class="hljs-number">307</span><br><span class="hljs-number">1596077202</span>.<span class="hljs-number">311446</span> @<span class="hljs-number">1596077202</span>.<span class="hljs-number">307</span><br><span class="hljs-number">1596077212</span>.<span class="hljs-number">309673</span> @<span class="hljs-number">1596077212</span>.<span class="hljs-number">307</span><br><span class="hljs-number">1596077222</span>.<span class="hljs-number">316771</span> @<span class="hljs-number">1596077222</span>.<span class="hljs-number">307</span><br><span class="hljs-number">1596077232</span>.<span class="hljs-number">3151288</span> @<span class="hljs-number">1596077232</span>.<span class="hljs-number">307</span> // 最后一个点<br>node_time_seconds&#123;instance=&quot;<span class="hljs-number">10.0.23.29</span>:<span class="hljs-number">9100</span>&quot;,job=&quot;node-resources&quot;&#125;<br><span class="hljs-number">1596077178</span>.<span class="hljs-number">6314309</span> @<span class="hljs-number">1596077178</span>.<span class="hljs-number">633</span>  // 第一个点<br><span class="hljs-number">1596077188</span>.<span class="hljs-number">6312084</span> @<span class="hljs-number">1596077188</span>.<span class="hljs-number">633</span><br><span class="hljs-number">1596077198</span>.<span class="hljs-number">633293</span> @<span class="hljs-number">1596077198</span>.<span class="hljs-number">634</span><br><span class="hljs-number">1596077208</span>.<span class="hljs-number">6332283</span> @<span class="hljs-number">1596077208</span>.<span class="hljs-number">634</span><br><span class="hljs-number">1596077218</span>.<span class="hljs-number">6320524</span> @<span class="hljs-number">1596077218</span>.<span class="hljs-number">633</span><br><span class="hljs-number">1596077228</span>.<span class="hljs-number">635078</span> @<span class="hljs-number">1596077228</span>.<span class="hljs-number">633</span>  // 最后一个点<br><br>$ rate(node_time_seconds[<span class="hljs-number">1m</span>])<br>&#123;instance=&quot;exporter:<span class="hljs-number">9100</span>&quot;,job=&quot;node-resources&quot;&#125;    <span class="hljs-number">1</span>.<span class="hljs-number">0001161479949952</span><br>&#123;instance=&quot;<span class="hljs-number">10.0.23.29</span>:<span class="hljs-number">9100</span>&quot;,job=&quot;node-resources&quot;&#125;  <span class="hljs-number">1</span>.<span class="hljs-number">0000729417800902</span><br></code></pre></td></tr></table></figure>
+
+
+
+<p>计算公式</p>
+<figure class="highlight abnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs abnf">最后一个点  -  第一个点  <span class="hljs-operator">=</span> vulue<br>最后一个时间戳  -  第一个时间戳 <span class="hljs-operator">=</span> time<br><br><span class="hljs-attribute">resultValue</span> <span class="hljs-operator">=</span> value / time<br></code></pre></td></tr></table></figure>
+
+
+<p>先用<code>10.0.23.29</code>这个 instance 算</p>
+<figure class="highlight dns"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs dns">(<span class="hljs-number">1596077228</span>.<span class="hljs-number">635078</span> - <span class="hljs-number">1596077178</span>.<span class="hljs-number">6314309</span>) / (<span class="hljs-number">1596077228</span>.<span class="hljs-number">633</span> - <span class="hljs-number">1596077178</span>.<span class="hljs-number">633</span>)<br>// web上的时间是秒数的，go的time是多了三个单位，所以代码里/<span class="hljs-number">1000</span>转换成秒这里不需要除以<span class="hljs-number">1000</span><br>上面式子左边和右边算是下面结果:<br><span class="hljs-number">50</span>.<span class="hljs-number">003647089</span>  / <span class="hljs-number">50</span>  =  <span class="hljs-number">1</span>.<span class="hljs-number">00007294178</span><br></code></pre></td></tr></table></figure>
+
+<p>谷歌搜的在线计算器算的(比windows的calc精度高一些)，由于是float64，所以精度丢失了一些。结果一样。再算下另一个 instance</p>
+<figure class="highlight dns"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs dns">(<span class="hljs-number">1596077232</span>.<span class="hljs-number">3151288</span> - <span class="hljs-number">1596077182</span>.<span class="hljs-number">3093214</span>) / (<span class="hljs-number">1596077232</span>.<span class="hljs-number">307</span> - <span class="hljs-number">1596077182</span>.<span class="hljs-number">307</span>)<br> <span class="hljs-number">50</span>.<span class="hljs-number">0058073997</span>  /  <span class="hljs-number">50</span> = <span class="hljs-number">1</span>.<span class="hljs-number">00011614799</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h4 id="irate"><a href="#irate" class="headerlink" title="irate()"></a>irate()</h4><p>即 “瞬时rate”，此函数和rate()一样，计算每秒的增长率，但只对规定采样周期内的最后两个样本进行计算，而忽略前面所有样本。</p>
+<p>例如：irate(http_requests_total[5m]) 选取规定5分钟窗口内的最后两个样本，并计算两者之间每秒的增长率。如果想让一个放大的图形显示出对rate变化的快速响应，那这个函数就很有用，它呈现的结果会比rate()的有更多的峰值。</p>
+<h4 id="手动计算irate"><a href="#手动计算irate" class="headerlink" title="手动计算irate"></a>手动计算irate</h4><p>流程图<br><img src="/images/Prometheus-PromQL-5.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-5"></p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs routeros">$ process_cpu_seconds_total[1m]<br>process_cpu_seconds_total&#123;<span class="hljs-attribute">app</span>=<span class="hljs-string">&quot;spring-boot&quot;</span>, <span class="hljs-attribute">instance</span>=<span class="hljs-string">&quot;192.168.28.13:9100&quot;</span>, <span class="hljs-attribute">job</span>=<span class="hljs-string">&quot;consul-node-exporter&quot;</span>, <span class="hljs-attribute">project</span>=<span class="hljs-string">&quot;bigdata&quot;</span>, <span class="hljs-attribute">team</span>=<span class="hljs-string">&quot;appgroup&quot;</span>&#125;<br>46.26 @1622430320.268<br>46.42 @1622430335.267<br>46.53 @1622430350.268   # end1  time1<br>46.65 @1622430365.266   # end2  time2<br><br>$ irate(process_cpu_seconds_total[1m])<br>&#123;<span class="hljs-attribute">app</span>=<span class="hljs-string">&quot;spring-boot&quot;</span>, <span class="hljs-attribute">instance</span>=<span class="hljs-string">&quot;192.168.28.13:9100&quot;</span>, <span class="hljs-attribute">job</span>=<span class="hljs-string">&quot;consul-node-exporter&quot;</span>, <span class="hljs-attribute">project</span>=<span class="hljs-string">&quot;bigdata&quot;</span>, <span class="hljs-attribute">team</span>=<span class="hljs-string">&quot;appgroup&quot;</span>&#125;  0.008001066808907685<br></code></pre></td></tr></table></figure>
+
+
+<p>计算公式：选取时间范围内最后两个点：end1,end2</p>
+<figure class="highlight abnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><code class="hljs abnf"><span class="hljs-attribute">value</span> <span class="hljs-operator">=</span> end2 - end1<br><span class="hljs-attribute">time</span> <span class="hljs-operator">=</span> time2 - time1<br><span class="hljs-attribute">resultValue</span> <span class="hljs-operator">=</span> value / time<br></code></pre></td></tr></table></figure>
+
+<p>计算结果如下</p>
+<figure class="highlight dns"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs dns">(<span class="hljs-number">46</span>.<span class="hljs-number">65</span>  - <span class="hljs-number">46</span>.<span class="hljs-number">53</span> ) / (<span class="hljs-number">1622430365</span>.<span class="hljs-number">266</span> - <span class="hljs-number">1622430350</span>.<span class="hljs-number">268</span>)<br><span class="hljs-number">0</span>.<span class="hljs-number">12</span> / <span class="hljs-number">14</span>.<span class="hljs-number">998</span>  =  <span class="hljs-number">0</span>.<span class="hljs-number">008001066808907855</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+<h4 id="即时向量选择器"><a href="#即时向量选择器" class="headerlink" title="即时向量选择器"></a>即时向量选择器</h4><p>即时向量选择器由两部分组成;</p>
+<ul>
+<li>指标名称:用于限定特定指标下的时间序列，即负责过滤指标;可选;</li>
+<li>匹配器(Matcher):或称为标签选择器，用于过滤时间序列上的标签;定义在{}之中; 可选;</li>
+</ul>
+<p>显然，定义即时向量选择器时，以上两个部分应该至少给出一个;于是，这将存在以下三种组合;</p>
+<ul>
+<li>仅给定指标名称，或在标签名称上使用了空值的匹配器:返回给定的指标下的所有时间 序列各自的即时样本;<ul>
+<li>例如，<code>http_requests_total</code>和<code>http_requests_total&#123;&#125;</code>的功能相同，都是用于返回<code>http_requests_total</code>指标下 各时间序列的即时样本;</li>
+</ul>
+</li>
+<li>仅给定匹配器:返回所有符合给定的匹配器的所有时间序列上的即时样本; <ul>
+<li>注意:这些时间序列可能会有着不同的指标名称;</li>
+<li>例如， <code>&#123;team=~&quot;.*&quot;,project=&quot;docker-service&quot;&#125;</code></li>
+</ul>
+</li>
+<li>指标名称和匹配器的组合:返回给定的指标下的，且符合给定的标签过滤器的所有时间序列上的即时样本;<ul>
+<li>例如， <code>http_requests_total&#123;method=&quot;get&quot;&#125;</code></li>
+</ul>
+</li>
+</ul>
+<p>合法的PromQL表达式</p>
+<figure class="highlight nim"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs nim">http_request_total        <span class="hljs-comment"># 合法</span><br>http_request_total&#123;&#125;      <span class="hljs-comment"># 合法</span><br>&#123;<span class="hljs-keyword">method</span>=<span class="hljs-string">&quot;get&quot;</span>&#125;            <span class="hljs-comment"># 合法</span><br>&#123;job=~<span class="hljs-string">&quot;.+&quot;</span>&#125;               <span class="hljs-comment"># 合法  因为它们都有一个不匹配空标签值的选择器</span><br>&#123;job=~<span class="hljs-string">&quot;.*&quot;</span>,<span class="hljs-keyword">method</span>=<span class="hljs-string">&quot;get&quot;</span>&#125;  <span class="hljs-comment"># 合法  因为它们都有一个不匹配空标签值的选择器</span><br></code></pre></td></tr></table></figure>
+
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs applescript">&#123;job=~<span class="hljs-string">&quot;.*&quot;</span>&#125;               <span class="hljs-comment"># 不合法</span><br></code></pre></td></tr></table></figure>
+
+<p>标签匹配器也可以通过与内部<code>__name__</code>标签匹配来应用于指标名称 。例如，表达式<code>http_requests_total</code>等效于 <code>&#123;__name__=&quot;http_requests_total&quot;&#125;</code>。除了 <code> =、!=、=~、!~</code> 也可以使用以下表达式选择名称以job开头的所有指标：</p>
+<figure class="highlight 1c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs 1c">&#123;__name__=<span class="hljs-symbol">~&quot;job</span>:.*<span class="hljs-string">&quot;&#125;</span><br></code></pre></td></tr></table></figure>
+
+
+<p>指标名称不能是关键字bool, on, ignored, group_left和group_right中的一个。以下表达式是非法的:</p>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs applescript"><span class="hljs-keyword">on</span>&#123;&#125;               <span class="hljs-comment"># 不合法</span><br>&#123;__name__=<span class="hljs-string">&quot;on&quot;</span>&#125;    <span class="hljs-comment"># 合法</span><br></code></pre></td></tr></table></figure>
+
+
+
+
+
+<h4 id="匹配器-Matcher"><a href="#匹配器-Matcher" class="headerlink" title="匹配器(Matcher)"></a>匹配器(Matcher)</h4><p>匹配器用于定义标签过滤条件，目前支持如下4种匹配操作符; </p>
+<figure class="highlight excel"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs excel">=<span class="hljs-symbol">:</span> 精确地匹配标签给定的值<br>!=<span class="hljs-symbol">:</span> 不等于给定的标签值<br>=~<span class="hljs-symbol">:</span> 正则表达匹配给定的标签值（注意是完全匹配）<br>!~<span class="hljs-symbol">:</span> 给定的标签值不符合正则表达式<br></code></pre></td></tr></table></figure>
+
+<p>注意事项</p>
+<ul>
+<li>匹配到空标签值的匹配器时，所有未定义该标签的时间序列同样符合条件;<ul>
+<li>例如，我们并没有给某个时间序列设置 <code>env</code> 标签但是我们使用 <code>http_requests_total&#123;env=&quot;&quot;&#125;</code> 去匹配，则表示未使用该标签(env)的时间序列也符合条件，比如时间序列 <code>http_requests_total&#123;method=&quot;get&quot;&#125;</code> 也会被匹配到;</li>
+</ul>
+</li>
+<li>正则表达式将执行完全锚定机制，它需要匹配指定的标签的整个值;<ul>
+<li>例如，时间序列 <code>prom_http&#123;job=node_exporter&#125;</code> 使用表达式 <code>prom_http&#123;job=~&quot;node&quot;&#125;</code> 无法匹配，必须使用<code>&#123;job=~node.*&#125;</code> 才能匹配到。</li>
+</ul>
+</li>
+<li>向量选择器至少要包含一个指标名称，或者至少有一个不会匹配到空字符串的匹配器; <ul>
+<li>例如，<code>&#123;job=~&quot;&quot;&#125;</code>为非法的选择器;</li>
+</ul>
+</li>
+<li>使用<code>__name__</code>做为标签名称，还能够对指标名称进行过滤;<ul>
+<li>例如，<code>&#123;__name__=~&quot;http_requests_.*&quot;&#125;</code>能够匹配所有以 <code>http_requests_</code> 为前缀的所有指标</li>
+</ul>
+</li>
+</ul>
+<h4 id="范围向量选择器"><a href="#范围向量选择器" class="headerlink" title="范围向量选择器"></a>范围向量选择器</h4><p>同即时向量选择器的唯一不同之处在于，范围向量选择器需要在表达式后紧跟一个方括号<code>[ ]</code>来表达需在时间时序上返回的样本所处的时间范围;</p>
+<ul>
+<li>时间范围:以当前时间为基准时间点，指向过去一个特定的时间长度;例如[5m]便是指过去5分钟之内;</li>
+</ul>
+<p>时间格式:一个整数后紧跟一个时间单位，例如“5m”中的“m”即是时间单位 ;</p>
+<ul>
+<li>可用的时间单位有ms(毫秒)、s(秒)、m(分钟)、h(小时)、d(天)、w(周) 和y(年);</li>
+<li>必须使用整数时间，且能够将多个不同级别的单位进行串联组合，以时间单位由大到小为顺序，例如1h30m，但不能使用1.5h;</li>
+</ul>
+<p>需要注意的是，范围向量选择器返回的是一定时间范围内的数据样本，虽然不同时间序列的数据抓取时间点相同，但它们的时间戳并不会严格对齐;</p>
+<ul>
+<li>多个Target上的数据抓取需要分散在抓取时间点前后一定的时间范围内(不会同时对所有target进行数据抓取，会分散开抓取数据)，以均衡 Prometheus Server的负载;</li>
+<li>因而，Prometheus在趋势上准确，但并非绝对精准;</li>
+</ul>
+<h4 id="偏移量修改器"><a href="#偏移量修改器" class="headerlink" title="偏移量修改器"></a>偏移量修改器</h4><ul>
+<li>默认情况下，即时向量选择器和范围向量选择器都以当前时间为基准时间点，而偏移量修改器能够修改该基准;</li>
+<li>偏移量修改器的使用方法是紧跟在选择器表达式之后使用 <code>offset</code> 关键字指定 <ul>
+<li><p><code>http_requests_total offset 5m</code>，表示获取以http_requests_total为指标名称的所有时间序列在过去5分钟之时的即时样本;<br><img src="/images/Prometheus-PromQL-6.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-6"></p>
+</li>
+<li><p><code>http_requests_total[5m] offset 30m</code>，表示获取距此刻30分钟之前的5分钟之内的所有样本;</p>
+</li>
+</ul>
+</li>
+</ul>
+<p><img src="/images/Prometheus-PromQL-7.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-7"></p>
+<h3 id="PromQL的指标类型"><a href="#PromQL的指标类型" class="headerlink" title="PromQL的指标类型"></a>PromQL的指标类型</h3><p>PromQL有四个指标类型，它们主要由Prometheus的客户端库使用</p>
+<ul>
+<li>Counter:计数器，单调递增，除非重置(例如服务器或进程重启);</li>
+<li>Gauge:仪表盘，可增可减的数据;</li>
+<li>Histogram:直方图，将时间范围内的数据划分成不同的时间段，并各自评估其样本个数及样本值之和，因而可计算出分位数;<ul>
+<li>可用于分析因异常值而引起的平均值过大的问题;</li>
+<li>分位数计算要使用专用的histogram_quantile函数;</li>
+</ul>
+</li>
+<li>Summary:类似于Histogram，但客户端会直接计算并上报分位数;</li>
+</ul>
+<p>Prometheus Server并不使用类型信息，而是将所有数据展平为时间序列</p>
+<p><img src="/images/Prometheus-PromQL-8.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-8"></p>
+<h4 id="Counter和Gauge"><a href="#Counter和Gauge" class="headerlink" title="Counter和Gauge"></a>Counter和Gauge</h4><p>通常，Counter的总数并没有直接作用，而是需要借助于rate、topk、increase和irate 等函数来生成样本数据的变化状况(增长率);</p>
+<ul>
+<li>rate(http_requests_total[2h])，获取2小内，该指标下各时间序列上的http总请求数的增长速 率;</li>
+<li>topk(3, http_requests_total)，获取该指标下http请求总数排名前3的时间序列; </li>
+<li>irate(http_requests_total[2h])，高灵敏度函数，用于计算指标的瞬时速率;<ul>
+<li>基于样本范围内的最后两个样本进行计算，相较于rate函数来说，irate更适用于短期时间范围内的 变化速率分析;</li>
+</ul>
+</li>
+</ul>
+<p>Gauge用于存储其值可增可减的指标的样本数据，常用于进行求和、取平均值、最小值、最大值等聚合计算;也会经常结合PromQL的predict_linear和delta函数使用;</p>
+<ul>
+<li>predict_linear(v range-vector, t, scalar)函数可以预测时间序列v在t秒后的值，它通过线性回归 的方式来预测样本数据的Gauge变化趋势;</li>
+<li>delta(v range-vector)函数计算范围向量中每个时间序列元素的第一个值与最后一个值之差，从而展示不同时间点上的样本值的差值;<ul>
+<li>delta(cpu_temp_celsius{host&#x3D;”web01.magedu.com”}[2h])，返回该服务器上的CPU温度与2小时之前的差异;</li>
+</ul>
+</li>
+</ul>
+<h4 id="Histogram和Summary"><a href="#Histogram和Summary" class="headerlink" title="Histogram和Summary"></a>Histogram和Summary</h4><p>对于Prometheus来说，Histogram会在一段时间范围内对数据进行采样(通常是请 求持续时长或响应大小等)，并将其计入可配置的bucket(存储桶)中<br>Histogram事先将特定测度可能的取值范围分隔为多个bucket，并通过对落入bucket内的观测值进行计数以及求和操作<br>与常规方式略有不同的是，Prometheus取值间隔的划分采用的是累积(Cumulative)区间间隔机制，即每个bucket中的样本均包含了其前面所有bucket中的样本，因而也称为累积直方图</p>
+<ul>
+<li>可降低Histogram的维护成本</li>
+<li>支持粗略计算样本值的分位数</li>
+<li>单独提供了_sum和_count指标，从而支持计算平均值</li>
+</ul>
+<p><img src="/images/Prometheus-PromQL-9.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-9"></p>
+<p>根据上图假设我们想监控某个应用在一段时间内的响应时间，最后监控到的样本的响应时间范围为 0s~10s。现在我们将样本的值域划分为不同的区间，即不同的 bucket，每个 bucket 的宽度是 0.2s。那么第一个 bucket 表示响应时间小于等于 0.2s 的请求数量，第二个 bucket 表示响应时间小于等于 0.4s 的请求数量，以此类推。也就是说，每一个 bucket 的样本包含了之前所有 bucket 的样本，所以叫累积直方图。</p>
+<h5 id="histogram例子"><a href="#histogram例子" class="headerlink" title="histogram例子"></a>histogram例子</h5><p><img src="/images/Prometheus-PromQL-10.png" srcset="/img/loading.gif" lazyload alt="Prometheus-PromQL-10"></p>
+<p>如上表，设置bucket&#x3D;[1,5,10]，当实际采样数据如是采样点所示, Observe表示采样点落在该bucket中的数量，即落在[-,1]的样本数为2，即落在[1,5]的样本数为3，即落在[5,10]的杨样本数为1，write是得到的最终结果（histogram的最终结果bucket计数是向下包含的）：</p>
+<figure class="highlight abnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs abnf">[basename]_bucket&#123;le<span class="hljs-operator">=</span>“<span class="hljs-number">1</span>”&#125; <span class="hljs-operator">=</span> <span class="hljs-number">2</span><br>[basename]_bucket&#123;le<span class="hljs-operator">=</span>“<span class="hljs-number">5</span>”&#125; <span class="hljs-operator">=</span> <span class="hljs-number">5</span><br>[basename]_bucket&#123;le<span class="hljs-operator">=</span>“<span class="hljs-number">10</span>”&#125; <span class="hljs-operator">=</span> <span class="hljs-number">6</span><br>[basename]_bucket&#123;le<span class="hljs-operator">=</span><span class="hljs-string">&quot;+Inf&quot;</span>&#125; <span class="hljs-operator">=</span> <span class="hljs-number">6</span><br>[basename]_count <span class="hljs-operator">=</span> <span class="hljs-number">6</span><br>[basename]_sum <span class="hljs-operator">=</span> <span class="hljs-number">18.8378745</span><br></code></pre></td></tr></table></figure>
+<blockquote>
+<p>histogram并不会保存数据采样点值，每个bucket只有个记录样本数的counter（float64），即histogram存储的是区间的样本数统计值，因此客户端性能开销相比 Counter 和 Gauge 而言没有明显改变，适合高并发的数据收集。</p>
+</blockquote>
+<p>Histogram 类型的样本会提供三种指标（假设指标名称为 <basename>）每个指标有一个基础指标名称<basename>，它会提供多个时间序列：</p>
+<ul>
+<li>样本的值分布在 bucket 中的数量，命名为 <code>&lt;basename&gt;_bucket&#123;le=&quot;&lt;上边界&gt;&quot;&#125;</code>。解释得更通俗易懂一点，这个值表示指标值小于等于上边界的所有样本数量。最大的上边界名称为 <code>&lt;basename&gt;_bucket&#123;le=&quot;+Inf&quot;&#125;</code>表示无穷大;</li>
+</ul>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><code class="hljs accesslog">// 在总共<span class="hljs-number">2</span>次请求当中。http 请求响应时间 &lt;=<span class="hljs-number">0</span>.<span class="hljs-number">005</span> 秒 的请求次数为<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;0.005&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> // 在总共<span class="hljs-number">2</span>次请求当中。http 请求响应时间 &lt;=<span class="hljs-number">0</span>.<span class="hljs-number">01</span> 秒 的请求次数为<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;0.01&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> // 在总共<span class="hljs-number">2</span>次请求当中。http 请求响应时间 &lt;=<span class="hljs-number">0</span>.<span class="hljs-number">025</span> 秒 的请求次数为<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;0.025&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;0.05&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;0.075&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;0.1&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;0.25&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;0.5&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;0.75&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;1.0&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;2.5&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;5.0&quot;</span>,&#125; <span class="hljs-number">0</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;7.5&quot;</span>,&#125; <span class="hljs-number">2</span>.<span class="hljs-number">0</span><br> // 在总共<span class="hljs-number">2</span>次请求当中。http 请求响应时间 &lt;=<span class="hljs-number">10</span> 秒 的请求次数为 <span class="hljs-number">2</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;10.0&quot;</span>,&#125; <span class="hljs-number">2</span>.<span class="hljs-number">0</span><br> io_namespace_http_requests_latency_seconds_histogram_bucket&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,le=<span class="hljs-string">&quot;+Inf&quot;</span>,&#125; <span class="hljs-number">2</span>.<span class="hljs-number">0</span><br></code></pre></td></tr></table></figure>
+
+
+<ul>
+<li>所有样本值的大小总和，命名为<code>&lt;basename&gt;_sum</code>。</li>
+</ul>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs accesslog">// 实际含义：发生的<span class="hljs-number">2</span>次 http 请求总的响应时间为 <span class="hljs-number">13</span>.<span class="hljs-number">107670803000001</span> 秒<br>io_namespace_http_requests_latency_seconds_histogram_sum&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,&#125; <span class="hljs-number">13</span>.<span class="hljs-number">107670803000001</span><br></code></pre></td></tr></table></figure>
+
+
+<ul>
+<li>总的观测次数，命名为<code>&lt;basename&gt;_count</code>。值和 <code>&lt;basename&gt;_bucket&#123;le=&quot;+Inf&quot;&#125;</code>相同。</li>
+</ul>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs accesslog">// 实际含义：当前一共发生了 <span class="hljs-number">2</span> 次 http 请求<br>io_namespace_http_requests_latency_seconds_histogram_count&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,&#125; <span class="hljs-number">2</span>.<span class="hljs-number">0</span><br></code></pre></td></tr></table></figure>
+
+<p>累积间隔机制生成的样本数据需要额外使用内置的<code>histogram_quantile()</code>函数即可根据Histogram指标来计算相应的分位数(quantile)，即某个bucket的样本数在所有样本数中占据的比例。分位数可能不太好理解，我举个例子，假设你要计算样本的 9 分位数（quantile&#x3D;0.9），即表示 90% 的样本的值。</p>
+<ul>
+<li>histogram_quantile()函数在计算分位数时会假定每个区间内的样本满足线性分布状态，因而它的结果仅是一个预估值，并不完全准确;</li>
+<li>预估的准确度取决于bucket区间划分的粒度;粒度越大，准确度越低;</li>
+</ul>
+<h5 id="histogram计算方式"><a href="#histogram计算方式" class="headerlink" title="histogram计算方式"></a>histogram计算方式</h5><ul>
+<li>其中 <code>bucket</code> 代表事先定义好的<code>bucket</code></li>
+<li><code>upperBound</code>代表这个<code>bucket</code>的上限值</li>
+<li><code>count</code> 代表这个小于等于这个<code>upperBound</code>的个数&#x2F;次数</li>
+<li><code>workqueue_work_duration_seconds_bucket&#123;name=&quot;crd_openapi_controller&quot;,le=&quot;10&quot;&#125;</code> 65246</li>
+<li>所以上述表达式含义为 <code>workqueue_work_duration_seconds</code> 小于10秒的有65246个</li>
+</ul>
+<p>我们现在有这些数据，然后求75分位值</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-string">a</span> <span class="hljs-string">:=</span> []<span class="hljs-string">bucket&#123;</span><br>    &#123;<span class="hljs-attr">upperBound:</span> <span class="hljs-number">0.05</span>, <span class="hljs-attr">count:</span> <span class="hljs-number">199881</span>&#125;<span class="hljs-string">,</span><br>    &#123;<span class="hljs-attr">upperBound:</span> <span class="hljs-number">0.1</span>, <span class="hljs-attr">count:</span> <span class="hljs-number">212210</span>&#125;<span class="hljs-string">,</span><br>    &#123;<span class="hljs-attr">upperBound:</span> <span class="hljs-number">0.2</span>, <span class="hljs-attr">count:</span> <span class="hljs-number">215395</span>&#125;<span class="hljs-string">,</span><br>    &#123;<span class="hljs-attr">upperBound:</span> <span class="hljs-number">0.4</span>, <span class="hljs-attr">count:</span> <span class="hljs-number">319435</span>&#125;<span class="hljs-string">,</span><br>    &#123;<span class="hljs-attr">upperBound:</span> <span class="hljs-number">0.8</span>, <span class="hljs-attr">count:</span> <span class="hljs-number">419576</span>&#125;<span class="hljs-string">,</span><br>    &#123;<span class="hljs-attr">upperBound:</span> <span class="hljs-number">1.6</span>, <span class="hljs-attr">count:</span> <span class="hljs-number">469593</span>&#125;<span class="hljs-string">,</span><br>    &#123;<span class="hljs-attr">upperBound:</span> <span class="hljs-string">math.Inf(1)</span>, <span class="hljs-attr">count:</span> <span class="hljs-number">519593</span>&#125;<span class="hljs-string">,</span><br><span class="hljs-string">&#125;</span><br><br><span class="hljs-string">q75</span> <span class="hljs-string">:=</span> <span class="hljs-string">bucketQuantile(0.75,</span> <span class="hljs-string">a)</span><br><br></code></pre></td></tr></table></figure>
+
+
+<ul>
+<li>其计算逻辑为：根据记录总数和分位值求目标落在第几个bucket段b</li>
+<li>根据b得到起始bucket大小bucketStart,终止bucket大小bucketStart ，本bucket宽度 ，本bucket记录数。</li>
+<li>根据本段记录数和分位值算出目标分位数在本bucket排行rank</li>
+<li>最终的计算方式为分位值&#x3D;起始bucket大小+(本bucket宽度)*(目标分位数在本bucket排行&#x2F;本bucket记录数)</li>
+<li>换成本例中： q75&#x3D;0.4+(0.8-0.4)*(70259.75&#x2F;100141) &#x3D; 0.6806432929569308</li>
+</ul>
+<figure class="highlight applescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs applescript"><span class="hljs-built_in">return</span> bucketStart + (bucketEnd-bucketStart)*(rank/<span class="hljs-built_in">count</span>)   最终的计算公式<br></code></pre></td></tr></table></figure>
+
+<p>1、根据记录总数和分位值求目标落在第几个bucket段<br>519593 * 0.75 &#x3D; 389,694.75  (根据这个值我们可以判断他是在0.4和0.8之间的一个值，也就是落到了第四个bucket中)</p>
+<p>2、根据本段记录数和分位值算出目标分位数在本bucket排行rank<br>389,694.75 - 319435 &#x3D; 70,259.75   (根据这个值可以算出75%他在第四个bucket中属于哪个位置)</p>
+<p>3、最终的计算公式<br>0.4+(0.8-0.4)*(70259.75&#x2F;100141) &#x3D; 0.6806432929569308  (计算出来的最终结果就是75%的请求小于0.6806432929569308s)</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-attribute">2021</span>/<span class="hljs-number">02</span>/<span class="hljs-number">02</span> <span class="hljs-number">19</span>:<span class="hljs-number">08</span>:<span class="hljs-number">55</span> 记录总数 = <span class="hljs-number">519593</span><br><span class="hljs-attribute">2021</span>/<span class="hljs-number">02</span>/<span class="hljs-number">02</span> <span class="hljs-number">19</span>:<span class="hljs-number">08</span>:<span class="hljs-number">55</span> 目标落在第几个bucket段= <span class="hljs-number">4</span><br><span class="hljs-attribute">2021</span>/<span class="hljs-number">02</span>/<span class="hljs-number">02</span> <span class="hljs-number">19</span>:<span class="hljs-number">08</span>:<span class="hljs-number">55</span> 起始bucket大小= <span class="hljs-number">0</span>.<span class="hljs-number">4</span><br><span class="hljs-attribute">2021</span>/<span class="hljs-number">02</span>/<span class="hljs-number">02</span> <span class="hljs-number">19</span>:<span class="hljs-number">08</span>:<span class="hljs-number">55</span> 终止bucket大小= <span class="hljs-number">0</span>.<span class="hljs-number">8</span><br><span class="hljs-attribute">2021</span>/<span class="hljs-number">02</span>/<span class="hljs-number">02</span> <span class="hljs-number">19</span>:<span class="hljs-number">08</span>:<span class="hljs-number">55</span> 本bucket宽度= <span class="hljs-number">0</span>.<span class="hljs-number">4</span><br><span class="hljs-attribute">2021</span>/<span class="hljs-number">02</span>/<span class="hljs-number">02</span> <span class="hljs-number">19</span>:<span class="hljs-number">08</span>:<span class="hljs-number">55</span> 本bucket记录数= <span class="hljs-number">100141</span><br><span class="hljs-attribute">2021</span>/<span class="hljs-number">02</span>/<span class="hljs-number">02</span> <span class="hljs-number">19</span>:<span class="hljs-number">08</span>:<span class="hljs-number">55</span> 目标分位数在本bucket排行= <span class="hljs-number">70259</span>.<span class="hljs-number">75</span><br><span class="hljs-attribute">2021</span>/<span class="hljs-number">02</span>/<span class="hljs-number">02</span> <span class="hljs-number">19</span>:<span class="hljs-number">08</span>:<span class="hljs-number">55</span> 分位值=起始bucket大小+(本bucket宽度)*(目标分位数在本bucket排行/本bucket记录数)<br><span class="hljs-attribute">2021</span>/<span class="hljs-number">02</span>/<span class="hljs-number">02</span> <span class="hljs-number">19</span>:<span class="hljs-number">08</span>:<span class="hljs-number">55</span> <span class="hljs-number">0</span>.<span class="hljs-number">4</span>+(<span class="hljs-number">0</span>.<span class="hljs-number">8</span>-<span class="hljs-number">0</span>.<span class="hljs-number">4</span>)*(<span class="hljs-number">70259</span>.<span class="hljs-number">75</span>/<span class="hljs-number">100141</span>) = <span class="hljs-number">0</span>.<span class="hljs-number">6806432929569308</span><br></code></pre></td></tr></table></figure>
+
+
+
+<h5 id="Summary"><a href="#Summary" class="headerlink" title="Summary"></a>Summary</h5><p>与 Histogram 类型类似，用于表示一段时间内的数据采样结果（通常是请求持续时间或响应大小等），但它直接存储了分位数（通过客户端计算，然后展示出来），而不是通过区间来计算。其中<code>φ</code>是分位点，其取值范围是<code>(0 ≤φ≤ 1)</code>;计数器类型指标;如下是几种典型的常用分位点;</p>
+<ul>
+<li>0、0.25、0.5、0.75和1几个分位点;</li>
+<li>0.5、0.9和0.99几个分位点;</li>
+<li>0.01、0.05、0.5、0.9和0.99几个分位点;</li>
+</ul>
+<p>Summary 类型的样本也会提供三种指标（假设指标名称为 ）：</p>
+<ul>
+<li>样本值的分位数分布情况，命名为 <code>&lt;basename&gt;&#123;quantile=&quot;&lt;φ&gt;&quot;&#125;</code>。</li>
+</ul>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs accesslog">// 含义：这 <span class="hljs-number">12</span> 次 http 请求中有 <span class="hljs-number">50</span>% 的请求响应时间是 <span class="hljs-number">3</span>.052404983s<br>io_namespace_http_requests_latency_seconds_summary&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,quantile=<span class="hljs-string">&quot;0.5&quot;</span>,&#125; <span class="hljs-number">3</span>.<span class="hljs-number">052404983</span><br>// 含义：这 <span class="hljs-number">12</span> 次 http 请求中有 <span class="hljs-number">90</span>% 的请求响应时间是 <span class="hljs-number">8</span>.003261666s<br>io_namespace_http_requests_latency_seconds_summary&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,quantile=<span class="hljs-string">&quot;0.9&quot;</span>,&#125; <span class="hljs-number">8</span>.<span class="hljs-number">003261666</span><br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>所有样本值的大小总和，命名为 <code>&lt;basename&gt;_sum</code>。</li>
+</ul>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs accesslog">// 含义：这<span class="hljs-number">12</span>次 http 请求的总响应时间为 <span class="hljs-number">51</span>.029495508s<br>io_namespace_http_requests_latency_seconds_summary_sum&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,&#125; <span class="hljs-number">51</span>.<span class="hljs-number">029495508</span><br></code></pre></td></tr></table></figure>
+
+<ul>
+<li>样本总数，命名为 <code>&lt;basename&gt;_count</code>。</li>
+</ul>
+<figure class="highlight accesslog"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs accesslog">// 含义：当前一共发生了 <span class="hljs-number">12</span> 次 http 请求<br>io_namespace_http_requests_latency_seconds_summary_count&#123;path=<span class="hljs-string">&quot;/&quot;</span>,method=<span class="hljs-string">&quot;<span class="hljs-keyword">GET</span>&quot;</span>,code=<span class="hljs-string">&quot;200&quot;</span>,&#125; <span class="hljs-number">12</span>.<span class="hljs-number">0</span><br></code></pre></td></tr></table></figure>
+
+<p>根据前面分别对Summary和Histogram的描述，很显然Summary和Histogram计算quantile有很大的差别。另外，它们之间一个重要的区别在于，Summary对quantile的计算是在client端完成的，而Histogram对quantile的计算是在server端完成的</p>
+<p>如果需要了解某个时间段内的请求的响应时间，则通常使用平均响应时间，但这样做无法体现数据的长尾效应。如，一个HTTP服务器的正常响应时间是30ms，但是有很少几次请求耗时3s，通过平均响应时间很难甄别长尾效应。这时候可以通过Histogram或者Summary展现。Histogram和Summary这两种指标类型在本质上是可以相互转化的。<br>在Summary中使用到了分位数，<code>φ</code>代表分位数，<code>0≤φ≤1</code>。例如，0.9分为数代表第90%位置上的数，0.95分位代表95%位置上的数。如Promethues_tsdb_wal_fsync_duration_seconds 指标为Promthues Server中WAL写入磁盘的同步时间：</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><code class="hljs apache"><span class="hljs-comment"># HELP prometheus_tsdb_wal_fsync_duration_seconds Duration of WAL fsync.</span><br><span class="hljs-comment"># TYPE prometheus_tsdb_wal_fsync_duration_seconds summary</span><br><span class="hljs-attribute">prometheus_tsdb_wal_fsync_duration_seconds</span>&#123;quantile=<span class="hljs-string">&quot;0.5&quot;</span>&#125; <span class="hljs-number">0</span>.<span class="hljs-number">012352463</span><br><span class="hljs-attribute">prometheus_tsdb_wal_fsync_duration_seconds</span>&#123;quantile=<span class="hljs-string">&quot;0.9&quot;</span>&#125; <span class="hljs-number">0</span>.<span class="hljs-number">014458005</span><br><span class="hljs-attribute">prometheus_tsdb_wal_fsync_duration_seconds</span>&#123;quantile=<span class="hljs-string">&quot;0.99&quot;</span>&#125; <span class="hljs-number">0</span>.<span class="hljs-number">017316173</span><br><span class="hljs-attribute">prometheus_tsdb_wal_fsync_duration_seconds_sum</span> <span class="hljs-number">2</span>.<span class="hljs-number">888716127000002</span><br><span class="hljs-attribute">prometheus_tsdb_wal_fsync_duration_seconds_count</span> <span class="hljs-number">216</span><br></code></pre></td></tr></table></figure>
+<p>从而得出，当前Prometheus Server进行wal_fsync操作的总次数为216次，总共耗时2.888716127000002s。有50%的同步时间低于0.012352463s，有90%的同步时间低于0.014458005s。</p>
+<p>现在可以总结一下 Histogram 与 Summary 的异同：</p>
+<ul>
+<li>它们都包含了 <code>&lt;basename&gt;_sum</code> 和 <code>&lt;basename&gt;_count</code> 指标</li>
+<li>Histogram 需要通过 <code>&lt;basename&gt;_bucket</code> 来计算分位数，而 Summary 则直接存储了分位数的值。</li>
+<li>Summary不支持sum或avg一类的聚合运算，而且其分位数由客户端计算并生成， Server端无法获取客户端未定义的分位数，而Histogram可通过PromQL任意定义，有着较好的灵活性;</li>
+</ul>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>探索PromQL</div>
+      <div>https://system51.github.io/2021/05/27/PromQL/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2021年5月27日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2021/06/15/Use-advanced-PromQL/" title="PromQL进阶">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">PromQL进阶</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2021/05/18/Prometheus-service-discovery-and-relabel-configs/" title="Prometheus服务发现和重新打标">
+                        <span class="hidden-mobile">Prometheus服务发现和重新打标</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>

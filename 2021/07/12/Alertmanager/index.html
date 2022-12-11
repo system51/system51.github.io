@@ -1,0 +1,785 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN" data-default-color-scheme=auto>
+
+
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="apple-touch-icon" sizes="76x76" href="/img/touxiang.png">
+  <link rel="icon" href="/img/touxiang.png">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, shrink-to-fit=no">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  
+  <meta name="theme-color" content="#2f4154">
+  <meta name="author" content="Mr.Ye">
+  <meta name="keywords" content="kubernetes,devops">
+  
+    <meta name="description" content="Prometheus自身不具备告警能力，因此需要结合第三方告警程序来实现监控指标告警。 AlertManager是一款不错的告警程序，首先由prometheus配置告警规则，当告警规则触发后，会把告警信息推送给Altermanager，AlertManager收到告警之后在根据配置的路由，根据报警级别不同分别发送给不同的receive（收件人），AlertManager可以实现email、企业微信">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AlertManager实现监控告警">
+<meta property="og:url" content="https://system51.github.io/2021/07/12/Alertmanager/index.html">
+<meta property="og:site_name" content="Mr.Ye Blogs">
+<meta property="og:description" content="Prometheus自身不具备告警能力，因此需要结合第三方告警程序来实现监控指标告警。 AlertManager是一款不错的告警程序，首先由prometheus配置告警规则，当告警规则触发后，会把告警信息推送给Altermanager，AlertManager收到告警之后在根据配置的路由，根据报警级别不同分别发送给不同的receive（收件人），AlertManager可以实现email、企业微信">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-1.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-2.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-4.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-3.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-5.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-6.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-7.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-8.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-9.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-10.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-11.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-32.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-12.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-25.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-13.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-14.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-15.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-18.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-16.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-17.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-19.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-20.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-21.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-22.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-23.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-24.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-26.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-27.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-28.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-29.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-30.png">
+<meta property="og:image" content="https://system51.github.io/images/Prometheus-Alerts-31.jpg">
+<meta property="article:published_time" content="2021-07-12T07:24:08.000Z">
+<meta property="article:modified_time" content="2021-07-16T07:42:33.481Z">
+<meta property="article:author" content="Mr.Ye">
+<meta property="article:tag" content="kubernetes,devops">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://system51.github.io/images/Prometheus-Alerts-1.png">
+  
+  
+  
+  <title>AlertManager实现监控告警 - Mr.Ye Blogs</title>
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/twitter-bootstrap/4.6.1/css/bootstrap.min.css" />
+
+
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/github-markdown-css/4.0.0/github-markdown.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/hint.css/2.7.0/hint.min.css" />
+
+  <link  rel="stylesheet" href="https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css" />
+
+
+
+<!-- 主题依赖的图标库，不要自行修改 -->
+<!-- Do not modify the link that theme dependent icons -->
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1749284_hj8rtnfg7um.css">
+
+
+
+<link rel="stylesheet" href="//at.alicdn.com/t/font_1736178_lbnruvf0jn.css">
+
+
+<link  rel="stylesheet" href="/css/main.css" />
+
+
+  <link id="highlight-css" rel="stylesheet" href="/css/highlight.css" />
+  
+    <link id="highlight-css-dark" rel="stylesheet" href="/css/highlight-dark.css" />
+  
+
+
+
+
+  <script id="fluid-configs">
+    var Fluid = window.Fluid || {};
+    Fluid.ctx = Object.assign({}, Fluid.ctx)
+    var CONFIG = {"hostname":"system51.github.io","root":"/","version":"1.9.3","typing":{"enable":true,"typeSpeed":70,"cursorChar":"_","loop":false,"scope":[]},"anchorjs":{"enable":true,"element":"h1,h2,h3,h4,h5,h6","placement":"left","visible":"hover","icon":""},"progressbar":{"enable":true,"height_px":3,"color":"#29d","options":{"showSpinner":false,"trickleSpeed":100}},"code_language":{"enable":true,"default":"TEXT"},"copy_btn":true,"image_caption":{"enable":true},"image_zoom":{"enable":true,"img_url_replace":["",""]},"toc":{"enable":true,"placement":"right","headingSelector":"h1,h2,h3,h4,h5,h6","collapseDepth":0},"lazyload":{"enable":true,"loading_img":"/img/loading.gif","onlypost":false,"offset_factor":2},"web_analytics":{"enable":false,"follow_dnt":true,"baidu":null,"google":null,"gtag":null,"tencent":{"sid":null,"cid":null},"woyaola":null,"cnzz":null,"leancloud":{"app_id":null,"app_key":null,"server_url":null,"path":"window.location.pathname","ignore_local":false}},"search_path":"/local-search.xml"};
+
+    if (CONFIG.web_analytics.follow_dnt) {
+      var dntVal = navigator.doNotTrack || window.doNotTrack || navigator.msDoNotTrack;
+      Fluid.ctx.dnt = dntVal && (dntVal.startsWith('1') || dntVal.startsWith('yes') || dntVal.startsWith('on'));
+    }
+  </script>
+  <script  src="/js/utils.js" ></script>
+  <script  src="/js/color-schema.js" ></script>
+  
+
+
+  
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+
+<body>
+  
+
+  <header>
+    
+
+<div class="header-inner" style="height: 70vh;">
+  <nav id="navbar" class="navbar fixed-top  navbar-expand-lg navbar-dark scrolling-navbar">
+  <div class="container">
+    <a class="navbar-brand" href="/">
+      <strong>Mr.Ye Blogs</strong>
+    </a>
+
+    <button id="navbar-toggler-btn" class="navbar-toggler" type="button" data-toggle="collapse"
+            data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+      <div class="animated-icon"><span></span><span></span><span></span></div>
+    </button>
+
+    <!-- Collapsible content -->
+    <div class="collapse navbar-collapse" id="navbarSupportedContent">
+      <ul class="navbar-nav ml-auto text-center">
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/">
+                <i class="iconfont icon-home-fill"></i>
+                首页
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/archives/">
+                <i class="iconfont icon-archive-fill"></i>
+                归档
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/categories/">
+                <i class="iconfont icon-category-fill"></i>
+                分类
+              </a>
+            </li>
+          
+        
+          
+          
+          
+          
+            <li class="nav-item">
+              <a class="nav-link" href="/about/">
+                <i class="iconfont icon-user-fill"></i>
+                关于
+              </a>
+            </li>
+          
+        
+        
+          <li class="nav-item" id="search-btn">
+            <a class="nav-link" target="_self" href="javascript:;" data-toggle="modal" data-target="#modalSearch" aria-label="Search">
+              &nbsp;<i class="iconfont icon-search"></i>&nbsp;
+            </a>
+          </li>
+          
+        
+        
+          <li class="nav-item" id="color-toggle-btn">
+            <a class="nav-link" target="_self" href="javascript:;" aria-label="Color Toggle">&nbsp;<i
+                class="iconfont icon-dark" id="color-toggle-icon"></i>&nbsp;</a>
+          </li>
+        
+      </ul>
+    </div>
+  </div>
+</nav>
+
+  
+
+<div id="banner" class="banner" parallax=true
+     style="background: url('/img/default.png') no-repeat center center; background-size: cover;">
+  <div class="full-bg-img">
+    <div class="mask flex-center" style="background-color: rgba(0, 0, 0, 0.3)">
+      <div class="banner-text text-center fade-in-up">
+        <div class="h2">
+          
+            <span id="subtitle" data-typed-text="AlertManager实现监控告警"></span>
+          
+        </div>
+
+        
+          
+  <div class="mt-3">
+    
+    
+      <span class="post-meta">
+        <i class="iconfont icon-date-fill" aria-hidden="true"></i>
+        <time datetime="2021-07-12 15:24" pubdate>
+          2021年7月12日 下午
+        </time>
+      </span>
+    
+  </div>
+
+  <div class="mt-1">
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-chart"></i>
+        
+          13k 字
+        
+      </span>
+    
+
+    
+      <span class="post-meta mr-2">
+        <i class="iconfont icon-clock-fill"></i>
+        
+        
+        
+          21 分钟
+        
+      </span>
+    
+
+    
+    
+  </div>
+
+
+        
+      </div>
+
+      
+    </div>
+  </div>
+</div>
+
+</div>
+
+  </header>
+
+  <main>
+    
+      
+
+<div class="container-fluid nopadding-x">
+  <div class="row nomargin-x">
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+
+    </div>
+
+    <div class="col-lg-8 nopadding-x-md">
+      <div class="container nopadding-x-md" id="board-ctn">
+        <div id="board">
+          <article class="post-content mx-auto">
+            <!-- SEO header -->
+            <h1 style="display: none">AlertManager实现监控告警</h1>
+            
+            
+              <div class="markdown-body">
+                
+                <p>Prometheus自身不具备告警能力，因此需要结合第三方告警程序来实现监控指标告警。</p>
+<p>AlertManager是一款不错的告警程序，首先由prometheus配置告警规则，当告警规则触发后，会把告警信息推送给Altermanager，AlertManager收到告警之后在根据配置的路由，根据报警级别不同分别发送给不同的receive（收件人），AlertManager可以实现email、企业微信等报警</p>
+<p>Prometheus作为客户端Alertmanager负责处理由客户端发来的告警通知。对告警通知进行分组、去重后，根据路由规则将其路由到不同的receiver。<br><img src="/images/Prometheus-Alerts-1.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-1"></p>
+<h2 id="Prometheus监控系统的告警逻辑"><a href="#Prometheus监控系统的告警逻辑" class="headerlink" title="Prometheus监控系统的告警逻辑"></a>Prometheus监控系统的告警逻辑</h2><p>首先要配置Prometheus成为Alertmanager的告警客户端；同时Alertmanager也是应用程序，它自身同样应该纳入prometheus的监控目标；Alertmanager也通过默认端口<code>9093</code>和<code>metrics</code>路径暴露自身的指标。</p>
+<h3 id="部署AlertManager以及配置文件介绍"><a href="#部署AlertManager以及配置文件介绍" class="headerlink" title="部署AlertManager以及配置文件介绍"></a>部署AlertManager以及配置文件介绍</h3><p>Altermanager是一个独立的go二进制程序，需要独立部署及维护;<br>按需下载相应的程序包，展开至特定的目录下即可运行;例如:</p>
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><code class="hljs autoit">[root<span class="hljs-symbol">@k8s</span>-m1 ~]<span class="hljs-meta"># wget https://github.com/prometheus/alertmanager/releases/download/v0.22.2/alertmanager-0.22.2.linux-amd64.tar.gz</span><br>[root<span class="hljs-symbol">@k8s</span>-m1 ~]<span class="hljs-meta"># tar -zxv -f alertmanager-0.22.2.linux-amd64.tar.gz </span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="配置文件介绍"><a href="#配置文件介绍" class="headerlink" title="配置文件介绍"></a>配置文件介绍</h3><figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><code class="hljs awk">global:<br>​  resolve_timeout      <span class="hljs-regexp">//</span>解析超时时间，也就是报警恢复不是立马发送的，而是在一个时间范围内不在触发报警，才能发送恢复报警，默认为<span class="hljs-number">5</span>分钟<br>​  smtp_from            <span class="hljs-regexp">//</span>收件人的邮箱地址<br>​  smtp_smarthost       <span class="hljs-regexp">//</span>邮箱提供商的smtp地址<br>​  smtp_auth_username   <span class="hljs-regexp">//</span>收件人的邮箱账号<br>​  smtp_auth_password   <span class="hljs-regexp">//</span>邮箱授权码<br>​  smtp_require_tls     <span class="hljs-regexp">//</span>是否需要tls协议，默认是true<br>​  wechart_api_url      <span class="hljs-regexp">//</span>微信api地址<br>​  wbchart_api_secret   <span class="hljs-regexp">//</span>密码<br>​  wechat_api_corp_id   <span class="hljs-regexp">//</span>机器人应用的id<br>route：<br>​  group_by             <span class="hljs-regexp">//</span>采用哪个标签作为分组<br>​  group_wait           <span class="hljs-regexp">//</span>分组等待的时间，收到报警不是立马发送出去，而是等待一段时间，看看同一组中是否有其他报警，如果有一并发送<br>​  group_interval       <span class="hljs-regexp">//</span>告警时间间隔<br>​  repeat_interval      <span class="hljs-regexp">//</span>重复告警时间间隔，可以减少发送告警的频率<br>​  receiver             <span class="hljs-regexp">//</span>接收者是谁<br>  routes               <span class="hljs-regexp">//</span>子路由配置<br>    <br>receivers：<br>​  name                 <span class="hljs-regexp">//</span>接收者的名字，这里和route中的receiver对应<br>​  email_configs<br>​  - to                 <span class="hljs-regexp">//</span>接收者的邮箱地址<br></code></pre></td></tr></table></figure>
+
+<h3 id="配置AlertManager邮箱告警"><a href="#配置AlertManager邮箱告警" class="headerlink" title="配置AlertManager邮箱告警"></a>配置AlertManager邮箱告警</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">global:</span><br>  <span class="hljs-attr">resolve_timeout:</span> <span class="hljs-string">5m</span>                               <br>  <span class="hljs-attr">smtp_smarthost:</span> <span class="hljs-string">&#x27;smtp.163.com:465&#x27;</span>        <br>  <span class="hljs-attr">smtp_from:</span> <span class="hljs-string">&#x27;system71@163.com&#x27;</span>       <br>  <span class="hljs-attr">smtp_auth_username:</span> <span class="hljs-string">&#x27;system71@163.com&#x27;</span>  <br>  <span class="hljs-attr">smtp_auth_password:</span> <span class="hljs-string">&#x27;Ye1111111&#x27;</span>     <br>  <span class="hljs-attr">smtp_require_tls:</span> <span class="hljs-literal">false</span><br>  <br><span class="hljs-attr">route:</span><br>  <span class="hljs-attr">group_by:</span> [<span class="hljs-string">&#x27;alertname&#x27;</span>]    <br>  <span class="hljs-attr">group_wait:</span> <span class="hljs-string">10s</span><br>  <span class="hljs-attr">group_interval:</span> <span class="hljs-string">10s</span><br>  <span class="hljs-attr">repeat_interval:</span> <span class="hljs-string">10m</span><br>  <span class="hljs-attr">receiver:</span> <span class="hljs-string">&#x27;mail&#x27;</span><br><span class="hljs-attr">receivers:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">&#x27;mail&#x27;</span><br>  <span class="hljs-attr">email_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">to:</span> <span class="hljs-string">&#x27;9146002@qq.com&#x27;</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="配置prometheus集成AlertManager"><a href="#配置prometheus集成AlertManager" class="headerlink" title="配置prometheus集成AlertManager"></a>配置prometheus集成AlertManager</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-number">1</span><span class="hljs-string">.修改配置文件</span><br>[<span class="hljs-string">root@prometheus-server</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># vim /data/prometheus/prometheus.yml </span><br><span class="hljs-attr">alerting:</span><br>  <span class="hljs-attr">AlertManagers:</span>											<br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">static_configs:</span><br>    <span class="hljs-bullet">-</span> <span class="hljs-attr">targets:</span><br>      <span class="hljs-bullet">-</span> <span class="hljs-number">127.0</span><span class="hljs-number">.0</span><span class="hljs-number">.1</span><span class="hljs-string">:9093</span>                                  <span class="hljs-comment">#AlertManager地址</span><br><br><span class="hljs-attr">rule_files:</span>                                             <span class="hljs-comment">#告警规则路径</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">&quot;rules/alerts.yml&quot;</span><br><br><span class="hljs-number">2</span><span class="hljs-string">.创建rules告警规则目录</span><br>[<span class="hljs-string">root@prometheus-server</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># mkdir /data/prometheus/rules</span><br><br><span class="hljs-number">3</span><span class="hljs-string">.加载配置</span><br>[<span class="hljs-string">root@prometheus-server</span> <span class="hljs-string">~</span>]<span class="hljs-comment"># curl -XPOST 127.0.0.1:9090/-/reload</span><br></code></pre></td></tr></table></figure>
+
+<p>配置已更新，目前已经可以使用AlertManager报警了<br><img src="/images/Prometheus-Alerts-2.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-2"></p>
+<h2 id="告警规则"><a href="#告警规则" class="headerlink" title="告警规则"></a>告警规则</h2><h3 id="告警规则语法"><a href="#告警规则语法" class="headerlink" title="告警规则语法"></a>告警规则语法</h3><figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><code class="hljs awk">groups:                                              <span class="hljs-regexp">//</span>定义一个告警规则组<br>- name: general.rules                                <span class="hljs-regexp">//</span>组名，可以将同一类型的报警放到一个分组中<br>  rules:                                             <span class="hljs-regexp">//</span>定义告警规则，可以有多个<br>  - alert: 主机宕机                                   <span class="hljs-regexp">//</span>告警名称，也就是告警信息的标题，一个alert代表一个告警规则<br>    expr: up == <span class="hljs-number">0</span>                                    <span class="hljs-regexp">//</span>表达式，根据表达式的值进行匹配<br>    <span class="hljs-keyword">for</span>: <span class="hljs-number">5</span>m                                          <span class="hljs-regexp">//</span>报警收到后多长时间后发送报警信息<br>    labels:                                          <span class="hljs-regexp">//</span>定义标签<br>      serverity: error                               <span class="hljs-regexp">//</span>告警级别，有warning、error等<br>    annotations:                                     <span class="hljs-regexp">//</span>定义告警内容<br>      summary: <span class="hljs-string">&quot;主机 &#123;&#123; $labels.instance &#125;&#125; 停止工作&quot;</span>       <span class="hljs-regexp">//</span>消息内容，<span class="hljs-variable">$labels</span>.instance就是监控项中的标签变量<br>      description: <span class="hljs-string">&quot;&#123;&#123; $labels.instance &#125;&#125; job &#123;&#123; $labels.job &#125;&#125; 已经宕机5分钟以上!&quot;</span>     <span class="hljs-regexp">//</span>详细描述<br><br></code></pre></td></tr></table></figure>
+
+<h3 id="告警模板"><a href="#告警模板" class="headerlink" title="告警模板"></a>告警模板</h3><p>Prometheus支持在告警中使用模板;例如，我们上面的示例中就用到了模板。</p>
+<figure class="highlight handlebars"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs handlebars"><span class="language-xml">* 告警模板是指在告警中的标签和注解上引用时间序列的标签和样本值的方法;</span><br><span class="language-xml">* 它使用标准的Go模板语法，并暴露一些包含时间序列标签和值的变量;</span><br><span class="language-xml">  * 标签引用: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">$labels</span>.&lt;label_name&gt; &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml">  * 指标样本值引用: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">$value</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml">* 若要在description注解中引用触发告警的时间序列上的instance和job标签的值，可分别使用</span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">$labels.instance</span> &#125;&#125;</span><span class="language-xml">和</span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">$labels.job</span> &#125;&#125;</span><span class="language-xml">; </span><br></code></pre></td></tr></table></figure>
+
+<p>点击右上角的<code>Show annotations</code>可以显示模板被替换后的结果。注意下面Labels中的标签是从Target中完全复制过来的，而<code>Alertname</code>、<code>serverity</code>标签是我们在编写Alert规则时添加进去的。<br><img src="/images/Prometheus-Alerts-4.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-4"></p>
+<h3 id="告警规则状态"><a href="#告警规则状态" class="headerlink" title="告警规则状态"></a>告警规则状态</h3><p>告警规则分为三种</p>
+<ul>
+<li>inactive：无任何报警，一切正常</li>
+<li>pending：已触发阈值，但未满足告警持续时间，也就是在告警规则中写的for，在for规定的时间内触发都不会发送给AlertManager，当for持续时间一过会立即发送给AlertManager</li>
+<li>firing：已触发阈值且满足告警持续时间，告警发送给接收者</li>
+</ul>
+<p><img src="/images/Prometheus-Alerts-3.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-3"></p>
+<h3 id="编写主机宕机告警规则"><a href="#编写主机宕机告警规则" class="headerlink" title="编写主机宕机告警规则"></a>编写主机宕机告警规则</h3><figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-number">1.</span>编写规则<br>[root@prometheus-server <span class="hljs-keyword">/data/</span>prometheus]<span class="hljs-meta"># vim rules/alerts.yml</span><br><span class="hljs-symbol">groups:</span><br>- name: general.rules<br><span class="hljs-symbol">  rules:</span><br>  - alert: 主机宕机<br><span class="hljs-symbol">    expr:</span> <span class="hljs-attr">up</span> <span class="hljs-operator">=</span>= <span class="hljs-number">0</span><br><span class="hljs-symbol">    for:</span> <span class="hljs-number">5</span>m<br><span class="hljs-symbol">    labels:</span><br><span class="hljs-symbol">      serverity:</span> error<br><span class="hljs-symbol">    annotations:</span><br><span class="hljs-symbol">      summary:</span> <span class="hljs-string">&quot;主机 &#123;&#123; $labels.instance &#125;&#125; 停止工作&quot;</span><br><span class="hljs-symbol">      description:</span> <span class="hljs-string">&quot;&#123;&#123; $labels.instance &#125;&#125; job &#123;&#123; $labels.job &#125;&#125; 已经宕机5分钟以上!&quot;</span><br><br><span class="hljs-number">2.</span>检查语法<br>[root@prometheus-server <span class="hljs-keyword">/data/</span>prometheus]<span class="hljs-meta"># promtool check config /data/prometheus/prometheus.yml </span><br>Checking <span class="hljs-keyword">/data/</span>prometheus/prometheus.yml<br><span class="hljs-symbol">  SUCCESS:</span> <span class="hljs-number">1</span> rule files found<br><br>Checking <span class="hljs-keyword">/data/</span>prometheus<span class="hljs-keyword">/rules/</span>alerts.yml<br><span class="hljs-symbol">  SUCCESS:</span> <span class="hljs-number">1</span> rules found<br><br><span class="hljs-number">3.</span>加载配置<br>[root@prometheus-server <span class="hljs-keyword">/data/</span>prometheus]<span class="hljs-meta"># curl -XPOST 127.0.0.1:49100/-/reload</span><br><br></code></pre></td></tr></table></figure>
+
+<p>在页面的<code>Status</code>—<code>rules</code>下即可看到我们创建的告警规则<br><img src="/images/Prometheus-Alerts-5.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-5"></p>
+<p>在alert也可以看到告警规则有没有触发，没有触发的情况下是绿色显示；红色firing表示已经发送了告警。<br><img src="/images/Prometheus-Alerts-6.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-6"></p>
+<p>AlertManager页面也已经收到了主机宕机推送过来的告警信息<br><img src="/images/Prometheus-Alerts-7.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-7"></p>
+<h3 id="查看是否收到邮件报警内容"><a href="#查看是否收到邮件报警内容" class="headerlink" title="查看是否收到邮件报警内容"></a>查看是否收到邮件报警内容</h3><p>已经收到，至此我们的流程已经跑通<br><img src="/images/Prometheus-Alerts-8.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-8"></p>
+<h3 id="同类告警规则触发"><a href="#同类告警规则触发" class="headerlink" title="同类告警规则触发"></a>同类告警规则触发</h3><p>同类告警是指：prometheus的告警规则是对所有监控实例都生效的，也就是当同一种类型的告警触发后会显示在一起，并且发送一封邮件。<br><img src="/images/Prometheus-Alerts-9.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-9"></p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">global:</span><br>  <span class="hljs-attr">smtp_smarthost:</span> <span class="hljs-string">&#x27;smtp.163.com:465&#x27;</span><br>  <span class="hljs-attr">smtp_from:</span> <span class="hljs-string">&#x27;system71@163.com&#x27;</span><br>  <span class="hljs-attr">smtp_auth_username:</span> <span class="hljs-string">&#x27;system71@163.com&#x27;</span><br>  <span class="hljs-attr">smtp_auth_password:</span> <span class="hljs-string">&#x27;Ye11111111&#x27;</span><br>  <span class="hljs-attr">smtp_require_tls:</span> <span class="hljs-literal">false</span><br><span class="hljs-attr">route:</span><br>  <span class="hljs-attr">group_by:</span> [<span class="hljs-string">&#x27;instance&#x27;</span>]<br>  <span class="hljs-attr">group_wait:</span> <span class="hljs-string">30s</span><br>  <span class="hljs-attr">group_interval:</span> <span class="hljs-string">5m</span><br>  <span class="hljs-attr">repeat_interval:</span> <span class="hljs-string">10m</span><br>  <span class="hljs-attr">receiver:</span> <span class="hljs-string">&#x27;mail&#x27;</span><br><span class="hljs-attr">receivers:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">&#x27;mail&#x27;</span><br>  <span class="hljs-attr">email_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">to:</span> <span class="hljs-string">&#x27;9146002@qq.com&#x27;</span><br></code></pre></td></tr></table></figure>
+
+<p>例如上面我使用<code>instance</code>作为分组，然后就会有4个组，这样我会就收到4封告警邮件。</p>
+<p><img src="/images/Prometheus-Alerts-10.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-10"></p>
+<p><img src="/images/Prometheus-Alerts-11.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-11"></p>
+<p>如果我使用<code>alertname</code>作为分组那么我只会收到一封邮件，他会把4个告警合并成一封邮件发送。</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">global:</span><br>  <span class="hljs-attr">smtp_smarthost:</span> <span class="hljs-string">&#x27;smtp.163.com:465&#x27;</span><br>  <span class="hljs-attr">smtp_from:</span> <span class="hljs-string">&#x27;system71@163.com&#x27;</span><br>  <span class="hljs-attr">smtp_auth_username:</span> <span class="hljs-string">&#x27;system71@163.com&#x27;</span><br>  <span class="hljs-attr">smtp_auth_password:</span> <span class="hljs-string">&#x27;Ye11111111&#x27;</span><br>  <span class="hljs-attr">smtp_require_tls:</span> <span class="hljs-literal">false</span><br><span class="hljs-attr">route:</span><br>  <span class="hljs-attr">group_by:</span> [<span class="hljs-string">&#x27;alertname&#x27;</span>]<br>  <span class="hljs-attr">group_wait:</span> <span class="hljs-string">30s</span><br>  <span class="hljs-attr">group_interval:</span> <span class="hljs-string">5m</span><br>  <span class="hljs-attr">repeat_interval:</span> <span class="hljs-string">10m</span><br>  <span class="hljs-attr">receiver:</span> <span class="hljs-string">&#x27;mail&#x27;</span><br><span class="hljs-attr">receivers:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">&#x27;mail&#x27;</span><br>  <span class="hljs-attr">email_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">to:</span> <span class="hljs-string">&#x27;9146002@qq.com&#x27;</span><br></code></pre></td></tr></table></figure>
+
+<p>只有一个组所以会合并同组的告警一起发送<br><img src="/images/Prometheus-Alerts-32.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-32"></p>
+<p><img src="/images/Prometheus-Alerts-12.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-12"></p>
+<h2 id="AlertManager告警路由配置"><a href="#AlertManager告警路由配置" class="headerlink" title="AlertManager告警路由配置"></a>AlertManager告警路由配置</h2><h3 id="路由配置介绍"><a href="#路由配置介绍" class="headerlink" title="路由配置介绍"></a>路由配置介绍</h3><p>alertmanager路由配置可以将不同的告警级别分别发送给不同的邮件接收人</p>
+<p>Alertmanager的route配置段支持定义“树”状路由表，入口位置称为根节点，每个子节点可以基于匹配条件定义出一个独立的路由分支;</p>
+<ul>
+<li>所有告警都将进入路由根节点，而后进行子节点遍历;</li>
+<li>若路由上的continue字段的值为false，则遇到第一个匹配的路由分支后即终止;否则，将继续匹配后续的子节点;</li>
+</ul>
+<p><img src="/images/Prometheus-Alerts-25.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-25"></p>
+<h3 id="route路由配置文件介绍"><a href="#route路由配置文件介绍" class="headerlink" title="route路由配置文件介绍"></a>route路由配置文件介绍</h3><figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><code class="hljs awk">route:<br>  group_by: [<span class="hljs-string">&#x27;alertname&#x27;</span>]             <span class="hljs-regexp">//</span>定义分组,根据label标签进行分组<br>  group_wait: <span class="hljs-number">10</span>s                     <span class="hljs-regexp">//</span>分组等待时间，也就是说在<span class="hljs-number">10</span>秒内同一个组中有没有一起报警的，如果有则同时发出报警邮件，也就是有<span class="hljs-number">2</span>个报警同时发在一个邮件<br>  group_interval: <span class="hljs-number">10</span>s                 <span class="hljs-regexp">//</span>告警时间间隔<br>  repeat_interval: <span class="hljs-number">10</span>m                <span class="hljs-regexp">//</span>重复告警间隔，也就是触发的一个告警在<span class="hljs-number">10</span>分钟内没有处理则再次发一封邮件。<br>  <span class="hljs-keyword">continue</span>: false                     <span class="hljs-regexp">//</span>若路由上的<span class="hljs-keyword">continue</span>字段的值为false，则遇到第一个匹配的路由分支后即终止。否则，将继续匹配后续的子节点;<br>  receiver: <span class="hljs-string">&#x27;yunwei&#x27;</span>                  <span class="hljs-regexp">//</span>默认邮箱<br>  routes:                             <span class="hljs-regexp">//</span>启用一个子路由<br>  - receiver: <span class="hljs-string">&#x27;dba&#x27;</span>                   <span class="hljs-regexp">//</span>接收者为dba<br>    group_wait: <span class="hljs-number">10</span>s                   <span class="hljs-regexp">//</span>分组等待时间<br>    match_re:         	              <span class="hljs-regexp">//</span>匹配一个正则<br>      service: mysql|db	              <span class="hljs-regexp">//</span>service标签包含mysql和db的统一发送给dba的邮箱<br>    <span class="hljs-keyword">continue</span>: false                   <span class="hljs-regexp">//</span>若路由上的<span class="hljs-keyword">continue</span>字段的值为false，则遇到第一个匹配的路由分支后即终止。否则，将继续匹配后续的子节点;<br>  - receiver: <span class="hljs-string">&#x27;yunwei&#x27;</span>                <span class="hljs-regexp">//</span>接收者为yunwei<br>    group_wait: <span class="hljs-number">10</span>s                   <span class="hljs-regexp">//</span>分组时间<br>    match_re:         <br>      serverity: error                <span class="hljs-regexp">//</span>将serverity标签值包含error的发送给yunwei的邮箱<br>    <span class="hljs-keyword">continue</span>: false                   <span class="hljs-regexp">//</span>若路由上的<span class="hljs-keyword">continue</span>字段的值为false，则遇到第一个匹配的路由分支后即终止。否则，将继续匹配后续的子节点;<br>	<br>receivers:                            <span class="hljs-regexp">//</span>定义接收者的邮箱<br>- name: <span class="hljs-string">&#x27;yunwei&#x27;</span>                      <span class="hljs-regexp">//</span>接收者名字，要和routes中的receiver对应<br>  email_configs:				<br>  - to: <span class="hljs-string">&#x27;9146002@qq.com&#x27;</span>              <span class="hljs-regexp">//yu</span>nwei的邮箱地址<br>- name: <span class="hljs-string">&#x27;dba&#x27;</span>                         <span class="hljs-regexp">//</span>接收者名字，要和routes中的receiver对应<br>  email_configs:		<br>  - to: <span class="hljs-string">&#x27;system51@126.com&#x27;</span>            <span class="hljs-regexp">//</span>dba的邮箱地址<br></code></pre></td></tr></table></figure>
+
+<blockquote>
+<p>新的报警时间为上次报警之后的group_interval时间<br>重复报警时间为，group_interval+repeat_interval</p>
+</blockquote>
+<p>上面的<code>match_re</code>是匹配Alerts中的<code>Lables</code>，这里我为其中一个节点打个<code>service</code>标签后面测试用。<br><img src="/images/Prometheus-Alerts-13.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-13"></p>
+<h3 id="需求描述"><a href="#需求描述" class="headerlink" title="需求描述"></a>需求描述</h3><p>需求：server标签包含db、mysql的发送给dba的邮箱，其他的都发送给运维的邮箱</p>
+<p>最终效果：要求关于mysql等数据库的告警发送给dba、其他的信息发送给运维</p>
+<h3 id="alertmanager实现不同的告警内容发送给不同的接收人"><a href="#alertmanager实现不同的告警内容发送给不同的接收人" class="headerlink" title="alertmanager实现不同的告警内容发送给不同的接收人"></a>alertmanager实现不同的告警内容发送给不同的接收人</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-number">1</span><span class="hljs-string">.修改配置文件</span><br>[<span class="hljs-string">root@prometheus-server</span> <span class="hljs-string">/data/AlertManager</span>]<span class="hljs-comment"># vim AlertManager.yml  </span><br><span class="hljs-attr">global:</span><br>  <span class="hljs-attr">smtp_smarthost:</span> <span class="hljs-string">&#x27;smtp.163.com:465&#x27;</span><br>  <span class="hljs-attr">smtp_from:</span> <span class="hljs-string">&#x27;system71@163.com&#x27;</span><br>  <span class="hljs-attr">smtp_auth_username:</span> <span class="hljs-string">&#x27;system71@163.com&#x27;</span><br>  <span class="hljs-attr">smtp_auth_password:</span> <span class="hljs-string">&#x27;Ye111111111&#x27;</span><br>  <span class="hljs-attr">smtp_require_tls:</span> <span class="hljs-literal">false</span><br><br><span class="hljs-attr">route:</span><br>  <span class="hljs-attr">group_by:</span> [<span class="hljs-string">&#x27;alertname&#x27;</span>]<br>  <span class="hljs-attr">group_wait:</span> <span class="hljs-string">10s</span><br>  <span class="hljs-attr">group_interval:</span> <span class="hljs-string">10s</span><br>  <span class="hljs-attr">repeat_interval:</span> <span class="hljs-string">10m</span><br>  <span class="hljs-attr">receiver:</span> <span class="hljs-string">&#x27;yunwei&#x27;</span><br>  <span class="hljs-attr">routes:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">receiver:</span> <span class="hljs-string">&#x27;dba&#x27;</span><br>    <span class="hljs-attr">group_wait:</span> <span class="hljs-string">10s</span><br>    <span class="hljs-attr">match_re:</span><br>      <span class="hljs-attr">service:</span> <span class="hljs-string">mysql|db</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">receiver:</span> <span class="hljs-string">&#x27;yunwei&#x27;</span><br>    <span class="hljs-attr">group_wait:</span> <span class="hljs-string">10s</span><br>    <span class="hljs-attr">match_re:</span><br>      <span class="hljs-attr">serverity:</span> <span class="hljs-string">error</span><br><br><span class="hljs-attr">receivers:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">&#x27;yunwei&#x27;</span><br>  <span class="hljs-attr">email_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">to:</span> <span class="hljs-string">&#x27;9146002@qq.com&#x27;</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">&#x27;dba&#x27;</span><br>  <span class="hljs-attr">email_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">to:</span> <span class="hljs-string">&#x27;system51@126.com&#x27;</span><br><br><span class="hljs-number">2</span><span class="hljs-string">.重启生效</span><br>[<span class="hljs-string">root@prometheus-server</span> <span class="hljs-string">/data/AlertManager</span>]<span class="hljs-comment"># ps aux | grep alert | grep -v grep | awk &#x27;&#123;print $2&#125;&#x27; |xargs kill -HUP</span><br></code></pre></td></tr></table></figure>
+
+<p>配置已生效<br><img src="/images/Prometheus-Alerts-14.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-14"></p>
+<h3 id="编写告警规则"><a href="#编写告警规则" class="headerlink" title="编写告警规则"></a>编写告警规则</h3><figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-number">1</span><span class="hljs-string">.编写规则</span><br>[<span class="hljs-string">root@prometheus-server</span> <span class="hljs-string">/data/prometheus</span>]<span class="hljs-comment"># vim rules/alerts.yml </span><br><span class="hljs-attr">groups:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">general.rules</span><br>  <span class="hljs-attr">rules:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">alert:</span> <span class="hljs-string">主机宕机</span>                        <br>    <span class="hljs-attr">expr:</span> <span class="hljs-string">up&#123;service!=&quot;mysql&quot;&#125;</span> <span class="hljs-string">==</span> <span class="hljs-number">0</span>              <span class="hljs-comment">#这里取反不然会获取到下面mysql的up</span><br>    <span class="hljs-attr">for:</span> <span class="hljs-string">1m</span><br>    <span class="hljs-attr">labels:</span><br>      <span class="hljs-attr">serverity:</span> <span class="hljs-string">error</span><br>    <span class="hljs-attr">annotations:</span><br>      <span class="hljs-attr">summary:</span> <span class="hljs-string">&quot;主机 <span class="hljs-template-variable">&#123;&#123; $labels.instance &#125;&#125;</span> 停止工作&quot;</span><br>      <span class="hljs-attr">description:</span> <span class="hljs-string">&quot;<span class="hljs-template-variable">&#123;&#123; $labels.instance &#125;&#125;</span> job <span class="hljs-template-variable">&#123;&#123; $labels.job &#125;&#125;</span> 已经宕机5分钟以上!&quot;</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">alert:</span> <span class="hljs-string">mysql宕机</span><br>    <span class="hljs-attr">expr:</span> <span class="hljs-string">up&#123;service=&quot;mysql&quot;&#125;</span> <span class="hljs-string">==</span> <span class="hljs-number">0</span><br>    <span class="hljs-attr">for:</span> <span class="hljs-string">1m</span><br>    <span class="hljs-attr">labels:</span><br>      <span class="hljs-attr">service:</span> <span class="hljs-string">mysql</span><br>    <span class="hljs-attr">annotations:</span><br>      <span class="hljs-attr">summary:</span> <span class="hljs-string">&quot;主机 <span class="hljs-template-variable">&#123;&#123; $labels.instance &#125;&#125;</span> 停止工作&quot;</span><br>      <span class="hljs-attr">description:</span> <span class="hljs-string">&quot;<span class="hljs-template-variable">&#123;&#123; $labels.instance &#125;&#125;</span> job <span class="hljs-template-variable">&#123;&#123; $labels.job &#125;&#125;</span> 已经宕机5分钟以上!&quot;</span><br><br><span class="hljs-number">2</span><span class="hljs-string">.加载配置</span><br>[<span class="hljs-string">root@prometheus-server</span> <span class="hljs-string">/data/prometheus</span>]<span class="hljs-comment"># curl -XPOST 127.0.0.1:9090/-/reload</span><br></code></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-Alerts-15.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-15"></p>
+<p>如果不设置 <code>expr: up&#123;service!=&quot;mysql&quot;&#125; == 0</code> 标签取反就会出现下面这种情况，dba邮箱会收到两封邮件。<br> <img src="/images/Prometheus-Alerts-18.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-18"></p>
+<h3 id="error已经发送给运维邮箱"><a href="#error已经发送给运维邮箱" class="headerlink" title="error已经发送给运维邮箱"></a>error已经发送给运维邮箱</h3><p><img src="/images/Prometheus-Alerts-16.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-16"></p>
+<h3 id="mysql已经发送给dba邮箱"><a href="#mysql已经发送给dba邮箱" class="headerlink" title="mysql已经发送给dba邮箱"></a>mysql已经发送给dba邮箱</h3><p><img src="/images/Prometheus-Alerts-17.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-17"></p>
+<h3 id="AlertManager分组是两个分组"><a href="#AlertManager分组是两个分组" class="headerlink" title="AlertManager分组是两个分组"></a>AlertManager分组是两个分组</h3><p><img src="/images/Prometheus-Alerts-19.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-19"></p>
+<h2 id="AlertManager告警收敛"><a href="#AlertManager告警收敛" class="headerlink" title="AlertManager告警收敛"></a>AlertManager告警收敛</h2><h3 id="告警分组"><a href="#告警分组" class="headerlink" title="告警分组"></a>告警分组</h3><p>分组就是将类似性质的警报分类为单个通知，比如服务器宕机、应用挂掉，这种类型的告警可以分到一个组中，分到一个组时，当同一时间内触发了多条告警，这时都会发送到同一封邮件中，可以避免因告警邮件太多而忽视了重要信息。</p>
+<p>这封邮件就很好的说明了这个分组的意义</p>
+<p>由于prometheus编写的规则是对所有服务器生效的，因此所有服务器仅需要创建一个类型的报警即可，当同一时间段多台主机触发了这个告警，则会同时向管理员发送一条报警邮件，同种类型告警主要是以<code>alertname</code>来区分的</p>
+<p><img src="/images/Prometheus-Alerts-20.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-20"></p>
+<p>AlertManager分组语法</p>
+<figure class="highlight dts"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><code class="hljs dts"><span class="hljs-symbol">route:</span><br><span class="hljs-symbol">  group_by:</span> [‘alertname’]         <span class="hljs-comment">//根据标签进行分组，alertname就是告警规则的名称，多个标签可以以逗号隔开</span><br><span class="hljs-symbol">  group_wait:</span> <span class="hljs-number">10</span>s                 <span class="hljs-comment">//发送告警等待时间，也就是一个时间范围内，如果同一组中有其他报警则一并发送 </span><br><span class="hljs-symbol">  group_interval:</span> <span class="hljs-number">10</span>s             <span class="hljs-comment">//当触发了一组告警后，下一组报警触发的间隔</span><br><span class="hljs-symbol">  repeat_interval:</span> <span class="hljs-number">10</span>m            <span class="hljs-comment">//重复报警的时间间隔，也就是当触发了instance down报警后，如果一直没有解决，那么再隔多长时间报警</span><br></code></pre></td></tr></table></figure>
+
+<h3 id="告警抑制"><a href="#告警抑制" class="headerlink" title="告警抑制"></a>告警抑制</h3><p>抑制：当警报发出后，停止重复发送由此警报引发的其他警报</p>
+<p>通过抑制可以避免运维收到大量的告警邮件，且都是同一个报警，只是级别不同，我们可以通过抑制限制当这个警报触发了严重级别的告警后，则不再触发警告级别的告警</p>
+<p>例如：当集群中的某一个主机节点异常宕机导致告警<code>NodeDown</code>被触发，同时在告警规则中定义了告警级别<code>serverity=critical</code>。由于主机异常宕机，会导致该主机上部署的所有服务和中间件不可用并触发报警。根据抑制规则的定义，如果有新的告警级别为<code>serverity=warning</code>，并且告警中标签<code>&#39;alertname&#39;、&#39;dev&#39;、&#39;instance&#39;</code>的值与NodeDown告警的相同，则说明新的告警是由<code>NodeDown</code>导致的，则启动抑制机制停止向接收器发送通知。</p>
+<p>注：也就是节点宕机设置标签为<code>serverity=critical</code>，而节点上的应用告警设置为<code>serverity=warning</code>，当节点宕机后可以使用抑制的方法，仅发送一条节点宕机的信息，而不是发送多条信息。例如：节点宕机信息和应用不可用信息。</p>
+<p>配置语法：</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><code class="hljs awk">inhibit_rules:<br>  - source_match:								<br>      serverity: <span class="hljs-string">&#x27;critical&#x27;</span>                        <span class="hljs-regexp">//</span>源标签警报触发时抑制含有目标标签的警报，在当前警报匹配serverity=critical<br>    target_match:<br>      serverity: <span class="hljs-string">&#x27;warning&#x27;</span>                         <span class="hljs-regexp">//</span>抑制`serverity=warning`类型告警<br>    equal: [<span class="hljs-string">&#x27;alertname&#x27;</span>, <span class="hljs-string">&#x27;dev&#x27;</span>, <span class="hljs-string">&#x27;instance&#x27;</span>]       <span class="hljs-regexp">//</span>告警中包含的分组名称。标签内容相同才会抑制,也就是说警报中三个标签值相同才会被抑制。<br></code></pre></td></tr></table></figure>
+
+
+
+<h3 id="告警静默"><a href="#告警静默" class="headerlink" title="告警静默"></a>告警静默</h3><p>静默就是值在一段时间内不再触发某一个报警，集进入维护阶段</p>
+<p>创建一个静默规则</p>
+<p>访问AlertManager的9093端口</p>
+<p>1.点击右上角的new silence<br><img src="/images/Prometheus-Alerts-21.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-21"></p>
+<p>2.添加静默配置信息<br><img src="/images/Prometheus-Alerts-22.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-22"></p>
+<p>3.这时再由docker报警触发后就不会发送邮件了<br><img src="/images/Prometheus-Alerts-23.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-23"></p>
+<p>4.prometheus触发一条告警实现的流程<br>首先由prometheus系统进行监控，当一个监控项的阈值到达一定指标时，再由告警规则中配置的for持续时间进行判断，当在一定时间内都超过了阈值，则将报警推送给AlertManager，AlertManager收到报警后进行分组、抑制、静默，最后在通过我们配置的接收器，将报警发送给邮箱、微信、钉钉<br><img src="/images/Prometheus-Alerts-24.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-24"></p>
+<h2 id="AlertManager实现企业微信报警"><a href="#AlertManager实现企业微信报警" class="headerlink" title="AlertManager实现企业微信报警"></a>AlertManager实现企业微信报警</h2><h3 id="AlertManager对接企业微信"><a href="#AlertManager对接企业微信" class="headerlink" title="AlertManager对接企业微信"></a>AlertManager对接企业微信</h3><p>AlertManager支持的报警方式有邮件报警、钉钉报警、微信报警，本次将实现企业微信报警，首先你要具有企业微信管理员的权限，如果没有可以自己注册一个，进行测试，我这里有自行注册的企业微信。</p>
+<p>第一步登录进入以后，在应用管理中新建应用<br><img src="/images/Prometheus-Alerts-26.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-26"></p>
+<p>创建成功以后如下图<br><img src="/images/Prometheus-Alerts-27.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-27"></p>
+<p>这时候需要把 AgentId 和 Secret 记录下来，对于你的这种Secret信息，最好管理好，我的用过就会删除，所以不用担心安全隐患。</p>
+<p>注册完企业微信就会有一个部门，后面我又新增了一个test部门，每个部门的ID不一样。主要是警报需要分级，所以需要单独处理，在这里使用的的单独的配置。</p>
+<p><img src="/images/Prometheus-Alerts-28.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-28"></p>
+<p>在<code>我的企业</code>—最下面就会有<code>企业id</code></p>
+<p><img src="/images/Prometheus-Alerts-29.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-29"></p>
+<p>配置alertmanager支持微信报警</p>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-attr">templates:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-string">&#x27;wechat/wechat.tmpl&#x27;</span>                                                  <span class="hljs-comment"># 自定义告警模板</span><br><br><span class="hljs-attr">route:</span><br>  <span class="hljs-attr">group_by:</span> [<span class="hljs-string">&#x27;alertname&#x27;</span>]<br>  <span class="hljs-attr">group_wait:</span> <span class="hljs-string">10s</span><br>  <span class="hljs-attr">group_interval:</span> <span class="hljs-string">1m</span><br>  <span class="hljs-attr">repeat_interval:</span> <span class="hljs-string">1m</span><br>  <span class="hljs-attr">receiver:</span> <span class="hljs-string">yunwei</span><br>  <span class="hljs-attr">routes:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">receiver:</span> <span class="hljs-string">&#x27;db&#x27;</span><br>    <span class="hljs-attr">group_wait:</span> <span class="hljs-string">10s</span><br>    <span class="hljs-attr">match_re:</span><br>      <span class="hljs-attr">service:</span> <span class="hljs-string">mysql|db</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">receiver:</span> <span class="hljs-string">&#x27;yunwei&#x27;</span><br>    <span class="hljs-attr">group_wait:</span> <span class="hljs-string">10s</span><br>    <span class="hljs-attr">match_re:</span><br>      <span class="hljs-attr">serverity:</span> <span class="hljs-string">critical</span><br><br><span class="hljs-attr">receivers:</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">&#x27;yunwei&#x27;</span>                                                           <span class="hljs-comment"># 定义接收者名称</span><br>  <span class="hljs-attr">wechat_configs:</span>                                                          <span class="hljs-comment"># 企业微信配置</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">corp_id:</span> <span class="hljs-string">&#x27;wwxxxxx&#x27;</span>                                                     <span class="hljs-comment"># 企业ID是唯一标识</span><br>    <span class="hljs-attr">send_resolved:</span> <span class="hljs-literal">true</span>                                                    <span class="hljs-comment"># 设置发送警报恢复信息</span><br>    <span class="hljs-attr">to_party:</span> <span class="hljs-string">&#x27;1&#x27;</span>                                                          <span class="hljs-comment"># 部门id，比如我的默认组，显示的是1，如果你DB组，就可能会是2，WEB组就是3，依次类推，另外需要接收警报的相关人员必须在这个部门里。</span><br>    <span class="hljs-attr">agent_id:</span> <span class="hljs-string">&#x27;1000002&#x27;</span>                                                    <span class="hljs-comment"># 新建应用的agent_id</span><br>    <span class="hljs-attr">api_secret:</span> <span class="hljs-string">&#x27;F-fzpgsxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx&#x27;</span>              <span class="hljs-comment"># 新建应用的Secret</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">&#x27;db&#x27;</span><br>  <span class="hljs-attr">email_configs:</span><br>  <span class="hljs-bullet">-</span> <span class="hljs-attr">to:</span> <span class="hljs-string">&#x27;system51@126.com&#x27;</span><br></code></pre></td></tr></table></figure>
+
+
+<h3 id="编写微信告警内容模板"><a href="#编写微信告警内容模板" class="headerlink" title="编写微信告警内容模板"></a>编写微信告警内容模板</h3><figure class="highlight handlebars"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><code class="hljs handlebars"><span class="language-xml">[root@k8s-m1 alertmanager-0.22.2.linux-amd64]# mkdir wechat</span><br><span class="language-xml"></span><br><span class="language-xml">[root@k8s-m1 alertmanager-0.22.2.linux-amd64]# vim wechat/wechat.tmpl</span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">define</span> <span class="hljs-string">&quot;wechat.default.message&quot;</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name"><span class="hljs-built_in">if</span></span> gt (<span class="hljs-name">len</span> .Alerts.Firing) <span class="hljs-number">0</span> -&#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml">Alerts Firing:</span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">range</span> .Alerts &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml">告警状态: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Status</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">警报级别: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Labels.serverity</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">警报类型: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Labels.alertname</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">故障主机: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Labels.instance</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">警报主题: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Annotations.summary</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">警报详情: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Annotations.description</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">⏱ : </span><span class="hljs-template-variable">&#123;&#123; (<span class="hljs-name">.StartsAt.Local</span>).Format <span class="hljs-string">&quot;2006-01-02 15:04:05&quot;</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123;<span class="hljs-name">-</span> end &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123;<span class="hljs-name">-</span> end &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name"><span class="hljs-built_in">if</span></span> gt (<span class="hljs-name">len</span> .Alerts.Resolved) <span class="hljs-number">0</span> -&#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml">Alerts Resolved:</span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">range</span> .Alerts &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml">告警状态: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Status</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">警报级别: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Labels.serverity</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">警报类型: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Labels.alertname</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">故障主机: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Labels.instance</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">警报主题: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Annotations.summary</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">警报详情: </span><span class="hljs-template-variable">&#123;&#123; <span class="hljs-name">.Annotations.description</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br><span class="language-xml">⏱ : </span><span class="hljs-template-variable">&#123;&#123; (<span class="hljs-name">.StartsAt.Local</span>).Format <span class="hljs-string">&quot;2006-01-02 15:04:05&quot;</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml">⏲ : </span><span class="hljs-template-variable">&#123;&#123; (<span class="hljs-name">.EndsAt.Local</span>).Format <span class="hljs-string">&quot;2006-01-02 15:04:05&quot;</span> &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123;<span class="hljs-name">-</span> end &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123;<span class="hljs-name">-</span> end &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><span class="hljs-template-variable">&#123;&#123;<span class="hljs-name">-</span> end &#125;&#125;</span><span class="language-xml"></span><br><span class="language-xml"></span><br></code></pre></td></tr></table></figure>
+
+<p><img src="/images/Prometheus-Alerts-30.png" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-30"></p>
+<p>我们可以根据上图邮件告警中的类容能大概知道模板中需要写些什么<br>可以参考官方网站提供的参数设置更多内容：<a target="_blank" rel="noopener" href="https://prometheus.io/docs/alerting/latest/notifications/">https://prometheus.io/docs/alerting/latest/notifications/</a></p>
+<h3 id="最终效果"><a href="#最终效果" class="headerlink" title="最终效果"></a>最终效果</h3><p><img src="/images/Prometheus-Alerts-31.jpg" srcset="/img/loading.gif" lazyload alt="Prometheus-Alerts-31"></p>
+
+                
+              </div>
+            
+            <hr/>
+            <div>
+              <div class="post-metas my-3">
+  
+  
+</div>
+
+
+              
+  
+
+  <div class="license-box my-3">
+    <div class="license-title">
+      <div>AlertManager实现监控告警</div>
+      <div>https://system51.github.io/2021/07/12/Alertmanager/</div>
+    </div>
+    <div class="license-meta">
+      
+        <div class="license-meta-item">
+          <div>作者</div>
+          <div>Mr.Ye</div>
+        </div>
+      
+      
+        <div class="license-meta-item license-meta-date">
+          <div>发布于</div>
+          <div>2021年7月12日</div>
+        </div>
+      
+      
+      
+        <div class="license-meta-item">
+          <div>许可协议</div>
+          <div>
+            
+              
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="BY - 署名">
+                    <i class="iconfont icon-by"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="NC - 非商业性使用">
+                    <i class="iconfont icon-nc"></i>
+                  </span>
+                </a>
+              
+                <a target="_blank" href="https://creativecommons.org/licenses/by-nc-sa/4.0/">
+                  <span class="hint--top hint--rounded" aria-label="SA - 相同方式共享">
+                    <i class="iconfont icon-sa"></i>
+                  </span>
+                </a>
+              
+            
+          </div>
+        </div>
+      
+    </div>
+    <div class="license-icon iconfont"></div>
+  </div>
+
+
+
+              
+                <div class="post-prevnext my-3">
+                  <article class="post-prev col-6">
+                    
+                    
+                      <a href="/2021/07/23/Prometheus-Ha/" title="Prometheus高可用">
+                        <i class="iconfont icon-arrowleft"></i>
+                        <span class="hidden-mobile">Prometheus高可用</span>
+                        <span class="visible-mobile">上一篇</span>
+                      </a>
+                    
+                  </article>
+                  <article class="post-next col-6">
+                    
+                    
+                      <a href="/2021/06/29/Query-persistence-and-visualization/" title="查询持久化及可视化">
+                        <span class="hidden-mobile">查询持久化及可视化</span>
+                        <span class="visible-mobile">下一篇</span>
+                        <i class="iconfont icon-arrowright"></i>
+                      </a>
+                    
+                  </article>
+                </div>
+              
+            </div>
+
+            
+  <article id="comments" lazyload>
+    
+  <div id="valine"></div>
+  <script type="text/javascript">
+    Fluid.utils.loadComments('#valine', function() {
+      Fluid.utils.createScript('https://lib.baomitu.com/valine/1.5.1/Valine.min.js', function() {
+        var options = Object.assign(
+          {"appId":"iBa6ppaRRb3iVAJqtc7UtjLA-gzGzoHsz","appKey":"7Ygc8VJFwvSe7p1k0zEjJAQC","path":"window.location.pathname","placeholder":"ヾﾉ≧∀≦)o 来呀！吐槽一番吧！","avatar":"retro","meta":["nick","mail","link"],"requiredFields":[],"pageSize":10,"lang":"zh-CN","highlight":false,"recordIP":false,"serverURLs":"","emojiCDN":null,"emojiMaps":null,"enableQQ":false},
+          {
+            el: "#valine",
+            path: window.location.pathname
+          }
+        )
+        new Valine(options);
+        Fluid.utils.waitElementVisible('#valine .vcontent', () => {
+          var imgSelector = '#valine .vcontent img:not(.vemoji)';
+          Fluid.plugins.imageCaption(imgSelector);
+          Fluid.plugins.fancyBox(imgSelector);
+        })
+      });
+    });
+  </script>
+  <noscript>Please enable JavaScript to view the comments</noscript>
+
+
+  </article>
+
+
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col d-none d-lg-block col-lg-2">
+      
+  <aside class="sidebar" style="margin-left: -1rem">
+    <div id="toc">
+  <p class="toc-header"><i class="iconfont icon-list"></i>&nbsp;目录</p>
+  <div class="toc-body" id="toc-body"></div>
+</div>
+
+
+
+  </aside>
+
+
+    </div>
+  </div>
+</div>
+
+
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+  
+
+
+
+
+
+
+
+    
+
+    
+      <a id="scroll-top-button" aria-label="TOP" href="#" role="button">
+        <i class="iconfont icon-arrowup" aria-hidden="true"></i>
+      </a>
+    
+
+    
+      <div class="modal fade" id="modalSearch" tabindex="-1" role="dialog" aria-labelledby="ModalLabel"
+     aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header text-center">
+        <h4 class="modal-title w-100 font-weight-bold">搜索</h4>
+        <button type="button" id="local-search-close" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body mx-3">
+        <div class="md-form mb-5">
+          <input type="text" id="local-search-input" class="form-control validate">
+          <label data-error="x" data-success="v" for="local-search-input">关键词</label>
+        </div>
+        <div class="list-group" id="local-search-result"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+    
+
+    
+  </main>
+
+  <footer>
+    <div class="footer-inner">
+  
+    <div class="footer-content">
+       <a href="https://hexo.io" target="_blank" rel="nofollow noopener"><span>Hexo</span></a> <i class="iconfont icon-love"></i> <a href="https://github.com/fluid-dev/hexo-theme-fluid" target="_blank" rel="nofollow noopener"><span>Fluid</span></a> 
+    </div>
+  
+  
+  
+  
+</div>
+
+  </footer>
+
+  <!-- Scripts -->
+  
+  <script  src="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.js" ></script>
+  <link  rel="stylesheet" href="https://lib.baomitu.com/nprogress/0.2.0/nprogress.min.css" />
+
+  <script>
+    NProgress.configure({"showSpinner":false,"trickleSpeed":100})
+    NProgress.start()
+    window.addEventListener('load', function() {
+      NProgress.done();
+    })
+  </script>
+
+
+<script  src="https://lib.baomitu.com/jquery/3.6.0/jquery.min.js" ></script>
+<script  src="https://lib.baomitu.com/twitter-bootstrap/4.6.1/js/bootstrap.min.js" ></script>
+<script  src="/js/events.js" ></script>
+<script  src="/js/plugins.js" ></script>
+
+
+  <script  src="https://lib.baomitu.com/typed.js/2.0.12/typed.min.js" ></script>
+  <script>
+    (function (window, document) {
+      var typing = Fluid.plugins.typing;
+      var subtitle = document.getElementById('subtitle');
+      if (!subtitle || !typing) {
+        return;
+      }
+      var text = subtitle.getAttribute('data-typed-text');
+      
+        typing(text);
+      
+    })(window, document);
+  </script>
+
+
+
+
+  
+    <script  src="/js/img-lazyload.js" ></script>
+  
+
+
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/tocbot/4.18.2/tocbot.min.js', function() {
+    var toc = jQuery('#toc');
+    if (toc.length === 0 || !window.tocbot) { return; }
+    var boardCtn = jQuery('#board-ctn');
+    var boardTop = boardCtn.offset().top;
+
+    window.tocbot.init(Object.assign({
+      tocSelector     : '#toc-body',
+      contentSelector : '.markdown-body',
+      linkClass       : 'tocbot-link',
+      activeLinkClass : 'tocbot-active-link',
+      listClass       : 'tocbot-list',
+      isCollapsedClass: 'tocbot-is-collapsed',
+      collapsibleClass: 'tocbot-is-collapsible',
+      scrollSmooth    : true,
+      includeTitleTags: true,
+      headingsOffset  : -boardTop,
+    }, CONFIG.toc));
+    if (toc.find('.toc-list-item').length > 0) {
+      toc.css('visibility', 'visible');
+    }
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('tocbot' in window) {
+        tocbot.refresh();
+        var toc = jQuery('#toc');
+        if (toc.length === 0 || !tocbot) {
+          return;
+        }
+        if (toc.find('.toc-list-item').length > 0) {
+          toc.css('visibility', 'visible');
+        }
+      }
+    });
+  });
+</script>
+
+
+  <script src=https://lib.baomitu.com/clipboard.js/2.0.11/clipboard.min.js></script>
+
+  <script>Fluid.plugins.codeWidget();</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/anchor-js/4.3.1/anchor.min.js', function() {
+    window.anchors.options = {
+      placement: CONFIG.anchorjs.placement,
+      visible  : CONFIG.anchorjs.visible
+    };
+    if (CONFIG.anchorjs.icon) {
+      window.anchors.options.icon = CONFIG.anchorjs.icon;
+    }
+    var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+    var res = [];
+    for (var item of el) {
+      res.push('.markdown-body > ' + item.trim());
+    }
+    if (CONFIG.anchorjs.placement === 'left') {
+      window.anchors.options.class = 'anchorjs-link-left';
+    }
+    window.anchors.add(res.join(', '));
+
+    Fluid.events.registerRefreshCallback(function() {
+      if ('anchors' in window) {
+        anchors.removeAll();
+        var el = (CONFIG.anchorjs.element || 'h1,h2,h3,h4,h5,h6').split(',');
+        var res = [];
+        for (var item of el) {
+          res.push('.markdown-body > ' + item.trim());
+        }
+        if (CONFIG.anchorjs.placement === 'left') {
+          anchors.options.class = 'anchorjs-link-left';
+        }
+        anchors.add(res.join(', '));
+      }
+    });
+  });
+</script>
+
+
+  
+<script>
+  Fluid.utils.createScript('https://lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js', function() {
+    Fluid.plugins.fancyBox();
+  });
+</script>
+
+
+  <script>Fluid.plugins.imageCaption();</script>
+
+  <script  src="/js/local-search.js" ></script>
+
+
+
+
+
+<!-- 主题的启动项，将它保持在最底部 -->
+<!-- the boot of the theme, keep it at the bottom -->
+<script  src="/js/boot.js" ></script>
+
+
+  
+
+  <noscript>
+    <div class="noscript-warning">博客在允许 JavaScript 运行的环境下浏览效果更佳</div>
+  </noscript>
+</body>
+</html>
