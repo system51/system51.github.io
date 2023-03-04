@@ -30,7 +30,7 @@
 <meta property="og:image" content="https://system51.github.io/images/calico-cni-6.png">
 <meta property="og:image" content="https://system51.github.io/images/calico-cni-5.jpg">
 <meta property="article:published_time" content="2020-05-27T08:17:29.000Z">
-<meta property="article:modified_time" content="2021-05-11T06:59:29.290Z">
+<meta property="article:modified_time" content="2023-03-04T02:14:16.387Z">
 <meta property="article:author" content="Mr.Ye">
 <meta property="article:tag" content="kubernetes,devops">
 <meta name="twitter:card" content="summary_large_image">
@@ -214,7 +214,7 @@
       <span class="post-meta mr-2">
         <i class="iconfont icon-chart"></i>
         
-          18k 字
+          19k 字
         
       </span>
     
@@ -225,7 +225,7 @@
         
         
         
-          31 分钟
+          32 分钟
         
       </span>
     
@@ -276,10 +276,23 @@
 </ul>
 <h2 id="Calico架构"><a href="#Calico架构" class="headerlink" title="Calico架构"></a>Calico架构</h2><p><img src="/images/calico-cni.png" srcset="/img/loading.gif" lazyload alt="calico-cni"></p>
 <h3 id="Calico网络模型主要工作组件："><a href="#Calico网络模型主要工作组件：" class="headerlink" title="Calico网络模型主要工作组件："></a>Calico网络模型主要工作组件：</h3><ul>
-<li>Felix：运行在每一台 Host 的 agent 进程，主要负责编写路由和ACLs（访问控制列表）。以便为该主机上的 <code>endpoints</code> 资源正常运行提供所需的网络连接。</li>
-<li>etcd：分布式键值存储，主要负责网络元数据一致性，确保Calico网络状态的准确性，可以与kubernetes共用；</li>
-<li>bird（BGP Client）：<code>Calico</code> 为每一台 <code>Host</code> 部署一个 <code>BGP Client</code>，当 <code>Felix</code> 将路由写入 <code>kernel</code> FIB中时 <code>BGP Client</code> 将通过 <code>BGP</code> 协议广播告诉剩余 <code>calico</code> 节点，从而实现网络互通。</li>
-<li>confd：通过监听etcd以了解BGP配置和全局默认值的更改（例如：AS number、日志级别、IPAM信息）。Confd根据ETCD中数据的更新，动态生成BIRD配置文件。当配置文件更改时，confd触发BIRD重新加载新文件。</li>
+<li><p>Felix：运行在每一台 Host 的 agent 进程，Felix负责刷新主机路由和ACL规则等，以便为该主机上的 <code>Endpoint</code> 正常运行提供所需的网络连接和管理。进出容器、虚拟机和物理主机的所有流量都会遍历Calico，利用Linux内核原生的路由和iptables生成的规则。</p>
+<ul>
+<li>Felix一般负责以下工作：<ul>
+<li>管理网络接口：Felix将有关网络接口的一些信息编程到内核中，使内核能够正确处理该Endpoint发出的流量。Felix将确保主机正确响应来自每个工作负载的ARP请求，并将其管理的网卡启用IP Forward；</li>
+<li>编写路由：Felix负责将到其主机上Endpoint的路由编写到Linux内核FIB（转发信息库）中。这可以确保那些发往目标主机的Endpoint的数据包被正确地转发；</li>
+<li>编写ACL：Felix还负责将ACL编程到Linux内核中，即iptables规则。这些ACL用于确保只在Endpoints之间发送有效的网络流量，并确保Endpoint无法绕过Calico的安全措施；</li>
+<li>报告状态：Felix负责提供有关网络健康状况的数据。例如，它将报告配置其主机时发生的错误和问题。该数据会被写入etcd，并对网络中的其他组件可见。</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>etcd：分布式键值存储，主要负责网络元数据一致性，确保Calico网络状态的准确性，可以与kubernetes共用；</p>
+</li>
+<li><p>bird（BGP Client）：<code>Calico</code> 为每一台 <code>Host</code> 部署一个 <code>BGP Client</code>，当 <code>Felix</code> 将路由写入 <code>kernel</code> FIB中时 <code>BGP Client</code> 将通过 <code>BGP</code> 协议广播告诉剩余 <code>calico</code> 节点，从而实现网络互通。</p>
+</li>
+<li><p>confd：通过监听etcd以了解BGP配置和全局默认值的更改（例如：AS number、日志级别、IPAM信息）。Confd根据ETCD中数据的更新，动态生成BIRD配置文件。当配置文件更改时，confd触发BIRD重新加载新文件。</p>
+</li>
 </ul>
 <h2 id="Calico两种网络模式"><a href="#Calico两种网络模式" class="headerlink" title="Calico两种网络模式"></a>Calico两种网络模式</h2><p>&amp;emsp;&amp;emsp;Calico本身支持多种网络模式，从<code>overlay</code>和<code>underlay</code>上区分。<code>Calico overlay</code> 模式，一般也称Calico IPIP或VXLAN模式，不同Node间Pod使用IPIP或VXLAN隧道进行通信。<code>Calico underlay</code> 模式，一般也称calico BGP模式，不同Node Pod使用直接路由进行通信。在overlay和underlay都有<code>nodetonode mesh</code>(全网互联)和<code>Route Reflector</code>(路由反射器)。如果有安全组策略需要开放IPIP协议；要求Node允许BGP协议，如果有安全组策略需要开放TCP 179端口；官方推荐使用在Node小于100的集群，我们在使用的过程中已经通过IPIP模式支撑了100-200规模的集群稳定运行。</p>
 <h3 id="路由更新速率问题"><a href="#路由更新速率问题" class="headerlink" title="路由更新速率问题"></a>路由更新速率问题</h3><p>&amp;emsp;&amp;emsp;为什么要考虑路由更新速率？在Calico默认的使用模式中，Calico每个Node一个分配一个Block，每个Block默认为64个IP，当单个Node启动的Pod超过64时，才会分配下一个Block。Calico BGP client默认只向外通告聚合后的Block的路由，默认配置，只有在Node上下线、Node上Pod数量超过Block size的倍数才会出现路由的更新，路由的条目数量是Node级别的。<br>&amp;emsp;&amp;emsp;而实际业务在使用的过程中，会针对一个服务或者一个deployment分配一个IP Pool，这种使用模式会导致Calico的IP Pool没有办法按照Node聚合，出现一些零散的无法聚合的IP地址，最差的情况，会导致每个Pod产生一条路由，会导致路由的条目变为Pod级别。<br>&amp;emsp;&amp;emsp;在默认情况下，交换机设备为了防止路由震荡，会对BGP路由进行收敛保护。但是Kubernetes集群中，Pod生命周期短，变化频繁，需要关闭网络设备的路由变更保护机制才能满足Kubernetes的要求；对于不同的网络设备，路由收敛速度也是不同的，在大规模Pod扩容和迁移的场景，或者进行双数据中心切换，除了考虑Pod的调度时间、启动时间，还需要对网络设备的路由收敛速度进行性能评估和压测。</p>
@@ -351,7 +364,7 @@
 <p>2）然后更改 <code>CALICO_IPV4POOL_IPIP</code> 为 <code>Never</code> 使用 <code>BGP</code> 模式，另外增加 <code>IP_AUTODETECTION_METHOD</code> 为 <code>interface</code> 使用匹配模式，默认是first-found模式，在复杂网络环境下还是有出错的可能，还有<code>CALICO_IPV4POOL_CIDR</code> 设置为kubeadm初始化时设置的<code>podSubnet</code>参数。</p>
 <figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><code class="hljs awk">curl https:<span class="hljs-regexp">//</span>docs.projectcalico.org<span class="hljs-regexp">/manifests/</span>calico-typha.yaml -o calico.yaml<br></code></pre></td></tr></table></figure>
 
-<figure class="highlight pgsql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><code class="hljs pgsql"># <span class="hljs-keyword">no</span> effect. This should fall <span class="hljs-keyword">within</span> `<span class="hljs-comment">--cluster-cidr`.</span><br>- <span class="hljs-type">name</span>: CALICO_IPV4POOL_CIDR<br>  <span class="hljs-keyword">value</span>: &quot;10.244.0.0/16&quot;<br># <span class="hljs-keyword">Cluster</span> <span class="hljs-keyword">type</span> <span class="hljs-keyword">to</span> identify the deployment <span class="hljs-keyword">type</span><br>- <span class="hljs-type">name</span>: CLUSTER_TYPE<br>  <span class="hljs-keyword">value</span>: &quot;k8s,bgp&quot;<br># IP automatic detection<br>- <span class="hljs-type">name</span>: IP_AUTODETECTION_METHOD<br>  <span class="hljs-keyword">value</span>: &quot;interface=en.*&quot;<br># Auto-detect the BGP IP address.<br>- <span class="hljs-type">name</span>: IP<br>  <span class="hljs-keyword">value</span>: &quot;autodetect&quot;<br># <span class="hljs-keyword">Enable</span> IPIP<br>- <span class="hljs-type">name</span>: CALICO_IPV4POOL_IPIP<br>  <span class="hljs-keyword">value</span>: &quot;Never&quot;<br></code></pre></td></tr></table></figure>
+<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><code class="hljs yaml"><span class="hljs-comment"># no effect. This should fall within `--cluster-cidr`.</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">CALICO_IPV4POOL_CIDR</span><br>  <span class="hljs-attr">value:</span> <span class="hljs-string">&quot;10.244.0.0/16&quot;</span><br><span class="hljs-comment"># Cluster type to identify the deployment type</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">CLUSTER_TYPE</span><br>  <span class="hljs-attr">value:</span> <span class="hljs-string">&quot;k8s,bgp&quot;</span><br><span class="hljs-comment"># IP automatic detection</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">IP_AUTODETECTION_METHOD</span><br>  <span class="hljs-attr">value:</span> <span class="hljs-string">&quot;interface=en.*&quot;</span><br><span class="hljs-comment"># Auto-detect the BGP IP address.</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">IP</span><br>  <span class="hljs-attr">value:</span> <span class="hljs-string">&quot;autodetect&quot;</span><br><span class="hljs-comment"># Enable IPIP</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">CALICO_IPV4POOL_IPIP</span><br>  <span class="hljs-attr">value:</span> <span class="hljs-string">&quot;Never&quot;</span><br><span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">FELIX_IPTABLESBACKEND</span><br>  <span class="hljs-attr">value:</span> <span class="hljs-string">&quot;nft&quot;</span>                   <span class="hljs-comment"># iptables大于1.8版本时设置</span><br></code></pre></td></tr></table></figure>
 
 
 <p>3）应用calico文件</p>
