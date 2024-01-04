@@ -343,7 +343,7 @@
 
 
 <h2 id="对角色绑定主体（Subject）的引用"><a href="#对角色绑定主体（Subject）的引用" class="headerlink" title="对角色绑定主体（Subject）的引用"></a>对角色绑定主体（Subject）的引用</h2><p>RoleBinding或者ClusterRoleBinding将角色绑定到角色绑定主体（Subject）。 角色绑定主体（kind指定）可以是用户组（Group）、用户（User）或者服务账户（Service Accounts）。</p>
-<p>用户由字符串表示。可以是纯粹的用户名，例如”alice”、电子邮件风格的名字，如 “<a href="mailto:&#x62;&#x6f;&#x62;&#64;&#101;&#x78;&#x61;&#109;&#x70;&#x6c;&#101;&#46;&#x63;&#x6f;&#109;">&#x62;&#x6f;&#x62;&#64;&#101;&#x78;&#x61;&#109;&#x70;&#x6c;&#101;&#46;&#x63;&#x6f;&#109;</a>” 或者是用字符串表示的数字id。由Kubernetes管理员配置认证模块 以产生所需格式的用户名。对于用户名，RBAC授权系统不要求任何特定的格式。然而，前缀<code>system:</code>是 为Kubernetes系统使用而保留的，所以管理员应该确保用户名不会意外地包含这个前缀。</p>
+<p>用户由字符串表示。可以是纯粹的用户名，例如”alice”、电子邮件风格的名字，如 “<a href="mailto:&#x62;&#111;&#98;&#64;&#x65;&#120;&#97;&#x6d;&#112;&#108;&#x65;&#46;&#99;&#x6f;&#109;">&#x62;&#111;&#98;&#64;&#x65;&#120;&#97;&#x6d;&#112;&#108;&#x65;&#46;&#99;&#x6f;&#109;</a>” 或者是用字符串表示的数字id。由Kubernetes管理员配置认证模块 以产生所需格式的用户名。对于用户名，RBAC授权系统不要求任何特定的格式。然而，前缀<code>system:</code>是 为Kubernetes系统使用而保留的，所以管理员应该确保用户名不会意外地包含这个前缀。</p>
 <p>Kubernetes中的用户组信息由授权模块提供。用户组与用户一样由字符串表示。Kubernetes对用户组 字符串没有格式要求，但前缀system:同样是被系统保留的。</p>
 <p>服务账户（serviceAccount）拥有包含 <code>system:serviceaccount:</code>前缀的用户名，并属于拥有<code>system:serviceaccounts:</code>前缀的用户组。</p>
 <p>说明：</p>
@@ -352,7 +352,7 @@
 <li>system:serviceaccounts: （复数）是用于服务账户组名的前缀。</li>
 </ul>
 <h3 id="角色绑定例子"><a href="#角色绑定例子" class="headerlink" title="角色绑定例子"></a>角色绑定例子</h3><p>以下示例中，仅截取展示了RoleBinding的subjects字段。</p>
-<p>一个名为”<a href="mailto:&#97;&#x6c;&#x69;&#99;&#101;&#64;&#x65;&#x78;&#x61;&#x6d;&#112;&#108;&#101;&#x2e;&#99;&#111;&#x6d;">&#97;&#x6c;&#x69;&#99;&#101;&#64;&#x65;&#x78;&#x61;&#x6d;&#112;&#108;&#101;&#x2e;&#99;&#111;&#x6d;</a>”的用户：</p>
+<p>一个名为”<a href="mailto:&#97;&#108;&#x69;&#99;&#x65;&#64;&#x65;&#120;&#x61;&#109;&#112;&#108;&#101;&#46;&#x63;&#x6f;&#x6d;">&#97;&#108;&#x69;&#99;&#x65;&#64;&#x65;&#120;&#x61;&#109;&#112;&#108;&#101;&#46;&#x63;&#x6f;&#x6d;</a>”的用户：</p>
 <figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">subjects:<br>- kind: <span class="hljs-keyword">User</span><br>  <span class="hljs-title">name</span>: <span class="hljs-string">&quot;alice@example.com&quot;</span><br>  apiGroup: rbac.authorization.k8s.io<br></code></pre></td></tr></table></figure>
 <p>一个名为”frontend-admins”的用户组：</p>
 <figure class="highlight crmsh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><code class="hljs crmsh">subjects:<br>- kind: <span class="hljs-keyword">Group</span><br>  <span class="hljs-title">name</span>: <span class="hljs-string">&quot;frontend-admins&quot;</span><br>  apiGroup: rbac.authorization.k8s.io<br></code></pre></td></tr></table></figure>
